@@ -6,5 +6,6 @@ const { auth, adminOnly, branchAccess } = require('../middleware/auth');
 router.get('/', auth, branchController.getAll);
 router.get('/:id', auth, branchController.getById);
 router.get('/:id/dashboard', auth, branchAccess, branchController.getDashboard);
+router.put('/:id', auth, branchController.updateBranch);
 
 module.exports = router;

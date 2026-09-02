@@ -11,6 +11,7 @@ export default function Layout({ user }) {
   const navItems = [
     { path: '/', label: '📊 لوحة التحكم' },
     { path: '/inventory', label: '📦 جرد المخزون' },
+    { path: '/branches', label: '🏪 إدارة الفروع' },
   ]
 
   return (
