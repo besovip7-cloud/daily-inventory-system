@@ -107,7 +107,7 @@ export default function Sales() {
         </div>
 
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">💳 مدى / فيزا</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">💳 كردت / فيزا</label>
           <input
             type="number"
             value={paymentCard}
@@ -144,7 +144,7 @@ export default function Sales() {
               return (
                 <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="p-4 font-semibold text-gray-900">{item.name}</td>
-                  <td className="p-4 text-center text-gray-600">{item.price} ﷼</td>
+                  <td className="p-4 text-center text-gray-600">{item.price} دينار</td>
                   <td className="p-4 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <button
@@ -163,7 +163,8 @@ export default function Sales() {
                       >+</button>
                     </div>
                   </td>
-                  <td className="p-4 text-center font-bold text-blue-600">{total} ﷼</td>
+                  <td className="p-4 text-center font-bold text-blue-600">{total} دينار
+                  </td>
                 </tr>
               )
             })}
