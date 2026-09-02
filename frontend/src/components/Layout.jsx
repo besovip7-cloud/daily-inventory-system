@@ -1,12 +1,17 @@
-import { Outlet, Link, useNavigate } from 'react-router-dom'
+import { Outlet, Link, useLocation } from 'react-router-dom'
 
 export default function Layout({ user }) {
-  const navigate = useNavigate()
-
   const logout = () => {
     localStorage.removeItem('token')
     window.location.reload()
   }
+
+  const location = useLocation()
+
+  const navItems = [
+    { path: '/', label: '📊 لوحة التحكم' },
+    { path: '/inventory', label: '📦 جرد المخزون' },
+  ]
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
@@ -19,9 +24,32 @@ export default function Layout({ user }) {
           </div>
         </div>
       </nav>
-      <main className="max-w-7xl mx-auto p-6">
-        <Outlet />
-      </main>
+
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row">
+        {/* Sidebar */}
+        <aside className="w-full md:w-64 bg-white shadow-sm border-l border-gray-100">
+          <div className="p-4">
+            {navItems.map(item => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`block p-3 rounded-lg mb-1 transition ${
+                  location.pathname === item.path
+                    ? 'bg-blue-50 text-blue-700 font-bold border-r-2 border-blue-600'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 p-6">
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }

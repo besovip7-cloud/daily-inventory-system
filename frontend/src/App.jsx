@@ -2,7 +2,8 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import Layout from './components/Layout'
 import Login from './components/Login'
-import Dashboard from './components/Dashboard'
+import Dashboard from './components/Inventory'
+import Inventory from './components/Inventory'
 
 const API_URL = 'https://inventory-api-6lta.onrender.com/api'
 
@@ -25,6 +26,7 @@ function App() {
         <Route path="/login" element={<Login setUser={setUser} apiUrl={API_URL} />} />
         <Route path="/" element={user ? <Layout user={user} /> : <Navigate to="/login" />}>
           <Route index element={<Dashboard apiUrl={API_URL} />} />
+          <Route path="inventory" element={<Inventory />} />
         </Route>
       </Routes>
     </HashRouter>
