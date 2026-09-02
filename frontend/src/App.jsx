@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard'
 import Inventory from './components/Inventory'
 import Branches from './components/Branches'
 import Sales from './components/Sales'
+import Alerts from './components/Alerts'
 const API_URL = 'https://inventory-api-6lta.onrender.com/api'
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
           <Route path="inventory" element={<Inventory />} />
           <Route path="branches" element={<Branches />} />
           <Route path="sales" element={<Sales />} />
+          <Route path="alerts" element={<Alerts />} />          
         </Route>
       </Routes>
     </HashRouter>
