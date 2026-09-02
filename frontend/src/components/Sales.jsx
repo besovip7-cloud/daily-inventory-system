@@ -179,12 +179,12 @@ export default function Sales() {
             <div className="text-sm text-gray-600">عدد القطع</div>
           </div>
           <div>
-            <div className="text-3xl font-bold text-green-600">{getTotalRevenue()} ﷼</div>
+            <div className="text-3xl font-bold text-green-600">{getTotalRevenue()} دينار</div>
             <div className="text-sm text-gray-600">إجمالي المبيعات</div>
           </div>
           <div>
             <div className="text-3xl font-bold text-purple-600">
-              {getTotalOrders() > 0 ? Math.round(getTotalRevenue() / getTotalOrders()) : 0} ﷼
+              {getTotalOrders() > 0 ? Math.round(getTotalRevenue() / getTotalOrders()) : 0} دينار
             </div>
             <div className="text-sm text-gray-600">متوسط الطلب</div>
           </div>
