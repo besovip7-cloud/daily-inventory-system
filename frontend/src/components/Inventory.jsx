@@ -6,22 +6,14 @@ export default function Inventory() {
   const [branches, setBranches] = useState([])
   const [selectedBranch, setSelectedBranch] = useState('')
   const [items, setItems] = useState([])
+  const [todayRecords, setTodayRecords] = useState(null)
   const [records, setRecords] = useState({})
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
-  const [showAddModal, setShowAddModal] = useState(false)
-
-  // نموذج إضافة مادة جديدة
-  const [newItem, setNewItem] = useState({
-    name: '',
-    category: 'raw',
-    unit: 'كجم',
-    min_quantity: 0,
-    current_quantity: 0
-  })
 
   const token = localStorage.getItem('token')
+  const today = new Date().toISOString().split('T')[0]
 
   useEffect(() => {
     fetch(`${API_URL}/branches`, { headers: { Authorization: `Bearer ${token}` }})
@@ -32,31 +24,50 @@ export default function Inventory() {
       })
   }, [])
 
-  const loadItems = () => {
+  // تحقق إذا تم الجرد اليوم
+  const checkTodayInventory = () => {
     if (!selectedBranch) return
     setLoading(true)
+    
+    // جلب المواد
     fetch(`${API_URL}/inventory/items/${selectedBranch}`, { headers: { Authorization: `Bearer ${token}` }})
       .then(r => r.json())
       .then(data => {
         setItems(data)
-        const init = {}
-        data.forEach(item => {
-          init[item.id] = {
-            item_id: item.id,
-            opening_qty: item.current_quantity || 0,
-            received_qty: 0,
-            consumed_qty: 0,
-            closing_qty: item.current_quantity || 0,
-            notes: ''
-          }
+        
+        // جلب جرد اليوم
+        return fetch(`${API_URL}/inventory/daily/${selectedBranch}?date=${today}`, { 
+          headers: { Authorization: `Bearer ${token}` }
         })
-        setRecords(init)
+      })
+      .then(r => r.json())
+      .then(dailyData => {
+        if (dailyData && dailyData.length > 0) {
+          // ✅ تم الجرد اليوم
+          setTodayRecords(dailyData)
+        } else {
+          // ❌ لم يتم الجرد
+          setTodayRecords(null)
+          const init = {}
+          items.forEach(item => {
+            init[item.id] = {
+              item_id: item.id,
+              opening_qty: item.current_quantity || 0,
+              received_qty: 0,
+              consumed_qty: 0,
+              closing_qty: item.current_quantity || 0,
+              notes: ''
+            }
+          })
+          setRecords(init)
+        }
         setLoading(false)
       })
+      .catch(() => setLoading(false))
   }
 
   useEffect(() => {
-    loadItems()
+    checkTodayInventory()
   }, [selectedBranch])
 
   const handleChange = (itemId, field, value) => {
@@ -84,7 +95,8 @@ export default function Inventory() {
       })
       const data = await res.json()
       if (res.ok) {
-        setMessage('✅ تم حفظ الجرد بنجاح!')
+        setMessage('✅ تم إرسال الجرد اليومي للإدارة!')
+        checkTodayInventory() // تحديث الحالة
       } else {
         setMessage('❌ خطأ: ' + (data.message || 'فشل الحفظ'))
       }
@@ -92,40 +104,6 @@ export default function Inventory() {
       setMessage('❌ خطأ في الاتصال')
     }
     setSaving(false)
-  }
-
-  const handleAddItem = async (e) => {
-    e.preventDefault()
-    try {
-      const payload = {
-        branch_id: parseInt(selectedBranch),
-        name: newItem.name,
-        category: newItem.category,
-        unit: newItem.unit,
-        min_quantity: parseFloat(newItem.min_quantity) || 0,
-        current_quantity: parseFloat(newItem.current_quantity) || 0,
-        cost_per_unit: 0
-      }
-      const res = await fetch(`${API_URL}/inventory/items`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      })
-      if (res.ok) {
-        setMessage('✅ تمت إضافة المادة بنجاح!')
-        setShowAddModal(false)
-        setNewItem({ name: '', category: 'raw', unit: 'كجم', min_quantity: 0, current_quantity: 0 })
-        loadItems()
-      } else {
-        const data = await res.json()
-        setMessage('❌ خطأ: ' + (data.message || 'فشل الإضافة'))
-      }
-    } catch (err) {
-      setMessage('❌ خطأ في الاتصال')
-    }
   }
 
   const getStatus = (item) => {
@@ -139,101 +117,11 @@ export default function Inventory() {
 
   return (
     <div dir="rtl">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">📦 جرد المخزون اليومي</h2>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 transition"
-        >
-          ➕ إضافة مادة
-        </button>
-      </div>
+      <h2 className="text-2xl font-bold mb-6 text-gray-900">📦 جرد المخزون اليومي</h2>
 
       {message && (
         <div className={`p-4 rounded-lg mb-4 font-bold ${message.includes('✅') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
           {message}
-        </div>
-      )}
-
-      {/* نافذة إضافة مادة */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h3 className="text-xl font-bold mb-4">➕ إضافة مادة جديدة</h3>
-            <form onSubmit={handleAddItem} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">اسم المادة</label>
-                <input
-                  type="text"
-                  required
-                  value={newItem.name}
-                  onChange={e => setNewItem({...newItem, name: e.target.value})}
-                  className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-                  placeholder="مثال: زيت نباتي"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">التصنيف</label>
-                  <select
-                    value={newItem.category}
-                    onChange={e => setNewItem({...newItem, category: e.target.value})}
-                    className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-                  >
-                    <option value="raw">مواد خام</option>
-                    <option value="packaging">تعبئة</option>
-                    <option value="beverages">مشروبات</option>
-                    <option value="cleaning">تنظيف</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">الوحدة</label>
-                  <select
-                    value={newItem.unit}
-                    onChange={e => setNewItem({...newItem, unit: e.target.value})}
-                    className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-                  >
-                    <option value="كجم">كجم</option>
-                    <option value="لتر">لتر</option>
-                    <option value="عبوة">عبوة</option>
-                    <option value="علبة">علبة</option>
-                    <option value="قطعة">قطعة</option>
-                    <option value="حزمة">حزمة</option>
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">الحد الأدنى</label>
-                  <input
-                    type="number"
-                    required
-                    value={newItem.min_quantity}
-                    onChange={e => setNewItem({...newItem, min_quantity: e.target.value})}
-                    className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">الكمية الحالية</label>
-                  <input
-                    type="number"
-                    required
-                    value={newItem.current_quantity}
-                    onChange={e => setNewItem({...newItem, current_quantity: e.target.value})}
-                    className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button type="submit" className="flex-1 bg-green-600 text-white p-3 rounded-lg font-bold hover:bg-green-700 transition">
-                  💾 إضافة
-                </button>
-                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 bg-gray-200 text-gray-700 p-3 rounded-lg font-bold hover:bg-gray-300 transition">
-                  إلغاء
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
       )}
 
@@ -252,14 +140,59 @@ export default function Inventory() {
 
       {loading ? (
         <div className="text-center p-10">جاري التحميل...</div>
+      ) : todayRecords ? (
+        // ✅ تم الجرد اليوم - عرض النتائج فقط
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="text-center mb-6">
+            <div className="text-6xl mb-2">✅</div>
+            <h3 className="text-xl font-bold text-green-700">تم إرسال الجرد اليومي</h3>
+            <p className="text-gray-500">تم إرسال البيانات للإدارة بنجاح</p>
+            <p className="text-sm text-gray-400 mt-1">التاريخ: {today}</p>
+          </div>
+
+          <h4 className="font-bold text-lg mb-4 border-b pb-2">📋 ملخص الجرد</h4>
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="p-3 text-right font-semibold">المادة</th>
+                <th className="p-3 text-center font-semibold">بداية</th>
+                <th className="p-3 text-center font-semibold">وارد</th>
+                <th className="p-3 text-center font-semibold">منصرف</th>
+                <th className="p-3 text-center font-semibold">نهاية</th>
+              </tr>
+            </thead>
+            <tbody>
+              {todayRecords.map(rec => (
+                <tr key={rec.id} className="border-b border-gray-100">
+                  <td className="p-3 font-semibold">{rec.item_name}</td>
+                  <td className="p-3 text-center">{rec.opening_qty}</td>
+                  <td className="p-3 text-center text-green-600">+{rec.received_qty}</td>
+                  <td className="p-3 text-center text-red-600">-{rec.consumed_qty}</td>
+                  <td className="p-3 text-center font-bold">{rec.closing_qty}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg text-center">
+            <p className="text-blue-700 font-bold">💡 اذهب إلى "المبيعات" لإدخال مبيعات اليوم</p>
+          </div>
+        </div>
       ) : items.length === 0 ? (
+        // لا توجد مواد
         <div className="text-center p-10 bg-white rounded-xl shadow-sm border border-gray-100">
           <div className="text-6xl mb-4">📭</div>
           <div className="text-xl font-bold text-gray-700">لا توجد مواد في هذا الفرع</div>
-          <div className="text-gray-500 mb-4">اضغط "إضافة مادة" لإضافة مواد خام</div>
+          <div className="text-gray-500">تواصل مع الإدارة لإضافة المواد</div>
         </div>
       ) : (
+        // ❌ لم يتم الجرد - عرض النموذج
         <>
+          <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6">
+            <p className="text-yellow-800 font-bold">⚠️ لم يتم إدخال جرد اليوم بعد</p>
+            <p className="text-yellow-700 text-sm">أدخل الكميات أدناه ثم اضغط "حفظ وإرسال"</p>
+          </div>
+
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
@@ -267,7 +200,6 @@ export default function Inventory() {
                   <th className="p-4 text-right font-semibold text-gray-600">المادة</th>
                   <th className="p-4 text-center font-semibold text-gray-600">الوحدة</th>
                   <th className="p-4 text-center font-semibold text-gray-600">الحد الأدنى</th>
-                  <th className="p-4 text-center font-semibold text-gray-600">الكمية الحالية</th>
                   <th className="p-4 text-center font-semibold text-gray-600">الحالة</th>
                   <th className="p-4 text-center font-semibold text-gray-600">بداية اليوم</th>
                   <th className="p-4 text-center font-semibold text-gray-600">وارد</th>
@@ -284,7 +216,6 @@ export default function Inventory() {
                       <td className="p-4 font-semibold text-gray-900">{item.name}</td>
                       <td className="p-4 text-center text-gray-600">{item.unit}</td>
                       <td className="p-4 text-center text-gray-600">{item.min_quantity}</td>
-                      <td className="p-4 text-center font-bold text-gray-900">{item.current_quantity}</td>
                       <td className="p-4 text-center">
                         <span className={`text-xs px-2 py-1 rounded-full ${status.class}`}>{status.text}</span>
                       </td>
@@ -332,7 +263,7 @@ export default function Inventory() {
             disabled={saving}
             className="w-full md:w-auto bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700 transition disabled:bg-gray-400"
           >
-            {saving ? 'جاري الحفظ...' : '💾 حفظ الجرد اليومي'}
+            {saving ? 'جاري الإرسال...' : '📤 حفظ وإرسال للإدارة'}
           </button>
         </>
       )}
