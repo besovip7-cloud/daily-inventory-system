@@ -2,7 +2,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import Layout from './components/Layout'
 import Login from './components/Login'
-import Dashboard from './components/Inventory'
+import Dashboard from './components/Dashboard'
 import Inventory from './components/Inventory'
 
 const API_URL = 'https://inventory-api-6lta.onrender.com/api'
