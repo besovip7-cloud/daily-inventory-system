@@ -12,6 +12,7 @@ export default function Layout({ user }) {
     { path: '/', label: '📊 لوحة التحكم' },
     { path: '/inventory', label: '📦 جرد المخزون' },
     { path: '/branches', label: '🏪 إدارة الفروع' },
+    { path: '/sales', label: '💰 المبيعات' },
   ]
 
   return (
