@@ -7,6 +7,7 @@ export default function AdminPanel() {
   const [submittedBranches, setSubmittedBranches] = useState([])
   const [selectedBranch, setSelectedBranch] = useState(null)
   const [inventoryData, setInventoryData] = useState([])
+  const [menuItems, setMenuItems] = useState([])
   const [sales, setSales] = useState({})
   const [message, setMessage] = useState('')
   const [activeTab, setActiveTab] = useState('pending')
@@ -46,24 +47,32 @@ export default function AdminPanel() {
   const viewInventory = async (branch) => {
     setSelectedBranch(branch)
     setInventoryData([])
+    setMenuItems([])
     setSales({})
+    setMessage('')
     
     try {
-      const res = await fetch(`${API_URL}/inventory/daily/${branch.id}?date=${today}`, {
+      // جلب بيانات الجرد (للعرض)
+      const invRes = await fetch(`${API_URL}/inventory/daily/${branch.id}?date=${today}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      const data = await res.json()
+      const invData = await invRes.json()
+      setInventoryData(invData || [])
       
-      if (data && data.length > 0) {
-        setInventoryData(data)
-        const init = {}
-        data.forEach(rec => {
-          init[rec.item_id] = { quantity_sold: 0, unit_price: 0 }
-        })
-        setSales(init)
-      } else {
-        setMessage('❌ لا يوجد جرد لهذا الفرع اليوم')
-      }
+      // ✅ جلب أصناف المبيعات (Menu Items)
+      const menuRes = await fetch(`${API_URL}/sales/menu`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const menuData = await menuRes.json()
+      setMenuItems(menuData || [])
+      
+      // تهيئة المبيعات
+      const init = {}
+      menuData.forEach(item => {
+        init[item.id] = { item_id: item.id, quantity_sold: 0, unit_price: item.price }
+      })
+      setSales(init)
+      
     } catch (err) {
       console.error(err)
       setMessage('❌ خطأ في جلب البيانات')
@@ -79,11 +88,18 @@ export default function AdminPanel() {
 
   const submitSales = async () => {
     try {
-      const records = Object.entries(sales).map(([item_id, data]) => ({
-        item_id: parseInt(item_id),
-        quantity_sold: data.quantity_sold,
-        unit_price: data.unit_price || 0
-      })).filter(r => r.quantity_sold > 0)
+      const records = Object.values(sales)
+        .filter(s => s.quantity_sold > 0)
+        .map(s => ({
+          item_id: s.item_id,
+          quantity_sold: s.quantity_sold,
+          unit_price: s.unit_price
+        }))
+
+      if (records.length === 0) {
+        setMessage('❌ أدخل كمية مبيعات أولاً')
+        return
+      }
 
       const payload = {
         branch_id: selectedBranch.id,
@@ -103,6 +119,7 @@ export default function AdminPanel() {
 
       if (res.ok) {
         setMessage('✅ تم إدخال المبيعات بنجاح!')
+        // مقارنة الفروقات
         compareAndAlert()
       } else {
         const data = await res.json()
@@ -114,15 +131,14 @@ export default function AdminPanel() {
   }
 
   const compareAndAlert = async () => {
+    // مقارنة الجرد مع المبيعات
     for (const rec of inventoryData) {
-      const sale = sales[rec.item_id]
-      const sold = sale?.quantity_sold || 0
-      const expected = rec.closing_qty - sold
-      
-      if (expected < 0) {
-        await createAlert(selectedBranch.id, rec.item_id, `فروقات: ${Math.abs(expected)} ${rec.unit || 'وحدة'} ناقصة`)
-      } else if (expected > rec.closing_qty * 0.1) {
-        await createAlert(selectedBranch.id, rec.item_id, `فروقات: ${expected} ${rec.unit || 'وحدة'} زائدة`)
+      // هنا المنطق يعتمد على وصفة (recipe) لكل صنف
+      // بشكل مبسط: إذا المخزون أقل من المبيعات × 2 (مثال)
+      const saleQty = sales[rec.item_id]?.quantity_sold || 0
+      if (saleQty > rec.closing_qty) {
+        await createAlert(selectedBranch.id, rec.item_id, 
+          `فروقات: المبيعات (${saleQty}) أكثر من المخزون (${rec.closing_qty})`)
       }
     }
   }
@@ -143,9 +159,7 @@ export default function AdminPanel() {
           message: msg
         })
       })
-    } catch (e) {
-      console.error('Failed to create alert', e)
-    }
+    } catch (e) {}
   }
 
   return (
@@ -180,49 +194,56 @@ export default function AdminPanel() {
               <button onClick={() => { setSelectedBranch(null); setMessage('') }} className="mb-4 text-blue-600 font-bold">← رجوع للقائمة</button>
               <h3 className="text-xl font-bold mb-4">{selectedBranch.name} - جرد اليوم</h3>
               
-              {inventoryData.length === 0 ? (
-                <div className="text-center p-10 bg-white rounded-xl shadow-sm border border-gray-100">
-                  <p className="text-gray-500">جاري التحميل...</p>
+              {/* عرض بيانات الجرد */}
+              {inventoryData.length > 0 && (
+                <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                  <h4 className="font-bold mb-2">📋 بيانات الجرد المرسلة</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                    {inventoryData.map(rec => (
+                      <div key={rec.id} className="bg-white p-2 rounded">
+                        <div className="font-semibold">{rec.item_name}</div>
+                        <div className="text-gray-600">نهاية: {rec.closing_qty}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+              )}
+
+              {/* ✅ إدخال المبيعات (من Menu Items) */}
+              <h4 className="font-bold text-lg mb-4">💰 إدخال مبيعات اليوم</h4>
+              {menuItems.length === 0 ? (
+                <p>جاري تحميل الأصناف...</p>
               ) : (
                 <>
-                  <table className="w-full text-sm bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="p-3 text-right">المادة</th>
-                        <th className="p-3 text-center">بداية</th>
-                        <th className="p-3 text-center">وارد</th>
-                        <th className="p-3 text-center">منصرف</th>
-                        <th className="p-3 text-center">نهاية (الجرد)</th>
-                        <th className="p-3 text-center">مبيعات (إدخال)</th>
-                        <th className="p-3 text-center">الفرق المتوقع</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {inventoryData.map(rec => {
-                        const sold = sales[rec.item_id]?.quantity_sold || 0
-                        const expected = rec.closing_qty - sold
-                        return (
-                          <tr key={rec.id} className="border-b">
-                            <td className="p-3 font-semibold">{rec.item_name || '—'}</td>
-                            <td className="p-3 text-center">{rec.opening_qty}</td>
-                            <td className="p-3 text-center text-green-600">+{rec.received_qty}</td>
-                            <td className="p-3 text-center text-red-600">-{rec.consumed_qty}</td>
-                            <td className="p-3 text-center font-bold bg-gray-100">{rec.closing_qty}</td>
-                            <td className="p-3 text-center">
-                              <input type="number" min="0"
-                                value={sold}
-                                onChange={e => handleSalesChange(rec.item_id, e.target.value)}
-                                className="w-20 p-2 border-2 border-blue-200 rounded-lg text-center font-bold text-blue-700 focus:border-blue-500 focus:outline-none" />
-                            </td>
-                            <td className={`p-3 text-center font-bold ${expected < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                              {expected}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    {menuItems.map(item => {
+                      const sale = sales[item.id] || { quantity_sold: 0 }
+                      const total = sale.quantity_sold * item.price
+                      return (
+                        <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                          <div className="flex justify-between items-center mb-2">
+                            <h5 className="font-bold">{item.name}</h5>
+                            <span className="text-blue-600 font-bold">{item.price} ﷼</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => handleSalesChange(item.id, (sale.quantity_sold || 0) - 1)}
+                              className="w-8 h-8 bg-gray-100 rounded-lg font-bold">−</button>
+                            <input type="number" min="0"
+                              value={sale.quantity_sold || 0}
+                              onChange={e => handleSalesChange(item.id, e.target.value)}
+                              className="flex-1 p-2 border-2 border-gray-200 rounded-lg text-center font-bold" />
+                            <button onClick={() => handleSalesChange(item.id, (sale.quantity_sold || 0) + 1)}
+                              className="w-8 h-8 bg-gray-100 rounded-lg font-bold">+</button>
+                          </div>
+                          {total > 0 && (
+                            <div className="mt-2 text-green-600 font-bold text-center">
+                              الإجمالي: {total} ﷼
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
 
                   <button onClick={submitSales}
                     className="w-full bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 transition">
