@@ -4,12 +4,12 @@ const API_URL = 'https://inventory-api-6lta.onrender.com/api'
 
 export default function AdminPanel() {
   const [branches, setBranches] = useState([])
-  const [pendingBranches, setPendingBranches] = useState([])
+  const [submittedBranches, setSubmittedBranches] = useState([])
   const [selectedBranch, setSelectedBranch] = useState(null)
   const [inventoryData, setInventoryData] = useState([])
   const [sales, setSales] = useState({})
   const [message, setMessage] = useState('')
-  const [activeTab, setActiveTab] = useState('pending') // pending | items | reports
+  const [activeTab, setActiveTab] = useState('pending')
 
   const token = localStorage.getItem('token')
   const today = new Date().toISOString().split('T')[0]
@@ -23,42 +23,51 @@ export default function AdminPanel() {
       .then(r => r.json())
       .then(data => {
         setBranches(data)
-        // التحقق من الفروع اللي ما سوّت جرد اليوم
-        checkPending(data)
+        checkSubmitted(data)
       })
   }
 
-  const checkPending = async (branchList) => {
-    const pending = []
+  const checkSubmitted = async (branchList) => {
+    const submitted = []
     for (const branch of branchList) {
       try {
         const res = await fetch(`${API_URL}/inventory/daily/${branch.id}?date=${today}`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         const data = await res.json()
-        if (!data || data.length === 0) {
-          pending.push(branch)
+        if (data && data.length > 0) {
+          submitted.push(branch)
         }
       } catch (e) {}
     }
-    setPendingBranches(pending)
+    setSubmittedBranches(submitted)
   }
 
   const viewInventory = async (branch) => {
     setSelectedBranch(branch)
-    const res = await fetch(`${API_URL}/inventory/daily/${branch.id}?date=${today}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(r => r.json())
-      .then(data => {
+    setInventoryData([])
+    setSales({})
+    
+    try {
+      const res = await fetch(`${API_URL}/inventory/daily/${branch.id}?date=${today}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json()
+      
+      if (data && data.length > 0) {
         setInventoryData(data)
-        // تهيئة المبيعات
         const init = {}
         data.forEach(rec => {
           init[rec.item_id] = { quantity_sold: 0, unit_price: 0 }
         })
         setSales(init)
-      })
+      } else {
+        setMessage('❌ لا يوجد جرد لهذا الفرع اليوم')
+      }
+    } catch (err) {
+      console.error(err)
+      setMessage('❌ خطأ في جلب البيانات')
+    }
   }
 
   const handleSalesChange = (itemId, qty) => {
@@ -94,47 +103,49 @@ export default function AdminPanel() {
 
       if (res.ok) {
         setMessage('✅ تم إدخال المبيعات بنجاح!')
-        // هنا نسوي مقارنة ونرسل تنبيهات الفروقات
         compareAndAlert()
       } else {
-        setMessage('❌ فشل إدخال المبيعات')
+        const data = await res.json()
+        setMessage('❌ فشل إدخال المبيعات: ' + (data.message || ''))
       }
     } catch (err) {
       setMessage('❌ خطأ في الاتصال')
     }
   }
 
-  const compareAndAlert = () => {
-    // مقارنة الجرد مع المبيعات وإنشاء تنبيهات بالفروقات
-    inventoryData.forEach(rec => {
+  const compareAndAlert = async () => {
+    for (const rec of inventoryData) {
       const sale = sales[rec.item_id]
       const sold = sale?.quantity_sold || 0
       const expected = rec.closing_qty - sold
+      
       if (expected < 0) {
-        // فروقات سلبية (نقص)
-        createAlert(selectedBranch.id, rec.item_id, `فروقات: ${Math.abs(expected)} ${rec.unit} ناقصة`)
+        await createAlert(selectedBranch.id, rec.item_id, `فروقات: ${Math.abs(expected)} ${rec.unit || 'وحدة'} ناقصة`)
       } else if (expected > rec.closing_qty * 0.1) {
-        // فروقات إيجابية (زيادة غير مبررة)
-        createAlert(selectedBranch.id, rec.item_id, `فروقات: ${expected} ${rec.unit} زائدة`)
+        await createAlert(selectedBranch.id, rec.item_id, `فروقات: ${expected} ${rec.unit || 'وحدة'} زائدة`)
       }
-    })
+    }
   }
 
   const createAlert = async (branchId, itemId, msg) => {
-    await fetch(`${API_URL}/alerts`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        branch_id: branchId,
-        item_id: itemId,
-        alert_type: 'warning',
-        title: '⚠️ فروقات في الجرد',
-        message: msg
+    try {
+      await fetch(`${API_URL}/alerts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          branch_id: branchId,
+          item_id: itemId,
+          alert_type: 'warning',
+          title: '⚠️ فروقات في الجرد',
+          message: msg
+        })
       })
-    })
+    } catch (e) {
+      console.error('Failed to create alert', e)
+    }
   }
 
   return (
@@ -147,11 +158,10 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* تبويبات */}
       <div className="flex gap-2 mb-6 border-b">
         <button onClick={() => setActiveTab('pending')}
           className={`px-4 py-2 font-bold ${activeTab === 'pending' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>
-          📥 جرد بانتظار المراجعة ({pendingBranches.length})
+          📥 جرد بانتظار المراجعة ({submittedBranches.length})
         </button>
         <button onClick={() => setActiveTab('items')}
           className={`px-4 py-2 font-bold ${activeTab === 'items' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>
@@ -167,11 +177,13 @@ export default function AdminPanel() {
         <div>
           {selectedBranch ? (
             <div>
-              <button onClick={() => setSelectedBranch(null)} className="mb-4 text-blue-600 font-bold">← رجوع للقائمة</button>
+              <button onClick={() => { setSelectedBranch(null); setMessage('') }} className="mb-4 text-blue-600 font-bold">← رجوع للقائمة</button>
               <h3 className="text-xl font-bold mb-4">{selectedBranch.name} - جرد اليوم</h3>
               
               {inventoryData.length === 0 ? (
-                <p>لا يوجد جرد لهذا الفرع اليوم</p>
+                <div className="text-center p-10 bg-white rounded-xl shadow-sm border border-gray-100">
+                  <p className="text-gray-500">جاري التحميل...</p>
+                </div>
               ) : (
                 <>
                   <table className="w-full text-sm bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
@@ -192,7 +204,7 @@ export default function AdminPanel() {
                         const expected = rec.closing_qty - sold
                         return (
                           <tr key={rec.id} className="border-b">
-                            <td className="p-3 font-semibold">{rec.item_name}</td>
+                            <td className="p-3 font-semibold">{rec.item_name || '—'}</td>
                             <td className="p-3 text-center">{rec.opening_qty}</td>
                             <td className="p-3 text-center text-green-600">+{rec.received_qty}</td>
                             <td className="p-3 text-center text-red-600">-{rec.consumed_qty}</td>
@@ -222,15 +234,15 @@ export default function AdminPanel() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {branches.map(branch => {
-                const isPending = pendingBranches.find(p => p.id === branch.id)
+                const hasInventory = submittedBranches.find(s => s.id === branch.id)
                 return (
-                  <div key={branch.id} className={`p-6 rounded-xl shadow-sm border ${isPending ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'}`}>
+                  <div key={branch.id} className={`p-6 rounded-xl shadow-sm border ${hasInventory ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
                     <h3 className="font-bold text-lg mb-2">{branch.name}</h3>
                     <p className="text-gray-500 text-sm mb-4">{branch.location}</p>
-                    {isPending ? (
-                      <div className="text-red-600 font-bold mb-3">⏳ لم يتم الجرد</div>
-                    ) : (
+                    {hasInventory ? (
                       <div className="text-green-600 font-bold mb-3">✅ تم استلام الجرد</div>
+                    ) : (
+                      <div className="text-red-600 font-bold mb-3">⏳ لم يتم الجرد</div>
                     )}
                     <button onClick={() => viewInventory(branch)}
                       className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition">
