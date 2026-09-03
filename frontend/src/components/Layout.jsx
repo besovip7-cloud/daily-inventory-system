@@ -14,6 +14,7 @@ export default function Layout({ user }) {
     { path: '/branches', label: '🏪 إدارة الفروع' },
     { path: '/sales', label: '💰 المبيعات' },
     { path: '/alerts', label: '🔔 التنبيهات' },
+    { path: '/admin', label: '👑 الإدارة' },
   ]
 
   return (
