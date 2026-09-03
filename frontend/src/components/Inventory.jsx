@@ -85,9 +85,10 @@ export default function Inventory() {
     setMessage('')
     try {
       const payload = {
-        branch_id: parseInt(selectedBranch),
-        records: Object.values(records)
-      }
+         branch_id: parseInt(selectedBranch),
+         records: Object.values(records),
+         record_date: today  // ← أضفنا هذا
+          }
       const res = await fetch(`${API_URL}/inventory/daily`, {
         method: 'POST',
         headers: {

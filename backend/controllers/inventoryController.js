@@ -103,7 +103,8 @@ exports.getDailyInventory = async (req, res) => {
 exports.saveDailyInventory = async (req, res) => {
   try {
     const { branch_id, records } = req.body;
-    const today = new Date().toISOString().split('T')[0];
+    const { record_date } = req.body;
+    const today = record_date || new Date().toISOString().split('T')[0];
     const created_by = req.user.id;
 
     const client = await pool.connect();
