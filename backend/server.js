@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const rateLimit = require('express-rate-limit');
 
 dotenv.config();
 
@@ -13,12 +14,27 @@ const reportsRoutes = require('./routes/reports');
 
 const app = express();
 
-// CORS - Allow all origins for now (you can restrict later)
-app.use(cors({
-  origin: '*',
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-}));
+};
+app.use(cors(corsOptions));
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many login attempts. Try again later.' }
+});
 
 app.use(express.json());
 
@@ -27,7 +43,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use('/api/auth', authRoutes);
+app.use('/api', apiLimiter);
+app.use('/api/auth', loginLimiter, authRoutes);
 app.use('/api/branches', branchRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/sales', salesRoutes);
@@ -40,7 +57,10 @@ app.get('/api/health', (req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ message: 'Something went wrong!', error: err.message });
+  const message = process.env.NODE_ENV === 'production'
+    ? 'Something went wrong!'
+    : err.message;
+  res.status(err.status || 500).json({ message });
 });
 
 const PORT = process.env.PORT || 5000;

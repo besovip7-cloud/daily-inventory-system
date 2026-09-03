@@ -39,23 +39,6 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.register = async (req, res) => {
-  try {
-    const { name, email, password, role, branch_id } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const result = await pool.query(
-      `INSERT INTO users (name, email, password, role, branch_id)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [name, email, hashedPassword, role || 'manager', branch_id]
-    );
-
-    res.status(201).json({ user: result.rows[0] });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
 exports.me = async (req, res) => {
   res.json({ user: req.user });
 };
