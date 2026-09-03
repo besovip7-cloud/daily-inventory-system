@@ -186,7 +186,7 @@ export default function Reports({ user }) {
               {comparison.map(c => (
                 <div key={c.branch_name} className="bg-gray-50 p-4 rounded-lg text-center">
                   <div className="font-bold text-gray-700">{c.branch_name}</div>
-                  <div className="text-blue-600 font-bold text-lg">{parseFloat(c.total_revenue).toFixed(2)} ﷼</div>
+                  <div className="text-blue-600 font-bold text-lg">{parseFloat(c.total_revenue).toFixed(2)} د.ع</div>
                   <div className="text-gray-400 text-sm">{c.total_orders} عملية بيع</div>
                 </div>
               ))}
@@ -222,7 +222,7 @@ export default function Reports({ user }) {
           ) : (
             <>
               <div className="p-4 bg-blue-50 font-bold text-blue-800">
-                إجمالي الإيرادات: {salesTotal.toFixed(2)} ﷼
+                إجمالي الإيرادات: {salesTotal.toFixed(2)} د.ع
               </div>
               <table className="w-full text-right">
                 <thead className="bg-gray-50">
@@ -247,7 +247,7 @@ export default function Reports({ user }) {
                             onChange={e => handleEditChange('quantity_sold', parseInt(e.target.value) || 0)}
                             className="w-20 p-1 border-2 border-blue-300 rounded text-center" />
                         </td>
-                        <td className="p-3 font-bold text-green-600">{parseFloat(r.total_revenue).toFixed(2)} ﷼</td>
+                        <td className="p-3 font-bold text-green-600">{parseFloat(r.total_revenue).toFixed(2)} د.ع</td>
                         <td className="p-2">
                           <input type="number" min="0" value={editing.values.payment_card}
                             onChange={e => handleEditChange('payment_card', parseFloat(e.target.value) || 0)}
@@ -270,7 +270,7 @@ export default function Reports({ user }) {
                         <td className="p-3 text-gray-600">{fmtDate(new Date(r.record_date))}</td>
                         <td className="p-3 font-semibold">{r.name}</td>
                         <td className="p-3">{r.quantity_sold}</td>
-                        <td className="p-3 font-bold text-green-600">{parseFloat(r.total_revenue).toFixed(2)} ﷼</td>
+                        <td className="p-3 font-bold text-green-600">{parseFloat(r.total_revenue).toFixed(2)} د.ع</td>
                         <td className="p-3">{parseFloat(r.payment_card).toFixed(2)}</td>
                         <td className="p-3">{parseFloat(r.payment_cash).toFixed(2)}</td>
                         {isAdmin && (

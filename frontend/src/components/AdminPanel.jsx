@@ -362,7 +362,7 @@ export default function AdminPanel() {
                         <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                           <div className="flex justify-between items-center mb-2">
                             <h5 className="font-bold">{item.name}</h5>
-                            <span className="text-blue-600 font-bold">{item.price} ﷼</span>
+                            <span className="text-blue-600 font-bold">{item.price} د.ع</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <button onClick={() => handleSalesChange(item.id, (sale.quantity_sold || 0) - 1)}
@@ -376,7 +376,7 @@ export default function AdminPanel() {
                           </div>
                           {total > 0 && (
                             <div className="mt-2 text-green-600 font-bold text-center">
-                              الإجمالي: {total} ﷼
+                              الإجمالي: {total} د.ع
                             </div>
                           )}
                         </div>
@@ -461,7 +461,7 @@ export default function AdminPanel() {
                 <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                   <h4 className="font-bold">{item.name}</h4>
                   <p className="text-gray-500 text-sm">{item.category}</p>
-                  <p className="text-blue-600 font-bold mt-2">{item.price} ﷼</p>
+                  <p className="text-blue-600 font-bold mt-2">{item.price} د.ع</p>
                 </div>
               ))}
             </div>
