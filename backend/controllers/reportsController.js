@@ -7,6 +7,7 @@ exports.getInventoryReport = async (req, res) => {
 
     const result = await pool.query(
       `SELECT 
+        di.id,
         ii.name, ii.unit, ii.min_quantity,
         di.record_date,
         di.opening_qty,
@@ -34,6 +35,7 @@ exports.getSalesReport = async (req, res) => {
 
     const result = await pool.query(
       `SELECT 
+        ds.id,
         mi.name, mi.price,
         ds.record_date,
         ds.quantity_sold,
