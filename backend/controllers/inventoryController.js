@@ -25,7 +25,15 @@ exports.getItems = async (req, res) => {
 
 exports.createItem = async (req, res) => {
   try {
-    const { branch_id, name, category, unit, min_quantity, current_quantity, cost_per_unit, barcode } = req.body;
+    let { branch_id, name, category, unit, min_quantity, current_quantity, cost_per_unit, barcode } = req.body;
+
+    // Managers can only add items to their own branch
+    if (req.user.role !== 'admin') {
+      if (!req.user.branch_id) {
+        return res.status(403).json({ message: 'No branch assigned to your account' });
+      }
+      branch_id = req.user.branch_id;
+    }
 
     const result = await pool.query(
       `INSERT INTO inventory_items (branch_id, name, category, unit, min_quantity, current_quantity, cost_per_unit, barcode)
@@ -42,8 +50,23 @@ exports.createItem = async (req, res) => {
   }
 };
 
+const canManageItem = async (req, res) => {
+  const itemResult = await pool.query('SELECT branch_id FROM inventory_items WHERE id = $1', [req.params.id]);
+  if (itemResult.rows.length === 0) {
+    res.status(404).json({ message: 'Item not found' });
+    return false;
+  }
+  if (req.user.role !== 'admin' && itemResult.rows[0].branch_id !== req.user.branch_id) {
+    res.status(403).json({ message: 'Access denied for this branch' });
+    return false;
+  }
+  return true;
+};
+
 exports.updateItem = async (req, res) => {
   try {
+    if (!(await canManageItem(req, res))) return;
+
     const { id } = req.params;
     const { name, category, unit, min_quantity, current_quantity, cost_per_unit, barcode } = req.body;
 
@@ -70,6 +93,8 @@ exports.updateItem = async (req, res) => {
 
 exports.deleteItem = async (req, res) => {
   try {
+    if (!(await canManageItem(req, res))) return;
+
     const { id } = req.params;
     await pool.query('UPDATE inventory_items SET is_active = FALSE WHERE id = $1', [id]);
     res.json({ message: 'Item deleted' });
