@@ -35,6 +35,17 @@ exports.createItem = async (req, res) => {
       branch_id = req.user.branch_id;
     }
 
+    // Reject duplicate names within the same branch
+    const duplicate = await pool.query(
+      `SELECT id FROM inventory_items
+       WHERE branch_id = $1 AND is_active = TRUE
+       AND LOWER(TRIM(name)) = LOWER(TRIM($2))`,
+      [branch_id, name]
+    );
+    if (duplicate.rows.length > 0) {
+      return res.status(409).json({ message: 'اسم المادة موجود مسبقاً في هذا الفرع' });
+    }
+
     const result = await pool.query(
       `INSERT INTO inventory_items (branch_id, name, category, unit, min_quantity, current_quantity, cost_per_unit, barcode)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
@@ -69,6 +80,18 @@ exports.updateItem = async (req, res) => {
 
     const { id } = req.params;
     const { name, category, unit, min_quantity, current_quantity, cost_per_unit, barcode } = req.body;
+
+    // Reject duplicate names (excluding the item being edited)
+    const itemBranch = await pool.query('SELECT branch_id FROM inventory_items WHERE id = $1', [id]);
+    const duplicate = await pool.query(
+      `SELECT id FROM inventory_items
+       WHERE branch_id = $1 AND is_active = TRUE AND id != $2
+       AND LOWER(TRIM(name)) = LOWER(TRIM($3))`,
+      [itemBranch.rows[0].branch_id, id, name]
+    );
+    if (duplicate.rows.length > 0) {
+      return res.status(409).json({ message: 'اسم المادة موجود مسبقاً في هذا الفرع' });
+    }
 
     const result = await pool.query(
       `UPDATE inventory_items 

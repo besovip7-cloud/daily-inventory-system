@@ -277,10 +277,19 @@ export default function Inventory({ user }) {
               className="p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none">
               {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
-            <input type="text" placeholder="الوحدة (كجم/لتر/قطعة)" required
-              value={itemForm.unit}
+            <select value={itemForm.unit}
               onChange={e => setItemForm({...itemForm, unit: e.target.value})}
-              className="p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none" />
+              className="p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none">
+              <option value="">بدون وحدة (اختياري)</option>
+              {itemForm.unit && !['كغم', 'غرام', 'لتر', 'مليلتر', 'قطعة'].includes(itemForm.unit) && (
+                <option value={itemForm.unit}>{itemForm.unit} (حالية)</option>
+              )}
+              <option value="كغم">كغم</option>
+              <option value="غرام">غرام</option>
+              <option value="لتر">لتر</option>
+              <option value="مليلتر">مليلتر</option>
+              <option value="قطعة">قطعة</option>
+            </select>
             <input type="number" placeholder="الحد الأدنى" min="0" step="0.01"
               value={itemForm.min_quantity}
               onChange={e => setItemForm({...itemForm, min_quantity: e.target.value})}
@@ -326,7 +335,7 @@ export default function Inventory({ user }) {
                       <tr key={item.id} className="border-t border-gray-100">
                         <td className="p-3 font-semibold">{item.name}</td>
                         <td className="p-3 text-center text-gray-600">{categories.find(c => c.value === item.category)?.label || item.category}</td>
-                        <td className="p-3 text-center text-gray-600">{item.unit}</td>
+                        <td className="p-3 text-center text-gray-600">{item.unit || '—'}</td>
                         <td className="p-3 text-center text-gray-600">{item.min_quantity}</td>
                         <td className="p-3 text-center">
                           <span className={`text-xs px-2 py-1 rounded-full ${status.class}`}>{item.current_quantity}</span>

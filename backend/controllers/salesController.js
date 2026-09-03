@@ -14,6 +14,17 @@ exports.getMenuItems = async (req, res) => {
 exports.createMenuItem = async (req, res) => {
   try {
     const { name, category, price, cost } = req.body;
+
+    // Reject duplicate names
+    const duplicate = await pool.query(
+      `SELECT id FROM menu_items
+       WHERE is_active = TRUE AND LOWER(TRIM(name)) = LOWER(TRIM($1))`,
+      [name]
+    );
+    if (duplicate.rows.length > 0) {
+      return res.status(409).json({ message: 'الصنف موجود مسبقاً' });
+    }
+
     const result = await pool.query(
       `INSERT INTO menu_items (name, category, price, cost) VALUES ($1, $2, $3, $4) RETURNING *`,
       [name, category, price, cost]
@@ -27,6 +38,17 @@ exports.createMenuItem = async (req, res) => {
 exports.updateMenuItem = async (req, res) => {
   try {
     const { name, category, price, cost } = req.body;
+
+    // Reject duplicate names (excluding the item being edited)
+    const duplicate = await pool.query(
+      `SELECT id FROM menu_items
+       WHERE is_active = TRUE AND id != $1 AND LOWER(TRIM(name)) = LOWER(TRIM($2))`,
+      [req.params.id, name]
+    );
+    if (duplicate.rows.length > 0) {
+      return res.status(409).json({ message: 'الصنف موجود مسبقاً' });
+    }
+
     const result = await pool.query(
       `UPDATE menu_items SET name = $1, category = $2, price = $3, cost = $4
        WHERE id = $5 RETURNING *`,
