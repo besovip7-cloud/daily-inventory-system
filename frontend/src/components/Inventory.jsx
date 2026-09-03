@@ -13,68 +13,80 @@ export default function Inventory() {
   const [message, setMessage] = useState('')
 
   const token = localStorage.getItem('token')
-  const user = JSON.parse(localStorage.getItem('user') || '{}')
-  const today = new Date().toISOString().split('T')[0]
+  
+  // ✅ تاريخ محلي (مو UTC) عشان يتوافق مع السيرفر
+  const today = new Date().toLocaleDateString('en-CA')
 
-  const myBranchId = user.branch_id
-
+  // جلب الفروع
   useEffect(() => {
     fetch(`${API_URL}/branches`, { headers: { Authorization: `Bearer ${token}` }})
       .then(r => r.json())
       .then(data => {
         setBranches(data)
-        if (myBranchId) {
-          setSelectedBranch(myBranchId.toString())
-        } else if (data.length > 0) {
+        if (data.length > 0 && !selectedBranch) {
           setSelectedBranch(data[0].id.toString())
         }
       })
   }, [])
 
-  const loadData = () => {
-    if (!selectedBranch) return
-    setLoading(true)
-    
-    fetch(`${API_URL}/inventory/items/${selectedBranch}`, { headers: { Authorization: `Bearer ${token}` }})
-      .then(r => r.json())
-      .then(data => {
-        setItems(data)
-        return fetch(`${API_URL}/inventory/daily/${selectedBranch}?date=${today}`, { 
-          headers: { Authorization: `Bearer ${token}` }
-        })
-      })
-      .then(r => r.json())
-      .then(dailyData => {
-        if (dailyData && dailyData.length > 0) {
-          setTodayRecords(dailyData)
-          setRecords({})
-        } else {
-          setTodayRecords(null)
-          // ✅ الخطأ كان هنا: استخدمنا items بدل data
-          // الحل: نستخدم data اللي رجعت من الـ API مباشرة
-          // بس لأن setItems غيرتها، نبني من data اللي عندنا
-          // نعيد جلبها أو نستخدم items الحالية
-          const init = {}
-          items.forEach(item => {
-            init[item.id] = {
-              item_id: item.id,
-              opening_qty: item.current_quantity || 0,
-              received_qty: 0,
-              consumed_qty: 0,
-              closing_qty: item.current_quantity || 0,
-              notes: ''
-            }
-          })
-          setRecords(init)
-        }
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }
-
+  // ✅ جلب البيانات لما يتغير الفرع
   useEffect(() => {
-    loadData()
+    if (!selectedBranch) return
+    
+    setLoading(true)
+    setTodayRecords(null)
+    setRecords({})
+    setMessage('')
+
+    // جلب المواد
+    fetch(`${API_URL}/inventory/items/${selectedBranch}`, { 
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    .then(r => r.json())
+    .then(itemsData => {
+      setItems(itemsData)
+      
+      // جلب جرد اليوم
+      return fetch(`${API_URL}/inventory/daily/${selectedBranch}?date=${today}`, { 
+        headers: { Authorization: `Bearer ${token}` }
+      })
+    })
+    .then(r => r.json())
+    .then(dailyData => {
+      console.log('Daily data:', dailyData) // للتصحيح
+      
+      if (dailyData && dailyData.length > 0) {
+        // ✅ تم الجرد اليوم
+        setTodayRecords(dailyData)
+      } else {
+        // ❌ لم يتم الجرد
+        setTodayRecords(null)
+      }
+      setLoading(false)
+    })
+    .catch(err => {
+      console.error(err)
+      setLoading(false)
+    })
   }, [selectedBranch])
+
+  // ✅ بناء records لما تتغير items أو todayRecords
+  useEffect(() => {
+    if (todayRecords || items.length === 0) return
+    
+    const init = {}
+    items.forEach(item => {
+      init[item.id] = {
+        item_id: item.id,
+        opening_qty: item.current_quantity || 0,
+        received_qty: 0,
+        consumed_qty: 0,
+        closing_qty: item.current_quantity || 0,
+        notes: ''
+      }
+    })
+    setRecords(init)
+  }, [items, todayRecords])
 
   const handleChange = (itemId, field, value) => {
     setRecords(prev => ({
@@ -88,10 +100,13 @@ export default function Inventory() {
     setMessage('')
     try {
       const payload = {
-      branch_id: parseInt(selectedBranch),
-      records: Object.values(records)
-      // ❌ شيل: record_date: today
-    }
+        branch_id: parseInt(selectedBranch),
+        records: Object.values(records)
+        // ❌ لا ترسل record_date — خل السيرفر يحدد
+      }
+      
+      console.log('Sending payload:', payload) // للتصحيح
+      
       const res = await fetch(`${API_URL}/inventory/daily`, {
         method: 'POST',
         headers: {
@@ -101,13 +116,20 @@ export default function Inventory() {
         body: JSON.stringify(payload)
       })
       const data = await res.json()
+      console.log('Response:', data) // للتصحيح
+      
       if (res.ok) {
         setMessage('✅ تم إرسال الجرد للإدارة بنجاح!')
-        loadData()
+        setTodayRecords(Object.values(records).map(r => ({
+          ...r,
+          item_name: items.find(i => i.id === r.item_id)?.name,
+          unit: items.find(i => i.id === r.item_id)?.unit
+        })))
       } else {
         setMessage('❌ خطأ: ' + (data.message || 'فشل الحفظ'))
       }
     } catch (err) {
+      console.error(err)
       setMessage('❌ خطأ في الاتصال')
     }
     setSaving(false)
@@ -132,24 +154,29 @@ export default function Inventory() {
         </div>
       )}
 
+      {/* ✅ اختيار الفرع — يشتغل بشكل حر */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <span className="text-sm text-gray-500">الفرع:</span>
-            <span className="font-bold text-gray-900 mr-2">
-              {branches.find(b => b.id == selectedBranch)?.name || '—'}
-            </span>
-          </div>
-          <div>
-            <span className="text-sm text-gray-500">التاريخ:</span>
-            <span className="font-bold text-gray-900 mr-2">{today}</span>
-          </div>
-        </div>
+        <label className="block text-sm font-semibold text-gray-700 mb-2">اختر الفرع</label>
+        <select
+          value={selectedBranch}
+          onChange={e => setSelectedBranch(e.target.value)}
+          className="w-full md:w-80 p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+        >
+          <option value="">-- اختر الفرع --</option>
+          {branches.map(b => (
+            <option key={b.id} value={b.id.toString()}>{b.name}</option>
+          ))}
+        </select>
       </div>
 
       {loading ? (
         <div className="text-center p-10">جاري التحميل...</div>
+      ) : !selectedBranch ? (
+        <div className="text-center p-10 bg-white rounded-xl shadow-sm border border-gray-100">
+          <p className="text-gray-500">اختر فرعاً لبدء الجرد</p>
+        </div>
       ) : todayRecords ? (
+        // ✅ تم الجرد
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="text-center mb-6">
             <div className="text-6xl mb-2">📤</div>
@@ -170,9 +197,9 @@ export default function Inventory() {
               </tr>
             </thead>
             <tbody>
-              {todayRecords.map(rec => (
-                <tr key={rec.id} className="border-b border-gray-100">
-                  <td className="p-3 font-semibold">{rec.item_name || '—'}</td>
+              {todayRecords.map((rec, idx) => (
+                <tr key={idx} className="border-b border-gray-100">
+                  <td className="p-3 font-semibold">{rec.item_name || items.find(i => i.id === rec.item_id)?.name || '—'}</td>
                   <td className="p-3 text-center">{rec.opening_qty}</td>
                   <td className="p-3 text-center text-green-600">+{rec.received_qty}</td>
                   <td className="p-3 text-center text-red-600">-{rec.consumed_qty}</td>
@@ -194,6 +221,7 @@ export default function Inventory() {
           <div className="text-gray-500">تواصل مع الإدارة لإضافة المواد</div>
         </div>
       ) : (
+        // نموذج إدخال الجرد
         <>
           <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6 flex items-center gap-3">
             <span className="text-2xl">⚠️</span>
