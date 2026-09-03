@@ -8,14 +8,17 @@ export default function Layout({ user }) {
 
   const location = useLocation()
 
-  const navItems = [
-    { path: '/', label: '📊 لوحة التحكم' },
-    { path: '/inventory', label: '📦 جرد المخزون' },
-    { path: '/branches', label: '🏪 إدارة الفروع' },
-    { path: '/sales', label: '💰 المبيعات' },
-    { path: '/alerts', label: '🔔 التنبيهات' },
-    { path: '/admin', label: '👑 الإدارة' },
+  const allNavItems = [
+    { path: '/', label: '📊 لوحة التحكم', roles: ['admin', 'manager', 'staff'] },
+    { path: '/inventory', label: '📦 جرد المخزون', roles: ['admin', 'manager', 'staff'] },
+    { path: '/branches', label: '🏪 إدارة الفروع', roles: ['admin', 'manager', 'staff'] },
+    { path: '/sales', label: '💰 المبيعات', roles: ['admin', 'manager', 'staff'] },
+    { path: '/alerts', label: '🔔 التنبيهات', roles: ['admin', 'manager', 'staff'] },
+    { path: '/reports', label: '📈 التقارير', roles: ['admin', 'accountant'] },
+    { path: '/admin', label: '👑 الإدارة', roles: ['admin'] },
   ]
+
+  const navItems = allNavItems.filter(item => item.roles.includes(user?.role))
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">

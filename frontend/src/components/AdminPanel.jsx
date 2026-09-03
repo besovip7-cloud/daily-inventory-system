@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
-const roleLabels = { admin: 'مدير النظام', manager: 'مدير فرع', staff: 'موظف' }
+const roleLabels = { admin: 'مدير النظام', manager: 'مدير فرع', staff: 'موظف', accountant: 'محاسب' }
 
 export default function AdminPanel() {
   const [branches, setBranches] = useState([])
@@ -22,6 +22,8 @@ export default function AdminPanel() {
   const [users, setUsers] = useState([])
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'manager', branch_id: '' })
+  const [resetPwFor, setResetPwFor] = useState(null)
+  const [newPassword, setNewPassword] = useState('')
 
   const token = localStorage.getItem('token')
   const today = new Date().toISOString().split('T')[0]
@@ -118,6 +120,52 @@ export default function AdminPanel() {
         loadUsers()
       } else {
         setMessage('❌ ' + (data.message || 'فشل التحديث'))
+      }
+    } catch (err) {
+      setMessage('❌ خطأ في الاتصال')
+    }
+  }
+
+  const resetPassword = async (user) => {
+    if (!newPassword || newPassword.length < 6) {
+      setMessage('❌ كلمة المرور يجب أن تكون 6 أحرف على الأقل')
+      return
+    }
+    try {
+      const res = await fetch(`${API_URL}/auth/users/${user.id}/password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ password: newPassword })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setMessage(`✅ تم تغيير كلمة مرور ${user.name}`)
+        setResetPwFor(null)
+        setNewPassword('')
+      } else {
+        setMessage('❌ ' + (data.message || 'فشل تغيير كلمة المرور'))
+      }
+    } catch (err) {
+      setMessage('❌ خطأ في الاتصال')
+    }
+  }
+
+  const deleteUser = async (user) => {
+    if (!window.confirm(`هل أنت متأكد من حذف "${user.name}" نهائياً؟ لا يمكن التراجع عن هذا الإجراء.`)) return
+    try {
+      const res = await fetch(`${API_URL}/auth/users/${user.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setMessage(`✅ تم حذف ${user.name}`)
+        loadUsers()
+      } else {
+        setMessage('❌ ' + (data.message || 'فشل الحذف'))
       }
     } catch (err) {
       setMessage('❌ خطأ في الاتصال')
@@ -445,6 +493,7 @@ export default function AdminPanel() {
                 className="p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none">
                 <option value="manager">مدير فرع</option>
                 <option value="staff">موظف</option>
+                <option value="accountant">محاسب</option>
                 <option value="admin">مدير النظام</option>
               </select>
               {newUser.role !== 'admin' ? (
@@ -515,14 +564,39 @@ export default function AdminPanel() {
                         )}
                       </td>
                       <td className="p-4">
-                        <button onClick={() => toggleUserActive(user)}
-                          className={`px-4 py-1 rounded-lg font-bold text-sm ${
-                            user.is_active
-                              ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                              : 'bg-green-100 text-green-700 hover:bg-green-200'
-                          }`}>
-                          {user.is_active ? 'تعطيل' : 'تفعيل'}
-                        </button>
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <button onClick={() => toggleUserActive(user)}
+                            className={`px-3 py-1 rounded-lg font-bold text-sm ${
+                              user.is_active
+                                ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                : 'bg-green-100 text-green-700 hover:bg-green-200'
+                            }`}>
+                            {user.is_active ? 'تعطيل' : 'تفعيل'}
+                          </button>
+                          <button onClick={() => { setResetPwFor(resetPwFor === user.id ? null : user.id); setNewPassword('') }}
+                            className="px-3 py-1 rounded-lg font-bold text-sm bg-blue-100 text-blue-700 hover:bg-blue-200">
+                            🔑 كلمة المرور
+                          </button>
+                          <button onClick={() => deleteUser(user)}
+                            className="px-3 py-1 rounded-lg font-bold text-sm bg-gray-100 text-gray-700 hover:bg-red-100 hover:text-red-700">
+                            🗑️ حذف
+                          </button>
+                        </div>
+                        {resetPwFor === user.id && (
+                          <div className="flex gap-2 mt-2">
+                            <input type="password" placeholder="كلمة مرور جديدة (6+ أحرف)" value={newPassword}
+                              onChange={e => setNewPassword(e.target.value)}
+                              className="p-2 border-2 border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:outline-none" />
+                            <button onClick={() => resetPassword(user)}
+                              className="bg-blue-600 text-white px-3 py-1 rounded-lg font-bold text-sm">
+                              حفظ
+                            </button>
+                            <button onClick={() => setResetPwFor(null)}
+                              className="bg-gray-200 text-gray-600 px-3 py-1 rounded-lg font-bold text-sm">
+                              إلغاء
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}

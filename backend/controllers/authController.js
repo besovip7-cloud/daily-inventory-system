@@ -106,3 +106,51 @@ exports.setUserActive = async (req, res) => {
 exports.me = async (req, res) => {
   res.json({ user: req.user });
 };
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const hashedPassword = await bcrypt.hash(req.body.password, 10);
+
+    const result = await pool.query(
+      'UPDATE users SET password = $1 WHERE id = $2 RETURNING id, name, email',
+      [hashedPassword, req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ message: 'Password updated', user: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.deleteUser = async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+
+    if (userId === req.user.id) {
+      return res.status(400).json({ message: 'You cannot delete your own account' });
+    }
+
+    // Detach the user from historical records so the row can be removed
+    await pool.query('UPDATE daily_inventory SET created_by = NULL WHERE created_by = $1', [userId]);
+    await pool.query('UPDATE daily_sales SET created_by = NULL WHERE created_by = $1', [userId]);
+    await pool.query('UPDATE alerts SET resolved_by = NULL WHERE resolved_by = $1', [userId]);
+    await pool.query('UPDATE activity_logs SET user_id = NULL WHERE user_id = $1', [userId]);
+
+    const result = await pool.query(
+      'DELETE FROM users WHERE id = $1 RETURNING id, name, email',
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ message: 'User deleted', user: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

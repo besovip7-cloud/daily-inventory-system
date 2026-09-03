@@ -24,7 +24,7 @@ const createTables = async () => {
         name VARCHAR(100) NOT NULL,
         email VARCHAR(100) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
-        role VARCHAR(20) DEFAULT 'manager' CHECK (role IN ('admin', 'manager', 'staff')),
+        role VARCHAR(20) DEFAULT 'manager' CHECK (role IN ('admin', 'manager', 'staff', 'accountant')),
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )

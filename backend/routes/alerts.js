@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const alertsController = require('../controllers/alertsController');
-const { auth, branchAccess } = require('../middleware/auth');
+const { auth, branchAccess, blockAccountant } = require('../middleware/auth');
+
+router.use(auth, blockAccountant);
 
 router.get('/:branchId', auth, branchAccess, alertsController.getAlerts);
 router.get('/:branchId/count', auth, branchAccess, alertsController.getUnreadCount);

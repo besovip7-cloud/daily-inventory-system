@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const salesController = require('../controllers/salesController');
-const { auth, branchAccess } = require('../middleware/auth');
+const { auth, branchAccess, blockAccountant } = require('../middleware/auth');
+
+router.use(auth, blockAccountant);
 
 router.get('/menu', auth, salesController.getMenuItems);
 router.post('/menu', auth, salesController.createMenuItem);

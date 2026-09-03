@@ -8,6 +8,7 @@ import Branches from './components/Branches'
 import Sales from './components/Sales'
 import Alerts from './components/Alerts'
 import AdminPanel from './components/AdminPanel'
+import Reports from './components/Reports'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 function App() {
@@ -33,7 +34,8 @@ function App() {
           <Route path="branches" element={<Branches />} />
           <Route path="sales" element={<Sales />} />
           <Route path="alerts" element={<Alerts />} />    
-          <Route path="admin" element={<AdminPanel />} />      
+          <Route path="admin" element={<AdminPanel />} />
+          <Route path="reports" element={['admin', 'accountant'].includes(user?.role) ? <Reports /> : <Navigate to="/" />} />
         </Route>
       </Routes>
     </HashRouter>

@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const inventoryController = require('../controllers/inventoryController');
-const { auth, branchAccess } = require('../middleware/auth');
+const { auth, branchAccess, blockAccountant } = require('../middleware/auth');
+
+router.use(auth, blockAccountant);
 
 router.get('/items/:branchId', auth, branchAccess, inventoryController.getItems);
 router.post('/items', auth, inventoryController.createItem);

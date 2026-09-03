@@ -45,4 +45,11 @@ const branchAccess = (req, res, next) => {
   next();
 };
 
-module.exports = { auth, adminOnly, branchAccess };
+const blockAccountant = (req, res, next) => {
+  if (req.user.role === 'accountant') {
+    return res.status(403).json({ message: 'Accountants can only access reports' });
+  }
+  next();
+};
+
+module.exports = { auth, adminOnly, branchAccess, blockAccountant };
