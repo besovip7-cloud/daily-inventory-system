@@ -157,6 +157,74 @@ exports.saveDailyInventory = async (req, res) => {
   }
 };
 
+exports.updateDailyInventory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { opening_qty, received_qty, consumed_qty, closing_qty, notes } = req.body;
+
+    const result = await pool.query(
+      `UPDATE daily_inventory
+       SET opening_qty = $1, received_qty = $2, consumed_qty = $3, closing_qty = $4, notes = $5
+       WHERE id = $6
+       RETURNING *`,
+      [opening_qty, received_qty, consumed_qty, closing_qty, notes || null, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Record not found' });
+    }
+
+    const record = result.rows[0];
+
+    // Keep the item's current quantity in sync
+    await pool.query(
+      'UPDATE inventory_items SET current_quantity = $1 WHERE id = $2',
+      [closing_qty, record.item_id]
+    );
+
+    const itemResult = await pool.query(
+      'SELECT name, min_quantity FROM inventory_items WHERE id = $1',
+      [record.item_id]
+    );
+    if (itemResult.rows.length > 0) {
+      const item = itemResult.rows[0];
+      await checkAndCreateAlerts(record.branch_id, record.item_id, closing_qty, item.min_quantity, item.name);
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.deleteDailyInventory = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const record = await pool.query('SELECT * FROM daily_inventory WHERE id = $1', [id]);
+    if (record.rows.length === 0) {
+      return res.status(404).json({ message: 'Record not found' });
+    }
+
+    const { item_id } = record.rows[0];
+    await pool.query('DELETE FROM daily_inventory WHERE id = $1', [id]);
+
+    // Resync item quantity from the latest remaining record
+    await pool.query(
+      `UPDATE inventory_items
+       SET current_quantity = COALESCE(
+         (SELECT closing_qty FROM daily_inventory
+          WHERE item_id = $1 ORDER BY record_date DESC LIMIT 1), 0)
+       WHERE id = $1`,
+      [item_id]
+    );
+
+    res.json({ message: 'Record deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getInventoryHistory = async (req, res) => {
   try {
     const { branchId, itemId } = req.params;

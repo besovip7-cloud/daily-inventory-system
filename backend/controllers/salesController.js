@@ -80,6 +80,51 @@ exports.saveDailySales = async (req, res) => {
   }
 };
 
+exports.updateDailySale = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { quantity_sold, payment_card, payment_cash, notes } = req.body;
+
+    // Recalculate revenue from the item's unit price
+    const priceResult = await pool.query(
+      `SELECT mi.price FROM daily_sales ds JOIN menu_items mi ON mi.id = ds.item_id WHERE ds.id = $1`,
+      [id]
+    );
+    if (priceResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Record not found' });
+    }
+
+    const total = quantity_sold * parseFloat(priceResult.rows[0].price);
+
+    const result = await pool.query(
+      `UPDATE daily_sales
+       SET quantity_sold = $1, total_revenue = $2, payment_card = $3, payment_cash = $4, notes = $5
+       WHERE id = $6
+       RETURNING *`,
+      [quantity_sold, total, payment_card || 0, payment_cash || 0, notes || null, id]
+    );
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.deleteDailySale = async (req, res) => {
+  try {
+    const result = await pool.query(
+      'DELETE FROM daily_sales WHERE id = $1 RETURNING id',
+      [req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Record not found' });
+    }
+    res.json({ message: 'Record deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getSalesSummary = async (req, res) => {
   try {
     const { branchId } = req.params;

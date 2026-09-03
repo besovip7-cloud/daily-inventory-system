@@ -5,8 +5,9 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 const fmtDate = (d) => d.toISOString().split('T')[0]
 
-export default function Reports() {
+export default function Reports({ user }) {
   const token = localStorage.getItem('token')
+  const isAdmin = user?.role === 'admin'
   const today = new Date()
   const weekAgo = new Date(); weekAgo.setDate(today.getDate() - 7)
 
@@ -74,6 +75,67 @@ export default function Reports() {
 
   const salesTotal = sales.reduce((sum, r) => sum + parseFloat(r.total_revenue || 0), 0)
   const lowStockLabels = { out_of_stock: 'نفذ', critical: 'حرج', low: 'منخفض' }
+
+  // تعديل/حذف السجلات (للأدمن فقط)
+  const [editing, setEditing] = useState(null) // {table: 'sales'|'inventory', id, values: {}}
+
+  const startEdit = (table, record) => {
+    setEditing({
+      table,
+      id: record.id,
+      values: table === 'sales'
+        ? { quantity_sold: record.quantity_sold, payment_card: record.payment_card, payment_cash: record.payment_cash, notes: record.notes || '' }
+        : { opening_qty: record.opening_qty, received_qty: record.received_qty, consumed_qty: record.consumed_qty, closing_qty: record.closing_qty, notes: record.notes || '' }
+    })
+  }
+
+  const handleEditChange = (field, value) => {
+    setEditing(prev => ({ ...prev, values: { ...prev.values, [field]: value } }))
+  }
+
+  const saveEdit = async () => {
+    const base = editing.table === 'sales' ? 'sales' : 'inventory'
+    try {
+      const res = await fetch(`${API_URL}/${base}/daily/${editing.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(editing.values)
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setError('')
+        setEditing(null)
+        loadBranchReports()
+        if (editing.table === 'sales') loadComparison()
+      } else {
+        setError('❌ فشل التعديل: ' + (data.message || ''))
+      }
+    } catch (e) {
+      setError('❌ خطأ في الاتصال')
+    }
+  }
+
+  const deleteRecord = async (table, record) => {
+    const label = table === 'sales' ? `بيع ${record.name}` : `جرد ${record.name}`
+    if (!window.confirm(`هل أنت متأكد من حذف سجل "${label}" بتاريخ ${fmtDate(new Date(record.record_date))}؟`)) return
+    const base = table === 'sales' ? 'sales' : 'inventory'
+    try {
+      const res = await fetch(`${API_URL}/${base}/daily/${record.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        setEditing(null)
+        loadBranchReports()
+        if (table === 'sales') loadComparison()
+      } else {
+        const data = await res.json()
+        setError('❌ فشل الحذف: ' + (data.message || ''))
+      }
+    } catch (e) {
+      setError('❌ خطأ في الاتصال')
+    }
+  }
 
   return (
     <div dir="rtl">
@@ -171,18 +233,56 @@ export default function Reports() {
                     <th className="p-3 font-bold">الإيراد</th>
                     <th className="p-3 font-bold">شبكة</th>
                     <th className="p-3 font-bold">نقدي</th>
+                    {isAdmin && <th className="p-3 font-bold">إجراءات</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {sales.map((r, i) => (
-                    <tr key={i} className="border-t border-gray-100">
-                      <td className="p-3 text-gray-600">{fmtDate(new Date(r.record_date))}</td>
-                      <td className="p-3 font-semibold">{r.name}</td>
-                      <td className="p-3">{r.quantity_sold}</td>
-                      <td className="p-3 font-bold text-green-600">{parseFloat(r.total_revenue).toFixed(2)} ﷼</td>
-                      <td className="p-3">{parseFloat(r.payment_card).toFixed(2)}</td>
-                      <td className="p-3">{parseFloat(r.payment_cash).toFixed(2)}</td>
-                    </tr>
+                    editing && editing.table === 'sales' && editing.id === r.id ? (
+                      <tr key={i} className="border-t border-blue-200 bg-blue-50">
+                        <td className="p-3 text-gray-600">{fmtDate(new Date(r.record_date))}</td>
+                        <td className="p-3 font-semibold">{r.name}</td>
+                        <td className="p-2">
+                          <input type="number" min="0" value={editing.values.quantity_sold}
+                            onChange={e => handleEditChange('quantity_sold', parseInt(e.target.value) || 0)}
+                            className="w-20 p-1 border-2 border-blue-300 rounded text-center" />
+                        </td>
+                        <td className="p-3 font-bold text-green-600">{parseFloat(r.total_revenue).toFixed(2)} ﷼</td>
+                        <td className="p-2">
+                          <input type="number" min="0" value={editing.values.payment_card}
+                            onChange={e => handleEditChange('payment_card', parseFloat(e.target.value) || 0)}
+                            className="w-20 p-1 border-2 border-blue-300 rounded text-center" />
+                        </td>
+                        <td className="p-2">
+                          <input type="number" min="0" value={editing.values.payment_cash}
+                            onChange={e => handleEditChange('payment_cash', parseFloat(e.target.value) || 0)}
+                            className="w-20 p-1 border-2 border-blue-300 rounded text-center" />
+                        </td>
+                        <td className="p-2">
+                          <div className="flex gap-1">
+                            <button onClick={saveEdit} className="bg-green-600 text-white px-3 py-1 rounded font-bold text-sm">حفظ</button>
+                            <button onClick={() => setEditing(null)} className="bg-gray-300 text-gray-700 px-3 py-1 rounded font-bold text-sm">إلغاء</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={i} className="border-t border-gray-100">
+                        <td className="p-3 text-gray-600">{fmtDate(new Date(r.record_date))}</td>
+                        <td className="p-3 font-semibold">{r.name}</td>
+                        <td className="p-3">{r.quantity_sold}</td>
+                        <td className="p-3 font-bold text-green-600">{parseFloat(r.total_revenue).toFixed(2)} ﷼</td>
+                        <td className="p-3">{parseFloat(r.payment_card).toFixed(2)}</td>
+                        <td className="p-3">{parseFloat(r.payment_cash).toFixed(2)}</td>
+                        {isAdmin && (
+                          <td className="p-2">
+                            <div className="flex gap-1">
+                              <button onClick={() => startEdit('sales', r)} className="bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold text-sm hover:bg-blue-200">✏️</button>
+                              <button onClick={() => deleteRecord('sales', r)} className="bg-red-100 text-red-700 px-3 py-1 rounded font-bold text-sm hover:bg-red-200">🗑️</button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    )
                   ))}
                 </tbody>
               </table>
@@ -201,18 +301,47 @@ export default function Reports() {
                   <th className="p-3 font-bold">مستلم</th>
                   <th className="p-3 font-bold">مستهلك</th>
                   <th className="p-3 font-bold">ختامي</th>
+                  {isAdmin && <th className="p-3 font-bold">إجراءات</th>}
                 </tr>
               </thead>
               <tbody>
                 {inventory.map((r, i) => (
-                  <tr key={i} className="border-t border-gray-100">
-                    <td className="p-3 text-gray-600">{fmtDate(new Date(r.record_date))}</td>
-                    <td className="p-3 font-semibold">{r.name} <span className="text-gray-400 text-sm">({r.unit})</span></td>
-                    <td className="p-3">{r.opening_qty}</td>
-                    <td className="p-3">{r.received_qty}</td>
-                    <td className="p-3">{r.consumed_qty}</td>
-                    <td className="p-3 font-bold">{r.closing_qty}</td>
-                  </tr>
+                  editing && editing.table === 'inventory' && editing.id === r.id ? (
+                    <tr key={i} className="border-t border-blue-200 bg-blue-50">
+                      <td className="p-3 text-gray-600">{fmtDate(new Date(r.record_date))}</td>
+                      <td className="p-3 font-semibold">{r.name} <span className="text-gray-400 text-sm">({r.unit})</span></td>
+                      {['opening_qty', 'received_qty', 'consumed_qty', 'closing_qty'].map(field => (
+                        <td className="p-2" key={field}>
+                          <input type="number" value={editing.values[field]}
+                            onChange={e => handleEditChange(field, parseFloat(e.target.value) || 0)}
+                            className="w-20 p-1 border-2 border-blue-300 rounded text-center" />
+                        </td>
+                      ))}
+                      <td className="p-2">
+                        <div className="flex gap-1">
+                          <button onClick={saveEdit} className="bg-green-600 text-white px-3 py-1 rounded font-bold text-sm">حفظ</button>
+                          <button onClick={() => setEditing(null)} className="bg-gray-300 text-gray-700 px-3 py-1 rounded font-bold text-sm">إلغاء</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={i} className="border-t border-gray-100">
+                      <td className="p-3 text-gray-600">{fmtDate(new Date(r.record_date))}</td>
+                      <td className="p-3 font-semibold">{r.name} <span className="text-gray-400 text-sm">({r.unit})</span></td>
+                      <td className="p-3">{r.opening_qty}</td>
+                      <td className="p-3">{r.received_qty}</td>
+                      <td className="p-3">{r.consumed_qty}</td>
+                      <td className="p-3 font-bold">{r.closing_qty}</td>
+                      {isAdmin && (
+                        <td className="p-2">
+                          <div className="flex gap-1">
+                            <button onClick={() => startEdit('inventory', r)} className="bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold text-sm hover:bg-blue-200">✏️</button>
+                            <button onClick={() => deleteRecord('inventory', r)} className="bg-red-100 text-red-700 px-3 py-1 rounded font-bold text-sm hover:bg-red-200">🗑️</button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  )
                 ))}
               </tbody>
             </table>

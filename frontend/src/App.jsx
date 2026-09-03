@@ -35,7 +35,7 @@ function App() {
           <Route path="sales" element={<Sales />} />
           <Route path="alerts" element={<Alerts />} />    
           <Route path="admin" element={<AdminPanel />} />
-          <Route path="reports" element={['admin', 'accountant'].includes(user?.role) ? <Reports /> : <Navigate to="/" />} />
+          <Route path="reports" element={['admin', 'accountant'].includes(user?.role) ? <Reports user={user} /> : <Navigate to="/" />} />
         </Route>
       </Routes>
     </HashRouter>
