@@ -11,12 +11,17 @@ export default function AdminPanel() {
   const [sales, setSales] = useState({})
   const [message, setMessage] = useState('')
   const [activeTab, setActiveTab] = useState('pending')
+  const [loadingMenu, setLoadingMenu] = useState(false)
+
+  // نموذج إضافة صنف جديد
+  const [newItem, setNewItem] = useState({ name: '', category: 'main', price: '', cost: '' })
 
   const token = localStorage.getItem('token')
   const today = new Date().toISOString().split('T')[0]
 
   useEffect(() => {
     loadBranches()
+    loadMenuItems()
   }, [])
 
   const loadBranches = () => {
@@ -26,6 +31,17 @@ export default function AdminPanel() {
         setBranches(data)
         checkSubmitted(data)
       })
+  }
+
+  const loadMenuItems = () => {
+    setLoadingMenu(true)
+    fetch(`${API_URL}/sales/menu`, { headers: { Authorization: `Bearer ${token}` }})
+      .then(r => r.json())
+      .then(data => {
+        setMenuItems(data || [])
+        setLoadingMenu(false)
+      })
+      .catch(() => setLoadingMenu(false))
   }
 
   const checkSubmitted = async (branchList) => {
@@ -47,28 +63,19 @@ export default function AdminPanel() {
   const viewInventory = async (branch) => {
     setSelectedBranch(branch)
     setInventoryData([])
-    setMenuItems([])
     setSales({})
     setMessage('')
     
     try {
-      // جلب بيانات الجرد (للعرض)
       const invRes = await fetch(`${API_URL}/inventory/daily/${branch.id}?date=${today}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const invData = await invRes.json()
       setInventoryData(invData || [])
       
-      // ✅ جلب أصناف المبيعات (Menu Items)
-      const menuRes = await fetch(`${API_URL}/sales/menu`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const menuData = await menuRes.json()
-      setMenuItems(menuData || [])
-      
-      // تهيئة المبيعات
+      // تهيئة المبيعات من الأصناف الموجودة
       const init = {}
-      menuData.forEach(item => {
+      menuItems.forEach(item => {
         init[item.id] = { item_id: item.id, quantity_sold: 0, unit_price: item.price }
       })
       setSales(init)
@@ -119,8 +126,6 @@ export default function AdminPanel() {
 
       if (res.ok) {
         setMessage('✅ تم إدخال المبيعات بنجاح!')
-        // مقارنة الفروقات
-        compareAndAlert()
       } else {
         const data = await res.json()
         setMessage('❌ فشل إدخال المبيعات: ' + (data.message || ''))
@@ -130,36 +135,32 @@ export default function AdminPanel() {
     }
   }
 
-  const compareAndAlert = async () => {
-    // مقارنة الجرد مع المبيعات
-    for (const rec of inventoryData) {
-      // هنا المنطق يعتمد على وصفة (recipe) لكل صنف
-      // بشكل مبسط: إذا المخزون أقل من المبيعات × 2 (مثال)
-      const saleQty = sales[rec.item_id]?.quantity_sold || 0
-      if (saleQty > rec.closing_qty) {
-        await createAlert(selectedBranch.id, rec.item_id, 
-          `فروقات: المبيعات (${saleQty}) أكثر من المخزون (${rec.closing_qty})`)
-      }
-    }
-  }
-
-  const createAlert = async (branchId, itemId, msg) => {
+  const addMenuItem = async (e) => {
+    e.preventDefault()
     try {
-      await fetch(`${API_URL}/alerts`, {
+      const res = await fetch(`${API_URL}/sales/menu`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
-          branch_id: branchId,
-          item_id: itemId,
-          alert_type: 'warning',
-          title: '⚠️ فروقات في الجرد',
-          message: msg
+          name: newItem.name,
+          category: newItem.category,
+          price: parseFloat(newItem.price),
+          cost: parseFloat(newItem.cost) || 0
         })
       })
-    } catch (e) {}
+      if (res.ok) {
+        setMessage('✅ تم إضافة الصنف بنجاح!')
+        setNewItem({ name: '', category: 'main', price: '', cost: '' })
+        loadMenuItems()
+      } else {
+        setMessage('❌ فشل إضافة الصنف')
+      }
+    } catch (err) {
+      setMessage('❌ خطأ في الاتصال')
+    }
   }
 
   return (
@@ -179,7 +180,7 @@ export default function AdminPanel() {
         </button>
         <button onClick={() => setActiveTab('items')}
           className={`px-4 py-2 font-bold ${activeTab === 'items' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>
-          📦 إدارة المواد
+          📦 الأصناف ({menuItems.length})
         </button>
         <button onClick={() => setActiveTab('reports')}
           className={`px-4 py-2 font-bold ${activeTab === 'reports' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>
@@ -194,7 +195,6 @@ export default function AdminPanel() {
               <button onClick={() => { setSelectedBranch(null); setMessage('') }} className="mb-4 text-blue-600 font-bold">← رجوع للقائمة</button>
               <h3 className="text-xl font-bold mb-4">{selectedBranch.name} - جرد اليوم</h3>
               
-              {/* عرض بيانات الجرد */}
               {inventoryData.length > 0 && (
                 <div className="bg-blue-50 p-4 rounded-lg mb-6">
                   <h4 className="font-bold mb-2">📋 بيانات الجرد المرسلة</h4>
@@ -209,10 +209,17 @@ export default function AdminPanel() {
                 </div>
               )}
 
-              {/* ✅ إدخال المبيعات (من Menu Items) */}
               <h4 className="font-bold text-lg mb-4">💰 إدخال مبيعات اليوم</h4>
+              
               {menuItems.length === 0 ? (
-                <p>جاري تحميل الأصناف...</p>
+                <div className="text-center p-6 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <p className="text-yellow-800 font-bold mb-2">⚠️ لا توجد أصناف مبيعات</p>
+                  <p className="text-yellow-700 text-sm mb-4">أضف أصناف من تبويب "📦 الأصناف" أولاً</p>
+                  <button onClick={() => setActiveTab('items')}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">
+                    الذهاب لإضافة أصناف
+                  </button>
+                </div>
               ) : (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -247,7 +254,7 @@ export default function AdminPanel() {
 
                   <button onClick={submitSales}
                     className="w-full bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 transition">
-                    💾 حفظ المبيعات وإرسال الفروقات
+                    💾 حفظ المبيعات
                   </button>
                 </>
               )}
@@ -278,9 +285,55 @@ export default function AdminPanel() {
       )}
 
       {activeTab === 'items' && (
-        <div className="text-center p-10 bg-white rounded-xl shadow-sm border border-gray-100">
-          <div className="text-6xl mb-4">📦</div>
-          <p className="text-gray-500">إدارة المواد من صفحة "جرد المخزون" ← اختر الفرع ← إضافة مادة</p>
+        <div>
+          {/* نموذج إضافة صنف */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
+            <h3 className="text-lg font-bold mb-4">➕ إضافة صنف مبيعات جديد</h3>
+            <form onSubmit={addMenuItem} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <input type="text" placeholder="اسم الصنف" required
+                value={newItem.name}
+                onChange={e => setNewItem({...newItem, name: e.target.value})}
+                className="p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none" />
+              <select
+                value={newItem.category}
+                onChange={e => setNewItem({...newItem, category: e.target.value})}
+                className="p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none">
+                <option value="main">وجبة رئيسية</option>
+                <option value="appetizer">مقبلات</option>
+                <option value="drink">مشروب</option>
+                <option value="side">جانبي</option>
+              </select>
+              <input type="number" placeholder="السعر" required
+                value={newItem.price}
+                onChange={e => setNewItem({...newItem, price: e.target.value})}
+                className="p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none" />
+              <button type="submit"
+                className="bg-green-600 text-white p-3 rounded-lg font-bold hover:bg-green-700 transition">
+                إضافة
+              </button>
+            </form>
+          </div>
+
+          {/* قائمة الأصناف */}
+          {loadingMenu ? (
+            <div className="text-center p-10">جاري التحميل...</div>
+          ) : menuItems.length === 0 ? (
+            <div className="text-center p-10 bg-white rounded-xl shadow-sm border border-gray-100">
+              <div className="text-6xl mb-4">📭</div>
+              <p className="text-gray-500">لا توجد أصناف مبيعات</p>
+              <p className="text-gray-400 text-sm">أضف صنفاً أولاً</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {menuItems.map(item => (
+                <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                  <h4 className="font-bold">{item.name}</h4>
+                  <p className="text-gray-500 text-sm">{item.category}</p>
+                  <p className="text-blue-600 font-bold mt-2">{item.price} ﷼</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
