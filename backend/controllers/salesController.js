@@ -1,4 +1,24 @@
 const pool = require('../config/database');
+const { checkAndCreateAlerts } = require('../utils/alerts');
+
+// Deducts (or restores, for negative delta) recipe quantities from inventory
+const applyRecipeDelta = async (executor, branchId, menuItemId, deltaQty) => {
+  if (!deltaQty) return;
+  const recipes = await executor.query(
+    'SELECT inventory_item_id, quantity FROM menu_recipes WHERE branch_id = $1 AND menu_item_id = $2',
+    [branchId, menuItemId]
+  );
+  for (const r of recipes.rows) {
+    const used = deltaQty * parseFloat(r.quantity);
+    const upd = await executor.query(
+      'UPDATE inventory_items SET current_quantity = current_quantity - $1 WHERE id = $2 RETURNING name, min_quantity, current_quantity',
+      [used, r.inventory_item_id]
+    );
+    if (upd.rows.length > 0) {
+      await checkAndCreateAlerts(branchId, r.inventory_item_id, upd.rows[0].current_quantity, upd.rows[0].min_quantity, upd.rows[0].name);
+    }
+  }
+};
 
 exports.getMenuItems = async (req, res) => {
   try {
@@ -112,6 +132,13 @@ exports.saveDailySales = async (req, res) => {
       for (const record of records) {
         const total = record.quantity_sold * record.unit_price;
 
+        // Previous quantity (for recipe delta calculation)
+        const prev = await client.query(
+          'SELECT quantity_sold FROM daily_sales WHERE branch_id = $1 AND item_id = $2 AND record_date = $3',
+          [branch_id, record.item_id, today]
+        );
+        const delta = record.quantity_sold - (prev.rows.length ? prev.rows[0].quantity_sold : 0);
+
         await client.query(
           `INSERT INTO daily_sales (branch_id, item_id, record_date, quantity_sold, total_revenue, payment_card, payment_cash, created_by)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -119,6 +146,9 @@ exports.saveDailySales = async (req, res) => {
            DO UPDATE SET quantity_sold = $4, total_revenue = $5, payment_card = $6, payment_cash = $7, created_by = $8`,
           [branch_id, record.item_id, today, record.quantity_sold, total, payment_card, payment_cash, created_by]
         );
+
+        // Deduct recipe ingredients from inventory
+        await applyRecipeDelta(client, branch_id, record.item_id, delta);
       }
 
       await client.query('COMMIT');
@@ -140,13 +170,15 @@ exports.updateDailySale = async (req, res) => {
     const { quantity_sold, payment_card, payment_cash, notes } = req.body;
 
     // Recalculate revenue from the item's unit price
-    const priceResult = await pool.query(
-      `SELECT mi.price FROM daily_sales ds JOIN menu_items mi ON mi.id = ds.item_id WHERE ds.id = $1`,
-      [id]
-    );
-    if (priceResult.rows.length === 0) {
+    const oldResult = await pool.query('SELECT * FROM daily_sales WHERE id = $1', [id]);
+    if (oldResult.rows.length === 0) {
       return res.status(404).json({ message: 'Record not found' });
     }
+    const old = oldResult.rows[0];
+    const priceResult = await pool.query(
+      'SELECT price FROM menu_items WHERE id = $1',
+      [old.item_id]
+    );
 
     const total = quantity_sold * parseFloat(priceResult.rows[0].price);
 
@@ -158,6 +190,9 @@ exports.updateDailySale = async (req, res) => {
       [quantity_sold, total, payment_card || 0, payment_cash || 0, notes || null, id]
     );
 
+    // Apply the difference in recipe ingredients
+    await applyRecipeDelta(pool, old.branch_id, old.item_id, quantity_sold - old.quantity_sold);
+
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -166,14 +201,67 @@ exports.updateDailySale = async (req, res) => {
 
 exports.deleteDailySale = async (req, res) => {
   try {
+    const old = await pool.query('SELECT * FROM daily_sales WHERE id = $1', [req.params.id]);
+    if (old.rows.length === 0) {
+      return res.status(404).json({ message: 'Record not found' });
+    }
+
+    await pool.query('DELETE FROM daily_sales WHERE id = $1', [req.params.id]);
+
+    // Restore recipe ingredients to inventory
+    await applyRecipeDelta(pool, old.rows[0].branch_id, old.rows[0].item_id, -old.rows[0].quantity_sold);
+
+    res.json({ message: 'Record deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ===== Recipes (menu item ingredients) =====
+exports.getRecipes = async (req, res) => {
+  try {
+    const { branch_id, menu_id } = req.query;
     const result = await pool.query(
-      'DELETE FROM daily_sales WHERE id = $1 RETURNING id',
+      `SELECT r.id, r.inventory_item_id, r.quantity, ii.name as inventory_name, ii.unit
+       FROM menu_recipes r
+       JOIN inventory_items ii ON ii.id = r.inventory_item_id
+       WHERE r.branch_id = $1 AND r.menu_item_id = $2
+       ORDER BY ii.name`,
+      [branch_id, menu_id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.saveRecipe = async (req, res) => {
+  try {
+    const { branch_id, menu_item_id, inventory_item_id, quantity } = req.body;
+    const result = await pool.query(
+      `INSERT INTO menu_recipes (branch_id, menu_item_id, inventory_item_id, quantity)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (branch_id, menu_item_id, inventory_item_id)
+       DO UPDATE SET quantity = $4
+       RETURNING *`,
+      [branch_id, menu_item_id, inventory_item_id, quantity]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.deleteRecipe = async (req, res) => {
+  try {
+    const result = await pool.query(
+      'DELETE FROM menu_recipes WHERE id = $1 RETURNING id',
       [req.params.id]
     );
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Record not found' });
+      return res.status(404).json({ message: 'Recipe not found' });
     }
-    res.json({ message: 'Record deleted' });
+    res.json({ message: 'Recipe deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

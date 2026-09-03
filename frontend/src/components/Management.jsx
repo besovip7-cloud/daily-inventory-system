@@ -59,12 +59,17 @@ export default function Management() {
           className={`px-4 py-2 font-bold ${activeTab === 'menu' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>
           🍽️ أصناف المبيعات
         </button>
+        <button onClick={() => setActiveTab('recipes')}
+          className={`px-4 py-2 font-bold ${activeTab === 'recipes' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>
+          🧪 المكونات
+        </button>
       </div>
 
       {activeTab === 'users' && <UsersTab showMsg={showMsg} headers={headers} />}
       {activeTab === 'branches' && <BranchesTab showMsg={showMsg} headers={headers} />}
       {activeTab === 'items' && <ItemsTab showMsg={showMsg} headers={headers} />}
       {activeTab === 'menu' && <MenuTab showMsg={showMsg} headers={headers} />}
+      {activeTab === 'recipes' && <RecipesTab showMsg={showMsg} headers={headers} />}
     </div>
   )
 }
@@ -662,6 +667,154 @@ function MenuTab({ showMsg, headers }) {
       {menuItems.length === 0 && (
         <p className="text-center text-gray-400 py-10">لا توجد أصناف مبيعات</p>
       )}
+    </div>
+  )
+}
+
+/* ================= 🧪 مكونات الأصناف ================= */
+function RecipesTab({ showMsg, headers }) {
+  const [branches, setBranches] = useState([])
+  const [menuItems, setMenuItems] = useState([])
+  const [invItems, setInvItems] = useState([])
+  const [selectedBranch, setSelectedBranch] = useState('')
+  const [selectedMenu, setSelectedMenu] = useState('')
+  const [recipes, setRecipes] = useState([])
+  const [newRecipe, setNewRecipe] = useState({ inventory_item_id: '', quantity: '' })
+
+  useEffect(() => {
+    fetch(`${API_URL}/branches`, { headers }).then(r => r.json()).then(d => {
+      setBranches(d || [])
+      if (d && d.length > 0) setSelectedBranch(d[0].id.toString())
+    })
+    fetch(`${API_URL}/sales/menu`, { headers }).then(r => r.json()).then(d => {
+      setMenuItems(d || [])
+      if (d && d.length > 0) setSelectedMenu(d[0].id.toString())
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!selectedBranch) return
+    fetch(`${API_URL}/inventory/items/${selectedBranch}`, { headers })
+      .then(r => r.json()).then(d => setInvItems(d || []))
+  }, [selectedBranch])
+
+  useEffect(() => {
+    if (selectedBranch && selectedMenu) loadRecipes()
+  }, [selectedBranch, selectedMenu])
+
+  const loadRecipes = () => {
+    fetch(`${API_URL}/sales/recipes?branch_id=${selectedBranch}&menu_id=${selectedMenu}`, { headers })
+      .then(r => r.json()).then(d => setRecipes(d || []))
+  }
+
+  const handleAdd = async (e) => {
+    e.preventDefault()
+    try {
+      const res = await fetch(`${API_URL}/sales/recipes`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          branch_id: parseInt(selectedBranch),
+          menu_item_id: parseInt(selectedMenu),
+          inventory_item_id: parseInt(newRecipe.inventory_item_id),
+          quantity: parseFloat(newRecipe.quantity)
+        })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        showMsg('✅ تم حفظ المكون بنجاح!')
+        setNewRecipe({ inventory_item_id: '', quantity: '' })
+        loadRecipes()
+      } else {
+        showMsg('❌ فشل: ' + (data.message || ''))
+      }
+    } catch { showMsg('❌ خطأ في الاتصال') }
+  }
+
+  const handleDelete = async (recipe) => {
+    if (!window.confirm(`حذف مكون "${recipe.inventory_name}" من هذا الصنف؟`)) return
+    try {
+      const res = await fetch(`${API_URL}/sales/recipes/${recipe.id}`, { method: 'DELETE', headers })
+      if (res.ok) { showMsg('✅ تم حذف المكون'); loadRecipes() }
+      else showMsg('❌ فشل الحذف')
+    } catch { showMsg('❌ خطأ في الاتصال') }
+  }
+
+  return (
+    <div>
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-sm text-blue-800">
+        💡 <b>كيف يعمل؟</b> اربط كل صنف بيع بمواد الجرد وكمياتها — مثلاً "صاج لحم" يستهلك 0.15 كغم شاورما لحم.
+        عند حفظ المبيعات تنقص الكميات تلقائياً من مخزون الفرع.
+      </div>
+
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-wrap gap-4">
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">الفرع</label>
+          <select value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)}
+            className="p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none">
+            {branches.map(b => <option key={b.id} value={b.id.toString()}>{b.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">صنف البيع</label>
+          <select value={selectedMenu} onChange={e => setSelectedMenu(e.target.value)}
+            className="p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none">
+            {menuItems.map(m => <option key={m.id} value={m.id.toString()}>{m.name}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
+        <h3 className="text-lg font-bold mb-4">➕ إضافة مكون</h3>
+        <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <select required value={newRecipe.inventory_item_id}
+            onChange={e => setNewRecipe({...newRecipe, inventory_item_id: e.target.value})}
+            className="p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none">
+            <option value="">اختر مادة من الجرد...</option>
+            {invItems.map(i => <option key={i.id} value={i.id}>{i.name} ({i.unit || 'بدون وحدة'})</option>)}
+          </select>
+          <input type="number" placeholder="الكمية لكل صنف واحد" required min="0.001" step="0.001"
+            value={newRecipe.quantity}
+            onChange={e => setNewRecipe({...newRecipe, quantity: e.target.value})}
+            className="p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none" />
+          <button type="submit"
+            className="bg-green-600 text-white p-3 rounded-lg font-bold hover:bg-green-700 transition">
+            إضافة المكون
+          </button>
+        </form>
+        {invItems.length === 0 && (
+          <p className="text-yellow-700 text-sm mt-3">⚠️ هذا الفرع ما بيه مواد جرد — أضفها من تبويب "📦 مواد الجرد" أولاً</p>
+        )}
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="p-3 text-right font-semibold">مادة الجرد</th>
+              <th className="p-3 text-center font-semibold">الكمية لكل صنف</th>
+              <th className="p-3 text-center font-semibold">إجراء</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recipes.map(r => (
+              <tr key={r.id} className="border-t border-gray-100">
+                <td className="p-3 font-semibold">{r.inventory_name} <span className="text-gray-400 text-xs">({r.unit || 'بدون وحدة'})</span></td>
+                <td className="p-3 text-center font-bold text-blue-700">{r.quantity}</td>
+                <td className="p-3 text-center">
+                  <button onClick={() => handleDelete(r)}
+                    className="bg-red-100 text-red-700 px-3 py-1 rounded font-bold text-xs hover:bg-red-200">🗑️ حذف</button>
+                </td>
+              </tr>
+            ))}
+            {recipes.length === 0 && (
+              <tr><td colSpan="3" className="p-6 text-center text-gray-400">
+                لا توجد مكونات لهذا الصنف — أضفها من النموذج أعلاه
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

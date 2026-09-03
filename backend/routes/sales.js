@@ -10,6 +10,10 @@ router.post('/menu', auth, salesController.createMenuItem);
 router.put('/menu/:id', auth, adminOnly, salesController.updateMenuItem);
 router.delete('/menu/:id', auth, adminOnly, salesController.deleteMenuItem);
 
+router.get('/recipes', auth, salesController.getRecipes);
+router.post('/recipes', auth, adminOnly, salesController.saveRecipe);
+router.delete('/recipes/:id', auth, adminOnly, salesController.deleteRecipe);
+
 router.get('/daily/:branchId', auth, branchAccess, salesController.getDailySales);
 router.post('/daily', auth, salesController.saveDailySales);
 router.put('/daily/:id', auth, adminOnly, salesController.updateDailySale);

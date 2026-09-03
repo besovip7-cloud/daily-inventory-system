@@ -112,6 +112,19 @@ const createTables = async () => {
       )
     `);
 
+    // Menu Recipes (links menu items to inventory items per branch)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS menu_recipes (
+        id SERIAL PRIMARY KEY,
+        branch_id INTEGER REFERENCES branches(id) ON DELETE CASCADE,
+        menu_item_id INTEGER REFERENCES menu_items(id) ON DELETE CASCADE,
+        inventory_item_id INTEGER REFERENCES inventory_items(id) ON DELETE CASCADE,
+        quantity DECIMAL(10,3) NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(branch_id, menu_item_id, inventory_item_id)
+      )
+    `);
+
     // Activity Logs
     await pool.query(`
       CREATE TABLE IF NOT EXISTS activity_logs (
