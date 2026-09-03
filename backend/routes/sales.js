@@ -7,6 +7,8 @@ router.use(auth, blockAccountant);
 
 router.get('/menu', auth, salesController.getMenuItems);
 router.post('/menu', auth, salesController.createMenuItem);
+router.put('/menu/:id', auth, adminOnly, salesController.updateMenuItem);
+router.delete('/menu/:id', auth, adminOnly, salesController.deleteMenuItem);
 
 router.get('/daily/:branchId', auth, branchAccess, salesController.getDailySales);
 router.post('/daily', auth, salesController.saveDailySales);

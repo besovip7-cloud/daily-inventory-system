@@ -9,6 +9,7 @@ import Sales from './components/Sales'
 import Alerts from './components/Alerts'
 import AdminPanel from './components/AdminPanel'
 import Reports from './components/Reports'
+import Management from './components/Management'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
           <Route path="sales" element={<Sales />} />
           <Route path="alerts" element={<Alerts />} />    
           <Route path="admin" element={<AdminPanel />} />
+          <Route path="manage" element={user?.role === 'admin' ? <Management /> : <Navigate to="/" />} />
           <Route path="reports" element={['admin', 'accountant'].includes(user?.role) ? <Reports user={user} /> : <Navigate to="/" />} />
         </Route>
       </Routes>

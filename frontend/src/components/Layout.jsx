@@ -16,6 +16,7 @@ export default function Layout({ user }) {
     { path: '/alerts', label: '🔔 التنبيهات', roles: ['admin', 'manager', 'staff'] },
     { path: '/reports', label: '📈 التقارير', roles: ['admin', 'accountant'] },
     { path: '/admin', label: '👑 الإدارة', roles: ['admin'] },
+    { path: '/manage', label: '🛠️ الإدارة العامة', roles: ['admin'] },
   ]
 
   const navItems = allNavItems.filter(item => item.roles.includes(user?.role))
