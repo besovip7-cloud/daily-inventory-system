@@ -8,7 +8,7 @@ import Branches from './components/Branches'
 import Sales from './components/Sales'
 import Alerts from './components/Alerts'
 import AdminPanel from './components/AdminPanel'
-const API_URL = 'https://inventory-api-6lta.onrender.com/api'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 function App() {
   const [user, setUser] = useState(null)
