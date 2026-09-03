@@ -10,6 +10,8 @@ router.use(auth, blockAccountant);
 
 router.get('/:id', auth, branchController.getById);
 router.get('/:id/dashboard', auth, branchAccess, branchController.getDashboard);
-router.put('/:id', auth, branchController.updateBranch);
+router.post('/', auth, adminOnly, branchController.createBranch);
+router.put('/:id', auth, adminOnly, branchController.updateBranch);
+router.delete('/:id', auth, adminOnly, branchController.deleteBranch);
 
 module.exports = router;

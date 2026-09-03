@@ -68,6 +68,55 @@ exports.getDashboard = async (req, res) => {
   }
 };
 
+exports.createBranch = async (req, res) => {
+  try {
+    const { name, location, manager_name, phone } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ message: 'Branch name is required' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO branches (name, location, manager_name, phone)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [name, location || null, manager_name || null, phone || null]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.deleteBranch = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const usersCount = await pool.query(
+      'SELECT COUNT(*) FROM users WHERE branch_id = $1',
+      [id]
+    );
+    if (parseInt(usersCount.rows[0].count) > 0) {
+      return res.status(400).json({
+        message: 'Branch has assigned users. Remove or reassign them first.'
+      });
+    }
+
+    const result = await pool.query(
+      'DELETE FROM branches WHERE id = $1 RETURNING id, name',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Branch not found' });
+    }
+
+    res.json({ message: 'Branch deleted', branch: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.updateBranch = async (req, res) => {
   try {
     const { id } = req.params;

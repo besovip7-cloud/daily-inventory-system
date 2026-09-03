@@ -31,7 +31,7 @@ function App() {
         <Route path="/" element={user ? <Layout user={user} /> : <Navigate to="/login" />}>
           <Route index element={<Dashboard apiUrl={API_URL} />} />
           <Route path="inventory" element={<Inventory />} />
-          <Route path="branches" element={<Branches />} />
+          <Route path="branches" element={<Branches user={user} />} />
           <Route path="sales" element={<Sales />} />
           <Route path="alerts" element={<Alerts />} />    
           <Route path="admin" element={<AdminPanel />} />
