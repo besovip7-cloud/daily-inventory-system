@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
+const roleLabels = { admin: 'مدير النظام', manager: 'مدير فرع', staff: 'موظف' }
+
 export default function AdminPanel() {
   const [branches, setBranches] = useState([])
   const [submittedBranches, setSubmittedBranches] = useState([])
@@ -16,6 +18,11 @@ export default function AdminPanel() {
   // نموذج إضافة صنف جديد
   const [newItem, setNewItem] = useState({ name: '', category: 'main', price: '', cost: '' })
 
+  // إدارة المستخدمين
+  const [users, setUsers] = useState([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
+  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'manager', branch_id: '' })
+
   const token = localStorage.getItem('token')
   const today = new Date().toISOString().split('T')[0]
 
@@ -23,6 +30,10 @@ export default function AdminPanel() {
     loadBranches()
     loadMenuItems()
   }, [])
+
+  useEffect(() => {
+    if (activeTab === 'users') loadUsers()
+  }, [activeTab])
 
   const loadBranches = () => {
     fetch(`${API_URL}/branches`, { headers: { Authorization: `Bearer ${token}` }})
@@ -42,6 +53,75 @@ export default function AdminPanel() {
         setLoadingMenu(false)
       })
       .catch(() => setLoadingMenu(false))
+  }
+
+  const loadUsers = () => {
+    setLoadingUsers(true)
+    fetch(`${API_URL}/auth/users`, { headers: { Authorization: `Bearer ${token}` }})
+      .then(r => {
+        if (!r.ok) throw new Error()
+        return r.json()
+      })
+      .then(data => {
+        setUsers(data || [])
+        setLoadingUsers(false)
+      })
+      .catch(() => {
+        setLoadingUsers(false)
+        setMessage('❌ فشل تحميل المستخدمين')
+      })
+  }
+
+  const addUser = async (e) => {
+    e.preventDefault()
+    try {
+      const res = await fetch(`${API_URL}/auth/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: newUser.name,
+          email: newUser.email,
+          password: newUser.password,
+          role: newUser.role,
+          branch_id: newUser.role === 'admin' ? null : (newUser.branch_id || null)
+        })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setMessage('✅ تم إضافة المستخدم بنجاح!')
+        setNewUser({ name: '', email: '', password: '', role: 'manager', branch_id: '' })
+        loadUsers()
+      } else {
+        setMessage('❌ فشل إضافة المستخدم: ' + (data.message || ''))
+      }
+    } catch (err) {
+      setMessage('❌ خطأ في الاتصال')
+    }
+  }
+
+  const toggleUserActive = async (user) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/users/${user.id}/active`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ is_active: !user.is_active })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setMessage(`✅ تم ${user.is_active ? 'تعطيل' : 'تفعيل'} المستخدم`)
+        loadUsers()
+      } else {
+        setMessage('❌ ' + (data.message || 'فشل التحديث'))
+      }
+    } catch (err) {
+      setMessage('❌ خطأ في الاتصال')
+    }
   }
 
   const checkSubmitted = async (branchList) => {
@@ -181,6 +261,10 @@ export default function AdminPanel() {
         <button onClick={() => setActiveTab('items')}
           className={`px-4 py-2 font-bold ${activeTab === 'items' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>
           📦 الأصناف ({menuItems.length})
+        </button>
+        <button onClick={() => setActiveTab('users')}
+          className={`px-4 py-2 font-bold ${activeTab === 'users' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>
+          👥 المستخدمون ({users.length})
         </button>
         <button onClick={() => setActiveTab('reports')}
           className={`px-4 py-2 font-bold ${activeTab === 'reports' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>
@@ -332,6 +416,118 @@ export default function AdminPanel() {
                   <p className="text-blue-600 font-bold mt-2">{item.price} ﷼</p>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'users' && (
+        <div>
+          {/* نموذج إضافة مستخدم */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
+            <h3 className="text-lg font-bold mb-4">➕ إضافة مستخدم جديد</h3>
+            <form onSubmit={addUser} className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <input type="text" placeholder="الاسم" required
+                value={newUser.name}
+                onChange={e => setNewUser({...newUser, name: e.target.value})}
+                className="p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none" />
+              <input type="email" placeholder="البريد الإلكتروني" required
+                value={newUser.email}
+                onChange={e => setNewUser({...newUser, email: e.target.value})}
+                className="p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none" />
+              <input type="password" placeholder="كلمة المرور (6+ أحرف)" required minLength={6}
+                value={newUser.password}
+                onChange={e => setNewUser({...newUser, password: e.target.value})}
+                className="p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none" />
+              <select
+                value={newUser.role}
+                onChange={e => setNewUser({...newUser, role: e.target.value, branch_id: e.target.value === 'admin' ? '' : newUser.branch_id})}
+                className="p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none">
+                <option value="manager">مدير فرع</option>
+                <option value="staff">موظف</option>
+                <option value="admin">مدير النظام</option>
+              </select>
+              {newUser.role !== 'admin' ? (
+                <select required
+                  value={newUser.branch_id}
+                  onChange={e => setNewUser({...newUser, branch_id: e.target.value})}
+                  className="p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none">
+                  <option value="">اختر الفرع...</option>
+                  {branches.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <button type="submit"
+                  className="bg-green-600 text-white p-3 rounded-lg font-bold hover:bg-green-700 transition">
+                  إضافة
+                </button>
+              )}
+              {newUser.role !== 'admin' && (
+                <button type="submit"
+                  className="bg-green-600 text-white p-3 rounded-lg font-bold hover:bg-green-700 transition md:col-span-5">
+                  إضافة المستخدم
+                </button>
+              )}
+            </form>
+          </div>
+
+          {/* قائمة المستخدمين */}
+          {loadingUsers ? (
+            <div className="text-center p-10">جاري التحميل...</div>
+          ) : users.length === 0 ? (
+            <div className="text-center p-10 bg-white rounded-xl shadow-sm border border-gray-100">
+              <p className="text-gray-500">لا يوجد مستخدمون</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <table className="w-full text-right">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="p-4 font-bold">الاسم</th>
+                    <th className="p-4 font-bold">البريد الإلكتروني</th>
+                    <th className="p-4 font-bold">الصلاحية</th>
+                    <th className="p-4 font-bold">الفرع</th>
+                    <th className="p-4 font-bold">الحالة</th>
+                    <th className="p-4 font-bold">إجراء</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map(user => (
+                    <tr key={user.id} className="border-t border-gray-100">
+                      <td className="p-4 font-semibold">{user.name}</td>
+                      <td className="p-4 text-gray-600">{user.email}</td>
+                      <td className="p-4">
+                        <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+                          user.role === 'admin' ? 'bg-purple-100 text-purple-700' :
+                          user.role === 'manager' ? 'bg-blue-100 text-blue-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {roleLabels[user.role] || user.role}
+                        </span>
+                      </td>
+                      <td className="p-4 text-gray-600">{user.branch_name || '—'}</td>
+                      <td className="p-4">
+                        {user.is_active ? (
+                          <span className="text-green-600 font-bold">✅ نشط</span>
+                        ) : (
+                          <span className="text-red-600 font-bold">⛔ معطل</span>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <button onClick={() => toggleUserActive(user)}
+                          className={`px-4 py-1 rounded-lg font-bold text-sm ${
+                            user.is_active
+                              ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                              : 'bg-green-100 text-green-700 hover:bg-green-200'
+                          }`}>
+                          {user.is_active ? 'تعطيل' : 'تفعيل'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

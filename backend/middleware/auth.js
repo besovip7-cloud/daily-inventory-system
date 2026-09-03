@@ -16,6 +16,10 @@ const auth = async (req, res, next) => {
       return res.status(401).json({ message: 'User not found' });
     }
 
+    if (!result.rows[0].is_active) {
+      return res.status(401).json({ message: 'Account is deactivated' });
+    }
+
     req.user = result.rows[0];
     next();
   } catch (err) {
