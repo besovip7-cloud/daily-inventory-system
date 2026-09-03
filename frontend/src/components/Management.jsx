@@ -21,6 +21,20 @@ const menuCategories = [
 const emptyItemForm = { name: '', category: 'raw', unit: '', min_quantity: '', current_quantity: '', cost_per_unit: '' }
 const emptyMenuForm = { name: '', category: 'main', price: '', cost: '' }
 
+// تحويل الكمية من وحدة المستخدم إلى وحدة مادة الجرد
+const unitGroups = [
+  { 'غرام': 1, 'كغم': 1000 },
+  { 'مليلتر': 1, 'لتر': 1000 },
+  { 'قطعة': 1 }
+]
+
+const toItemUnit = (qty, fromUnit, itemUnit) => {
+  if (!itemUnit || !fromUnit || fromUnit === itemUnit) return qty
+  const group = unitGroups.find(g => g[fromUnit] !== undefined && g[itemUnit] !== undefined)
+  if (!group) return qty
+  return qty * group[fromUnit] / group[itemUnit]
+}
+
 export default function Management() {
   const [activeTab, setActiveTab] = useState('users')
   const [message, setMessage] = useState('')
@@ -679,7 +693,7 @@ function RecipesTab({ showMsg, headers }) {
   const [selectedBranch, setSelectedBranch] = useState('')
   const [selectedMenu, setSelectedMenu] = useState('')
   const [recipes, setRecipes] = useState([])
-  const [newRecipe, setNewRecipe] = useState({ inventory_item_id: '', quantity: '' })
+  const [newRecipe, setNewRecipe] = useState({ inventory_item_id: '', quantity: '', unit: 'غرام' })
 
   useEffect(() => {
     fetch(`${API_URL}/branches`, { headers }).then(r => r.json()).then(d => {
@@ -709,6 +723,8 @@ function RecipesTab({ showMsg, headers }) {
 
   const handleAdd = async (e) => {
     e.preventDefault()
+    const invItem = invItems.find(i => i.id === parseInt(newRecipe.inventory_item_id))
+    const finalQty = toItemUnit(parseFloat(newRecipe.quantity), newRecipe.unit, invItem?.unit)
     try {
       const res = await fetch(`${API_URL}/sales/recipes`, {
         method: 'POST',
@@ -717,13 +733,14 @@ function RecipesTab({ showMsg, headers }) {
           branch_id: parseInt(selectedBranch),
           menu_item_id: parseInt(selectedMenu),
           inventory_item_id: parseInt(newRecipe.inventory_item_id),
-          quantity: parseFloat(newRecipe.quantity)
+          quantity: finalQty
         })
       })
       const data = await res.json()
       if (res.ok) {
-        showMsg('✅ تم حفظ المكون بنجاح!')
-        setNewRecipe({ inventory_item_id: '', quantity: '' })
+        const converted = finalQty !== parseFloat(newRecipe.quantity)
+        showMsg(`✅ تم حفظ المكون بنجاح!${converted ? ` (تم التحويل: ${newRecipe.quantity} ${newRecipe.unit} = ${finalQty} ${invItem?.unit})` : ''}`)
+        setNewRecipe({ inventory_item_id: '', quantity: '', unit: 'غرام' })
         loadRecipes()
       } else {
         showMsg('❌ فشل: ' + (data.message || ''))
@@ -766,7 +783,7 @@ function RecipesTab({ showMsg, headers }) {
 
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
         <h3 className="text-lg font-bold mb-4">➕ إضافة مكون</h3>
-        <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <select required value={newRecipe.inventory_item_id}
             onChange={e => setNewRecipe({...newRecipe, inventory_item_id: e.target.value})}
             className="p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none">
@@ -777,11 +794,23 @@ function RecipesTab({ showMsg, headers }) {
             value={newRecipe.quantity}
             onChange={e => setNewRecipe({...newRecipe, quantity: e.target.value})}
             className="p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none" />
+          <select value={newRecipe.unit}
+            onChange={e => setNewRecipe({...newRecipe, unit: e.target.value})}
+            className="p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none">
+            <option value="غرام">غرام</option>
+            <option value="كغم">كغم</option>
+            <option value="لتر">لتر</option>
+            <option value="مليلتر">مليلتر</option>
+            <option value="قطعة">قطعة</option>
+          </select>
           <button type="submit"
             className="bg-green-600 text-white p-3 rounded-lg font-bold hover:bg-green-700 transition">
             إضافة المكون
           </button>
         </form>
+        <p className="text-gray-500 text-sm mt-3">
+          💡 إذا اخترت وحدة مختلفة عن وحدة المادة (مثلاً غرام لمادة بوحدة كغم)، يتم التحويل تلقائياً
+        </p>
         {invItems.length === 0 && (
           <p className="text-yellow-700 text-sm mt-3">⚠️ هذا الفرع ما بيه مواد جرد — أضفها من تبويب "📦 مواد الجرد" أولاً</p>
         )}
