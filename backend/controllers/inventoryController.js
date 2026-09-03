@@ -83,7 +83,9 @@ exports.getDailyInventory = async (req, res) => {
   try {
     const { branchId } = req.params;
     const { date } = req.query;
+    // ✅ إذا العميل يرسل تاريخ، نستخدمه. ولا نستخدم تاريخ السيرفر
     const targetDate = date || new Date().toISOString().split('T')[0];
+    // ... باقي الكود نفسه
 
     const result = await pool.query(
       `SELECT di.*, ii.name as item_name, ii.unit, ii.min_quantity, ii.category
@@ -103,9 +105,10 @@ exports.getDailyInventory = async (req, res) => {
 exports.saveDailyInventory = async (req, res) => {
   try {
     const { branch_id, records } = req.body;
-    const { record_date } = req.body;
-    const today = record_date || new Date().toISOString().split('T')[0];
+    // ✅ نستخدم تاريخ السيرفر فقط (UTC)
+    const today = new Date().toISOString().split('T')[0];
     const created_by = req.user.id;
+    // ... باقي الكود نفسه
 
     const client = await pool.connect();
     try {

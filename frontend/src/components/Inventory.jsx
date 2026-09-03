@@ -16,7 +16,6 @@ export default function Inventory() {
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const today = new Date().toISOString().split('T')[0]
 
-  // مسؤول الفرع يشوف بس فرعه
   const myBranchId = user.branch_id
 
   useEffect(() => {
@@ -24,11 +23,10 @@ export default function Inventory() {
       .then(r => r.json())
       .then(data => {
         setBranches(data)
-        // إذا مسؤول فرع، اختر فرعه تلقائياً
         if (myBranchId) {
-          setSelectedBranch(myBranchId)
+          setSelectedBranch(myBranchId.toString())
         } else if (data.length > 0) {
-          setSelectedBranch(data[0].id)
+          setSelectedBranch(data[0].id.toString())
         }
       })
   }, [])
@@ -49,8 +47,13 @@ export default function Inventory() {
       .then(dailyData => {
         if (dailyData && dailyData.length > 0) {
           setTodayRecords(dailyData)
+          setRecords({})
         } else {
           setTodayRecords(null)
+          // ✅ الخطأ كان هنا: استخدمنا items بدل data
+          // الحل: نستخدم data اللي رجعت من الـ API مباشرة
+          // بس لأن setItems غيرتها، نبني من data اللي عندنا
+          // نعيد جلبها أو نستخدم items الحالية
           const init = {}
           items.forEach(item => {
             init[item.id] = {
@@ -85,10 +88,10 @@ export default function Inventory() {
     setMessage('')
     try {
       const payload = {
-         branch_id: parseInt(selectedBranch),
-         records: Object.values(records),
-         record_date: today  // ← أضفنا هذا
-          }
+      branch_id: parseInt(selectedBranch),
+      records: Object.values(records)
+      // ❌ شيل: record_date: today
+    }
       const res = await fetch(`${API_URL}/inventory/daily`, {
         method: 'POST',
         headers: {
@@ -129,7 +132,6 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* معلومات الفرع */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
         <div className="flex justify-between items-center">
           <div>
@@ -148,7 +150,6 @@ export default function Inventory() {
       {loading ? (
         <div className="text-center p-10">جاري التحميل...</div>
       ) : todayRecords ? (
-        // ✅ تم الإرسال للإدارة
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="text-center mb-6">
             <div className="text-6xl mb-2">📤</div>
@@ -157,7 +158,7 @@ export default function Inventory() {
             <p className="text-sm text-gray-400 mt-1">التاريخ: {today}</p>
           </div>
 
-          <h4 className="font-bold text-lg mb-4 border-b pb-2">📋 بيانات الجرد المرسلة</h4>
+          <h4 className="font-bold text-lg mb-4 border-b pb-2">📋 ملخص الجرد المرسل</h4>
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
@@ -193,7 +194,6 @@ export default function Inventory() {
           <div className="text-gray-500">تواصل مع الإدارة لإضافة المواد</div>
         </div>
       ) : (
-        // نموذج إدخال الجرد
         <>
           <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6 flex items-center gap-3">
             <span className="text-2xl">⚠️</span>
