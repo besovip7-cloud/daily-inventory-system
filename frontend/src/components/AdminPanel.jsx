@@ -44,9 +44,9 @@ export default function AdminPanel() {
     setPendingBranches(pending)
   }
 
-  const viewInventory = (branch) => {
+  const viewInventory = async (branch) => {
     setSelectedBranch(branch)
-    fetch(`${API_URL}/inventory/daily/${branch.id}?date=${today}`, {
+    const res = await fetch(`${API_URL}/inventory/daily/${branch.id}?date=${today}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(r => r.json())
