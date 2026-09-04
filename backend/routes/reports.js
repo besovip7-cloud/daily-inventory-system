@@ -7,5 +7,7 @@ router.get('/inventory/:branchId', auth, branchAccess, reportsController.getInve
 router.get('/sales/:branchId', auth, branchAccess, reportsController.getSalesReport);
 router.get('/comparison', auth, reportsController.getComparisonReport);
 router.get('/low-stock/:branchId', auth, branchAccess, reportsController.getLowStockReport);
+router.get('/movements/:branchId', auth, branchAccess, reportsController.getMovements);
+router.get('/variance/:branchId', auth, branchAccess, reportsController.getVariance);
 
 module.exports = router;

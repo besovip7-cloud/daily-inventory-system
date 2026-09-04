@@ -20,6 +20,9 @@ export default function Reports({ user }) {
   const [sales, setSales] = useState([])
   const [inventory, setInventory] = useState([])
   const [lowStock, setLowStock] = useState([])
+  const [movements, setMovements] = useState([])
+  const [variance, setVariance] = useState([])
+  const [varianceDate, setVarianceDate] = useState(fmtDate(today))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -42,6 +45,10 @@ export default function Reports({ user }) {
   useEffect(() => {
     if (selectedBranch) loadBranchReports()
   }, [selectedBranch, from, to, activeTab])
+
+  useEffect(() => {
+    if (selectedBranch && activeTab === 'variance') loadVariance()
+  }, [selectedBranch, varianceDate])
 
   const loadComparison = async () => {
     try {
@@ -66,9 +73,24 @@ export default function Reports({ user }) {
       } else if (activeTab === 'lowstock') {
         const res = await fetch(`${API_URL}/reports/low-stock/${selectedBranch}`, { headers: authHeaders })
         setLowStock(await res.json() || [])
+      } else if (activeTab === 'movements') {
+        const res = await fetch(`${API_URL}/reports/movements/${selectedBranch}?from=${from}&to=${to}`, { headers: authHeaders })
+        setMovements(await res.json() || [])
       }
     } catch (e) {
       setError('فشل تحميل التقرير')
+    }
+    setLoading(false)
+  }
+
+  const loadVariance = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`${API_URL}/reports/variance/${selectedBranch}?date=${varianceDate}`, { headers: authHeaders })
+      setVariance(await res.json() || [])
+    } catch (e) {
+      setError('فشل تحميل الفروقات')
     }
     setLoading(false)
   }
@@ -211,6 +233,14 @@ export default function Reports({ user }) {
           className={`px-4 py-2 font-bold ${activeTab === 'lowstock' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>
           ⚠️ المخزون المنخفض
         </button>
+        <button onClick={() => setActiveTab('movements')}
+          className={`px-4 py-2 font-bold ${activeTab === 'movements' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>
+          📜 حركات المخزون
+        </button>
+        <button onClick={() => setActiveTab('variance')}
+          className={`px-4 py-2 font-bold ${activeTab === 'variance' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>
+          ⚖️ الفروقات
+        </button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -346,8 +376,83 @@ export default function Reports({ user }) {
               </tbody>
             </table>
           )
-        ) : (
-          lowStock.length === 0 ? (
+        ) : activeTab === 'movements' ? (
+          movements.length === 0 ? (
+            <p className="text-gray-400 text-center py-10">لا توجد حركات بهذه الفترة</p>
+          ) : (
+            <table className="w-full text-right">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="p-3 font-bold">الوقت</th>
+                  <th className="p-3 font-bold">المادة</th>
+                  <th className="p-3 font-bold">الكمية</th>
+                  <th className="p-3 font-bold">قبل</th>
+                  <th className="p-3 font-bold">بعد</th>
+                  <th className="p-3 font-bold">البيان</th>
+                  <th className="p-3 font-bold">المستخدم</th>
+                </tr>
+              </thead>
+              <tbody>
+                {movements.map((m, i) => {
+                  const qty = parseFloat(m.quantity)
+                  return (
+                    <tr key={i} className="border-t border-gray-100">
+                      <td className="p-3 text-gray-600 text-sm">{new Date(m.created_at).toLocaleString('ar')}</td>
+                      <td className="p-3 font-semibold">{m.item_name} <span className="text-gray-400 text-sm">({m.unit})</span></td>
+                      <td className={`p-3 font-bold ${qty < 0 ? 'text-red-600' : 'text-green-600'}`}>{qty}</td>
+                      <td className="p-3">{m.balance_before}</td>
+                      <td className="p-3 font-bold">{m.balance_after}</td>
+                      <td className="p-3 text-gray-600 text-sm">{m.reference || '—'}</td>
+                      <td className="p-3 text-gray-500 text-sm">{m.created_by_name || '—'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )
+        ) : activeTab === 'variance' ? (
+          <>
+            <div className="p-4 bg-amber-50 border-b border-amber-100 flex flex-wrap items-center gap-3">
+              <label className="font-bold text-gray-700">تاريخ الجرد:</label>
+              <input type="date" value={varianceDate} onChange={e => setVarianceDate(e.target.value)}
+                className="p-2 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none" />
+              <span className="text-sm text-gray-500">الفرق السالب = هالك/فقد • الفرق الموجب = عدّ أعلى من المتوقع</span>
+            </div>
+            {variance.length === 0 ? (
+              <p className="text-gray-400 text-center py-10">لا توجد سجلات جرد بهذا اليوم</p>
+            ) : (
+              <table className="w-full text-right">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="p-3 font-bold">المادة</th>
+                    <th className="p-3 font-bold">افتتاحي</th>
+                    <th className="p-3 font-bold">وارد</th>
+                    <th className="p-3 font-bold">خصم الوصفات</th>
+                    <th className="p-3 font-bold">المتوقع</th>
+                    <th className="p-3 font-bold">الفعلي (الختامي)</th>
+                    <th className="p-3 font-bold">الفرق</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {variance.map((r, i) => {
+                    const diff = parseFloat(r.variance)
+                    return (
+                      <tr key={i} className="border-t border-gray-100">
+                        <td className="p-3 font-semibold">{r.name} <span className="text-gray-400 text-sm">({r.unit})</span></td>
+                        <td className="p-3">{r.opening_qty}</td>
+                        <td className="p-3">{r.received_qty}</td>
+                        <td className="p-3">{parseFloat(r.recipe_deductions).toFixed(3)}</td>
+                        <td className="p-3">{r.expected}</td>
+                        <td className="p-3 font-bold">{r.closing_qty}</td>
+                        <td className={`p-3 font-bold ${diff < 0 ? 'text-red-600' : diff > 0 ? 'text-green-600' : 'text-gray-400'}`}>{r.variance}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </>
+        ) : lowStock.length === 0 ? (
             <p className="text-green-600 text-center py-10 font-bold">✅ كل الأصناف فوق الحد الأدنى</p>
           ) : (
             <table className="w-full text-right">
@@ -378,8 +483,7 @@ export default function Reports({ user }) {
                 ))}
               </tbody>
             </table>
-          )
-        )}
+          )}
       </div>
     </div>
   )

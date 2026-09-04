@@ -125,6 +125,22 @@ const createTables = async () => {
       )
     `);
 
+    // Inventory Movements (audit log of every stock change)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS inventory_movements (
+        id SERIAL PRIMARY KEY,
+        branch_id INTEGER REFERENCES branches(id) ON DELETE CASCADE,
+        item_id INTEGER REFERENCES inventory_items(id) ON DELETE CASCADE,
+        movement_type VARCHAR(20) CHECK (movement_type IN ('sale', 'sale_adjust', 'count')),
+        quantity DECIMAL(12,3) NOT NULL,
+        balance_before DECIMAL(12,3),
+        balance_after DECIMAL(12,3),
+        reference VARCHAR(200),
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Activity Logs
     await pool.query(`
       CREATE TABLE IF NOT EXISTS activity_logs (

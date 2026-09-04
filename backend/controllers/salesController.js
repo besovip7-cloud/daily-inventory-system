@@ -1,23 +1,45 @@
 const pool = require('../config/database');
 const { checkAndCreateAlerts } = require('../utils/alerts');
 
-// Deducts (or restores, for negative delta) recipe quantities from inventory
-const applyRecipeDelta = async (executor, branchId, menuItemId, deltaQty) => {
-  if (!deltaQty) return;
+// Deducts (or restores, for negative delta) recipe quantities from inventory.
+// Records every change in inventory_movements and returns the applied list.
+const applyRecipeDelta = async (executor, branchId, menuItemId, deltaQty, reference, createdBy) => {
+  if (!deltaQty) return [];
   const recipes = await executor.query(
     'SELECT inventory_item_id, quantity FROM menu_recipes WHERE branch_id = $1 AND menu_item_id = $2',
     [branchId, menuItemId]
   );
+  const applied = [];
   for (const r of recipes.rows) {
     const used = deltaQty * parseFloat(r.quantity);
-    const upd = await executor.query(
-      'UPDATE inventory_items SET current_quantity = current_quantity - $1 WHERE id = $2 RETURNING name, min_quantity, current_quantity',
-      [used, r.inventory_item_id]
+    const beforeResult = await executor.query(
+      'SELECT current_quantity FROM inventory_items WHERE id = $1',
+      [r.inventory_item_id]
     );
-    if (upd.rows.length > 0) {
-      await checkAndCreateAlerts(branchId, r.inventory_item_id, upd.rows[0].current_quantity, upd.rows[0].min_quantity, upd.rows[0].name);
+    if (beforeResult.rows.length === 0) continue;
+    const before = parseFloat(beforeResult.rows[0].current_quantity);
+    const after = before - used;
+
+    await executor.query(
+      'UPDATE inventory_items SET current_quantity = $1 WHERE id = $2',
+      [after, r.inventory_item_id]
+    );
+    await executor.query(
+      `INSERT INTO inventory_movements (branch_id, item_id, movement_type, quantity, balance_before, balance_after, reference, created_by)
+       VALUES ($1, $2, 'sale', $3, $4, $5, $6, $7)`,
+      [branchId, r.inventory_item_id, -used, before, after, reference, createdBy || null]
+    );
+
+    const itemInfo = await executor.query(
+      'SELECT name, min_quantity, unit FROM inventory_items WHERE id = $1',
+      [r.inventory_item_id]
+    );
+    if (itemInfo.rows.length > 0) {
+      await checkAndCreateAlerts(branchId, r.inventory_item_id, after, itemInfo.rows[0].min_quantity, itemInfo.rows[0].name);
+      applied.push({ name: itemInfo.rows[0].name, unit: itemInfo.rows[0].unit, deducted: used });
     }
   }
+  return applied;
 };
 
 exports.getMenuItems = async (req, res) => {
@@ -147,8 +169,13 @@ exports.saveDailySales = async (req, res) => {
           [branch_id, record.item_id, today, record.quantity_sold, total, payment_card, payment_cash, created_by]
         );
 
-        // Deduct recipe ingredients from inventory
-        await applyRecipeDelta(client, branch_id, record.item_id, delta);
+        // Deduct recipe ingredients from inventory and log the movement
+        if (delta !== 0) {
+          const menuInfo = await client.query('SELECT name FROM menu_items WHERE id = $1', [record.item_id]);
+          const menuName = menuInfo.rows.length ? menuInfo.rows[0].name : `صنف #${record.item_id}`;
+          const reference = `بيع: ${menuName} ×${record.quantity_sold}${prev.rows.length ? ` (تعديل من ${prev.rows[0].quantity_sold})` : ''}`;
+          await applyRecipeDelta(client, branch_id, record.item_id, delta, reference, created_by);
+        }
       }
 
       await client.query('COMMIT');
@@ -190,8 +217,14 @@ exports.updateDailySale = async (req, res) => {
       [quantity_sold, total, payment_card || 0, payment_cash || 0, notes || null, id]
     );
 
-    // Apply the difference in recipe ingredients
-    await applyRecipeDelta(pool, old.branch_id, old.item_id, quantity_sold - old.quantity_sold);
+    // Apply the difference in recipe ingredients and log the movement
+    const menuInfo = await pool.query(
+      `SELECT mi.name FROM daily_sales ds JOIN menu_items mi ON mi.id = ds.item_id WHERE ds.id = $1`,
+      [id]
+    );
+    const menuName = menuInfo.rows.length ? menuInfo.rows[0].name : `صنف #${old.item_id}`;
+    const reference = `تعديل بيع: ${menuName} من ${old.quantity_sold} إلى ${quantity_sold}`;
+    await applyRecipeDelta(pool, old.branch_id, old.item_id, quantity_sold - old.quantity_sold, reference, req.user.id);
 
     res.json(result.rows[0]);
   } catch (err) {
@@ -208,8 +241,11 @@ exports.deleteDailySale = async (req, res) => {
 
     await pool.query('DELETE FROM daily_sales WHERE id = $1', [req.params.id]);
 
-    // Restore recipe ingredients to inventory
-    await applyRecipeDelta(pool, old.rows[0].branch_id, old.rows[0].item_id, -old.rows[0].quantity_sold);
+    // Restore recipe ingredients to inventory and log the movement
+    const menuInfo = await pool.query('SELECT name FROM menu_items WHERE id = $1', [old.rows[0].item_id]);
+    const menuName = menuInfo.rows.length ? menuInfo.rows[0].name : `صنف #${old.rows[0].item_id}`;
+    const reference = `حذف بيع: ${menuName} ×${old.rows[0].quantity_sold}`;
+    await applyRecipeDelta(pool, old.rows[0].branch_id, old.rows[0].item_id, -old.rows[0].quantity_sold, reference, req.user.id);
 
     res.json({ message: 'Record deleted' });
   } catch (err) {

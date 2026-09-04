@@ -79,6 +79,67 @@ exports.getComparisonReport = async (req, res) => {
   }
 };
 
+exports.getMovements = async (req, res) => {
+  try {
+    const { branchId } = req.params;
+    const { from, to } = req.query;
+
+    const result = await pool.query(
+      `SELECT m.id, m.movement_type, m.quantity, m.balance_before, m.balance_after,
+              m.reference, m.created_at, ii.name as item_name, ii.unit, u.name as created_by_name
+       FROM inventory_movements m
+       JOIN inventory_items ii ON ii.id = m.item_id
+       LEFT JOIN users u ON u.id = m.created_by
+       WHERE m.branch_id = $1 AND m.created_at::date BETWEEN $2 AND $3
+       ORDER BY m.created_at DESC`,
+      [branchId, from, to]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getVariance = async (req, res) => {
+  try {
+    const { branchId } = req.params;
+    const { date } = req.query;
+    const targetDate = date || new Date().toISOString().split('T')[0];
+
+    const result = await pool.query(
+      `SELECT di.item_id, ii.name, ii.unit,
+              di.opening_qty, di.received_qty, di.closing_qty,
+              COALESCE((
+                SELECT SUM(-m.quantity)
+                FROM inventory_movements m
+                WHERE m.item_id = di.item_id AND m.branch_id = di.branch_id
+                  AND m.movement_type = 'sale' AND m.created_at::date = di.record_date
+              ), 0) as recipe_deductions
+       FROM daily_inventory di
+       JOIN inventory_items ii ON ii.id = di.item_id
+       WHERE di.branch_id = $1 AND di.record_date = $2
+       ORDER BY ii.name`,
+      [branchId, targetDate]
+    );
+
+    const rows = result.rows.map(r => {
+      const expected = parseFloat(r.opening_qty) + parseFloat(r.received_qty) - parseFloat(r.recipe_deductions);
+      const actual = parseFloat(r.closing_qty);
+      const variance = actual - expected;
+      return {
+        ...r,
+        expected: expected.toFixed(3),
+        variance: variance.toFixed(3)
+      };
+    });
+
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getLowStockReport = async (req, res) => {
   try {
     const { branchId } = req.params;
