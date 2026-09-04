@@ -12,43 +12,43 @@ export default function Dashboard({ apiUrl }) {
       .catch(() => { setError('فشل تحميل البيانات'); setLoading(false) })
   }, [apiUrl])
 
-  if (loading) return <div className="text-center p-10">جاري التحميل...</div>
-  if (error) return <div className="text-center p-10 text-red-600">{error}</div>
+  if (loading) return <div className="text-center p-10 text-ios-label">جاري التحميل...</div>
+  if (error) return <div className="text-center p-10 text-ios-red font-semibold">{error}</div>
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6 text-gray-900">🏪 الفروع</h2>
+      <h2 className="text-2xl font-bold mb-6 text-ios-text tracking-tight">🏪 الفروع</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {branches.map(branch => (
-          <div key={branch.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition">
-            <h3 className="font-bold text-lg text-gray-900">{branch.name}</h3>
-            <p className="text-gray-500 text-sm mt-1">{branch.location}</p>
-            <p className="text-gray-400 text-xs mt-2">المدير: {branch.manager_name}</p>
+          <div key={branch.id} className="card-ios p-6">
+            <h3 className="font-bold text-lg text-ios-text">{branch.name}</h3>
+            <p className="text-ios-label text-sm mt-1">{branch.location}</p>
+            <p className="text-ios-label text-xs mt-2">المدير: {branch.manager_name}</p>
             <div className="mt-4 flex gap-2">
-              <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">نشط</span>
+              <span className="badge-ios bg-ios-green/15 text-ios-green">نشط</span>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="mt-8 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <h3 className="font-bold text-lg mb-4">📊 حالة النظام</h3>
+      <div className="mt-8 card-ios p-6">
+        <h3 className="font-bold text-lg mb-4 text-ios-text">📊 حالة النظام</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-4 bg-blue-50 rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">{branches.length}</div>
-            <div className="text-sm text-gray-600">فروع</div>
+          <div className="text-center p-4 bg-ios-blue/10 rounded-2xl">
+            <div className="text-3xl font-semibold text-ios-blue">{branches.length}</div>
+            <div className="text-sm text-ios-label mt-1">فروع</div>
           </div>
-          <div className="text-center p-4 bg-green-50 rounded-lg">
-            <div className="text-2xl font-bold text-green-600">✅</div>
-            <div className="text-sm text-gray-600">API شغال</div>
+          <div className="text-center p-4 bg-ios-green/15 rounded-2xl">
+            <div className="text-2xl font-semibold">✅</div>
+            <div className="text-sm text-ios-label mt-1">API شغال</div>
           </div>
-          <div className="text-center p-4 bg-purple-50 rounded-lg">
-            <div className="text-2xl font-bold text-purple-600">🗄️</div>
-            <div className="text-sm text-gray-600">DB متصل</div>
+          <div className="text-center p-4 bg-ios-orange/15 rounded-2xl">
+            <div className="text-2xl font-semibold">🗄️</div>
+            <div className="text-sm text-ios-label mt-1">DB متصل</div>
           </div>
-          <div className="text-center p-4 bg-orange-50 rounded-lg">
-            <div className="text-2xl font-bold text-orange-600">🔐</div>
-            <div className="text-sm text-gray-600">JWT Active</div>
+          <div className="text-center p-4 bg-ios-yellow/25 rounded-2xl">
+            <div className="text-2xl font-semibold">🔐</div>
+            <div className="text-sm text-ios-label mt-1">JWT Active</div>
           </div>
         </div>
       </div>

@@ -24,43 +24,66 @@ export default function Layout({ user }) {
   const showBell = user?.role === 'admin' || user?.role === 'manager'
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      <nav className="bg-gray-900 text-white p-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-bold">📦 نظام الجرد اليومي</h1>
-          <div className="flex gap-4 items-center">
+    <div className="min-h-screen bg-ios-bg" dir="rtl">
+      <nav className="bg-white/80 backdrop-blur border-b border-ios-sep sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto flex justify-between items-center px-4 py-3">
+          <h1 className="text-lg font-semibold text-ios-text">📦 نظام الجرد اليومي</h1>
+          <div className="flex gap-3 items-center">
             {showBell && <AlertBell />}
-            <span className="text-sm text-gray-300">{user?.name}</span>
-            <button onClick={logout} className="text-sm bg-red-600 px-3 py-1 rounded">خروج</button>
+            <span className="text-xs text-ios-label">{user?.name}</span>
+            <button onClick={logout} className="btn-ios-danger text-xs px-3 py-1.5">خروج</button>
           </div>
         </div>
       </nav>
 
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row">
-        {/* Sidebar */}
-        <aside className="w-full md:w-64 bg-white shadow-sm border-l border-gray-100">
-          <div className="p-4">
-            {navItems.map(item => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`block p-3 rounded-lg mb-1 transition ${
-                  location.pathname === item.path
-                    ? 'bg-blue-50 text-blue-700 font-bold border-r-2 border-blue-600'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
+        {/* Sidebar — desktop only, iOS grouped list */}
+        <aside className="hidden md:block w-full md:w-72 shrink-0 p-4">
+          <div className="card-ios overflow-hidden">
+            {navItems.map(item => {
+              const active = location.pathname === item.path
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`list-row transition ${
+                    active
+                      ? 'bg-ios-blue/10 text-ios-blue font-bold'
+                      : 'text-ios-text hover:bg-ios-bg'
+                  }`}
+                >
+                  <span>{item.label}</span>
+                  <span className={active ? 'text-ios-blue' : 'text-ios-label'}>‹</span>
+                </Link>
+              )
+            })}
           </div>
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6">
           <Outlet />
         </main>
       </div>
+
+      {/* Bottom tab bar — mobile only */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur border-t border-ios-sep flex pb-[env(safe-area-inset-bottom)]">
+        {navItems.map(item => {
+          const active = location.pathname === item.path
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`flex-1 py-2 text-center text-[11px] font-semibold transition ${
+                active ? 'text-ios-blue' : 'text-ios-label'
+              }`}
+            >
+              <div className="text-xl leading-none mb-1">{item.label.split(' ')[0]}</div>
+              <div className="truncate px-0.5">{item.label.split(' ').slice(1).join(' ')}</div>
+            </Link>
+          )
+        })}
+      </nav>
     </div>
   )
 }

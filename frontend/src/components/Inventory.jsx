@@ -220,66 +220,66 @@ export default function Inventory({ user }) {
   const getStatus = (item) => {
     const qty = item.current_quantity
     const min = item.min_quantity
-    if (qty <= 0) return { text: 'نفذ 🔴', class: 'bg-red-100 text-red-700' }
-    if (qty <= min * 0.5) return { text: 'حرج 🚨', class: 'bg-red-100 text-red-700' }
-    if (qty <= min) return { text: 'منخفض 🟡', class: 'bg-yellow-100 text-yellow-700' }
-    return { text: 'متوفر ✅', class: 'bg-green-100 text-green-700' }
+    if (qty <= 0) return { text: 'نفذ 🔴', class: 'bg-ios-red/15 text-ios-red' }
+    if (qty <= min * 0.5) return { text: 'حرج 🚨', class: 'bg-ios-red/15 text-ios-red' }
+    if (qty <= min) return { text: 'منخفض 🟡', class: 'bg-ios-yellow/25 text-[#B25000]' }
+    return { text: 'متوفر ✅', class: 'bg-ios-green/15 text-ios-green' }
   }
 
   return (
     <div dir="rtl">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">📦 جرد المخزون اليومي</h2>
+        <h2 className="text-2xl font-bold text-ios-text tracking-tight">📦 جرد المخزون اليومي</h2>
         {canManage && selectedBranch && (
           <button onClick={() => { setShowManage(!showManage); setEditingItem(null); setItemForm(emptyItemForm) }}
-            className="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-purple-700 transition">
+            className="btn-ios-secondary">
             🧾 {showManage ? 'إخفاء إدارة المواد' : 'إدارة المواد'}
           </button>
         )}
       </div>
 
       {message && (
-        <div className={`p-4 rounded-lg mb-4 font-bold ${message.includes('✅') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+        <div className={`p-4 rounded-2xl mb-4 font-bold ${message.includes('✅') ? 'bg-ios-green/15 text-[#1F7A33]' : 'bg-ios-red/10 text-ios-red'}`}>
           {message}
         </div>
       )}
 
       {/* ✅ اختيار الفرع — مقفل للمدير على فرعه */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
-        <label className="block text-sm font-semibold text-gray-700 mb-2">اختر الفرع</label>
+      <div className="card-ios p-4 mb-6">
+        <label className="label-ios">اختر الفرع</label>
         <select
           value={selectedBranch}
           onChange={e => setSelectedBranch(e.target.value)}
           disabled={!!managerBranch}
-          className="w-full md:w-80 p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
+          className="input-ios md:w-80 disabled:opacity-60"
         >
           <option value="">-- اختر الفرع --</option>
           {branches.map(b => (
             <option key={b.id} value={b.id.toString()}>{b.name}</option>
           ))}
         </select>
-        {managerBranch && <p className="text-sm text-gray-400 mt-1">مدير الفرع مقيد على فرعه فقط</p>}
+        {managerBranch && <p className="text-sm text-ios-label mt-1">مدير الفرع مقيد على فرعه فقط</p>}
       </div>
 
       {/* ===== لوحة إدارة المواد ===== */}
       {showManage && canManage && selectedBranch && (
-        <div className="bg-purple-50 border border-purple-200 rounded-xl p-6 mb-6">
-          <h3 className="text-lg font-bold mb-4 text-purple-900">
+        <div className="bg-ios-blue/10 rounded-2xl p-6 mb-6">
+          <h3 className="text-lg font-bold mb-4 text-ios-text">
             {editingItem ? '✏️ تعديل مادة' : '➕ إضافة مادة جديدة'}
           </h3>
           <form onSubmit={handleItemSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-3 mb-6">
             <input type="text" placeholder="اسم المادة *" required
               value={itemForm.name}
               onChange={e => setItemForm({...itemForm, name: e.target.value})}
-              className="p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none" />
+              className="input-ios" />
             <select value={itemForm.category}
               onChange={e => setItemForm({...itemForm, category: e.target.value})}
-              className="p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none">
+              className="input-ios">
               {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
             <select value={itemForm.unit}
               onChange={e => setItemForm({...itemForm, unit: e.target.value})}
-              className="p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none">
+              className="input-ios">
               <option value="">بدون وحدة (اختياري)</option>
               {itemForm.unit && !['كغم', 'غرام', 'لتر', 'مليلتر', 'قطعة'].includes(itemForm.unit) && (
                 <option value={itemForm.unit}>{itemForm.unit} (حالية)</option>
@@ -293,19 +293,18 @@ export default function Inventory({ user }) {
             <input type="number" placeholder="الحد الأدنى" min="0" step="0.01"
               value={itemForm.min_quantity}
               onChange={e => setItemForm({...itemForm, min_quantity: e.target.value})}
-              className="p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none" />
+              className="input-ios" />
             <input type="number" placeholder="الكمية الحالية" min="0" step="0.01"
               value={itemForm.current_quantity}
               onChange={e => setItemForm({...itemForm, current_quantity: e.target.value})}
-              className="p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none" />
+              className="input-ios" />
             <div className="flex gap-2">
-              <button type="submit"
-                className="flex-1 bg-purple-600 text-white p-3 rounded-lg font-bold hover:bg-purple-700 transition">
+              <button type="submit" className="btn-ios flex-1">
                 {editingItem ? 'حفظ' : 'إضافة'}
               </button>
               {editingItem && (
                 <button type="button" onClick={() => { setEditingItem(null); setItemForm(emptyItemForm) }}
-                  className="bg-gray-200 text-gray-700 px-4 py-3 rounded-lg font-bold hover:bg-gray-300 transition">
+                  className="btn-ios-secondary">
                   إلغاء
                 </button>
               )}
@@ -314,38 +313,38 @@ export default function Inventory({ user }) {
 
           {/* قائمة المواد */}
           {items.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">لا توجد مواد — أضف أول مادة من النموذج أعلاه</p>
+            <p className="text-ios-label text-center py-4">لا توجد مواد — أضف أول مادة من النموذج أعلاه</p>
           ) : (
-            <div className="bg-white rounded-xl overflow-hidden">
+            <div className="bg-white rounded-2xl overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="bg-purple-100">
+                <thead className="bg-[#F2F2F7]">
                   <tr>
-                    <th className="p-3 text-right font-semibold">المادة</th>
-                    <th className="p-3 text-center font-semibold">الفئة</th>
-                    <th className="p-3 text-center font-semibold">الوحدة</th>
-                    <th className="p-3 text-center font-semibold">الحد الأدنى</th>
-                    <th className="p-3 text-center font-semibold">الكمية</th>
-                    <th className="p-3 text-center font-semibold">إجراءات</th>
+                    <th className="p-3 text-right font-semibold text-ios-label text-xs">المادة</th>
+                    <th className="p-3 text-center font-semibold text-ios-label text-xs">الفئة</th>
+                    <th className="p-3 text-center font-semibold text-ios-label text-xs">الوحدة</th>
+                    <th className="p-3 text-center font-semibold text-ios-label text-xs">الحد الأدنى</th>
+                    <th className="p-3 text-center font-semibold text-ios-label text-xs">الكمية</th>
+                    <th className="p-3 text-center font-semibold text-ios-label text-xs">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map(item => {
                     const status = getStatus(item)
                     return (
-                      <tr key={item.id} className="border-t border-gray-100">
-                        <td className="p-3 font-semibold">{item.name}</td>
-                        <td className="p-3 text-center text-gray-600">{categories.find(c => c.value === item.category)?.label || item.category}</td>
-                        <td className="p-3 text-center text-gray-600">{item.unit || '—'}</td>
-                        <td className="p-3 text-center text-gray-600">{item.min_quantity}</td>
+                      <tr key={item.id} className="border-b border-ios-sep last:border-b-0">
+                        <td className="p-3 font-semibold text-ios-text">{item.name}</td>
+                        <td className="p-3 text-center text-ios-label">{categories.find(c => c.value === item.category)?.label || item.category}</td>
+                        <td className="p-3 text-center text-ios-label">{item.unit || '—'}</td>
+                        <td className="p-3 text-center text-ios-label">{item.min_quantity}</td>
                         <td className="p-3 text-center">
-                          <span className={`text-xs px-2 py-1 rounded-full ${status.class}`}>{item.current_quantity}</span>
+                          <span className={`badge-ios ${status.class}`}>{item.current_quantity}</span>
                         </td>
                         <td className="p-3 text-center">
                           <div className="flex gap-1 justify-center">
                             <button onClick={() => startItemEdit(item)}
-                              className="bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold text-xs hover:bg-blue-200">✏️ تعديل</button>
+                              className="btn-ios-ghost text-xs px-2">✏️ تعديل</button>
                             <button onClick={() => handleItemDelete(item)}
-                              className="bg-red-100 text-red-700 px-3 py-1 rounded font-bold text-xs hover:bg-red-200">🗑️ حذف</button>
+                              className="text-ios-red font-bold text-xs px-2 active:opacity-70">🗑️ حذف</button>
                           </div>
                         </td>
                       </tr>
@@ -359,86 +358,86 @@ export default function Inventory({ user }) {
       )}
 
       {loading ? (
-        <div className="text-center p-10">جاري التحميل...</div>
+        <div className="text-center p-10 text-ios-label">جاري التحميل...</div>
       ) : !selectedBranch ? (
-        <div className="text-center p-10 bg-white rounded-xl shadow-sm border border-gray-100">
-          <p className="text-gray-500">اختر فرعاً لبدء الجرد</p>
+        <div className="text-center p-10 card-ios">
+          <p className="text-ios-label">اختر فرعاً لبدء الجرد</p>
         </div>
       ) : todayRecords ? (
         // ✅ تم الجرد
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="card-ios p-6">
           <div className="text-center mb-6">
             <div className="text-6xl mb-2">📤</div>
-            <h3 className="text-xl font-bold text-blue-700">تم إرسال الجرد للإدارة</h3>
-            <p className="text-gray-500">في انتظار إدخال المبيعات من قبل الإدارة</p>
-            <p className="text-sm text-gray-400 mt-1">التاريخ: {today}</p>
+            <h3 className="text-xl font-bold text-ios-blue">تم إرسال الجرد للإدارة</h3>
+            <p className="text-ios-label">في انتظار إدخال المبيعات من قبل الإدارة</p>
+            <p className="text-sm text-ios-label mt-1">التاريخ: {today}</p>
           </div>
 
-          <h4 className="font-bold text-lg mb-4 border-b pb-2">📋 ملخص الجرد المرسل</h4>
+          <h4 className="font-bold text-lg mb-4 text-ios-text border-b border-ios-sep pb-2">📋 ملخص الجرد المرسل</h4>
           <table className="w-full text-sm">
-            <thead className="bg-gray-50">
+            <thead className="bg-[#F2F2F7]">
               <tr>
-                <th className="p-3 text-right font-semibold">المادة</th>
-                <th className="p-3 text-center font-semibold">بداية</th>
-                <th className="p-3 text-center font-semibold">وارد</th>
-                <th className="p-3 text-center font-semibold">منصرف</th>
-                <th className="p-3 text-center font-semibold">نهاية</th>
+                <th className="p-3 text-right font-semibold text-ios-label text-xs">المادة</th>
+                <th className="p-3 text-center font-semibold text-ios-label text-xs">بداية</th>
+                <th className="p-3 text-center font-semibold text-ios-label text-xs">وارد</th>
+                <th className="p-3 text-center font-semibold text-ios-label text-xs">منصرف</th>
+                <th className="p-3 text-center font-semibold text-ios-label text-xs">نهاية</th>
               </tr>
             </thead>
             <tbody>
               {todayRecords.map((rec, idx) => (
-                <tr key={idx} className="border-b border-gray-100">
-                  <td className="p-3 font-semibold">{rec.item_name || items.find(i => i.id === rec.item_id)?.name || '—'}</td>
+                <tr key={idx} className="border-b border-ios-sep last:border-b-0">
+                  <td className="p-3 font-semibold text-ios-text">{rec.item_name || items.find(i => i.id === rec.item_id)?.name || '—'}</td>
                   <td className="p-3 text-center">{rec.opening_qty}</td>
-                  <td className="p-3 text-center text-green-600">+{rec.received_qty}</td>
-                  <td className="p-3 text-center text-red-600">-{rec.consumed_qty}</td>
+                  <td className="p-3 text-center text-ios-green">+{rec.received_qty}</td>
+                  <td className="p-3 text-center text-ios-red">-{rec.consumed_qty}</td>
                   <td className="p-3 text-center font-bold">{rec.closing_qty}</td>
                 </tr>
               ))}
             </tbody>
           </table>
 
-          <div className="mt-6 p-4 bg-yellow-50 rounded-lg text-center border border-yellow-200">
-            <p className="text-yellow-800 font-bold">⏳ في انتظار إدخال المبيعات من الإدارة</p>
-            <p className="text-yellow-700 text-sm mt-1">سيتم إشعارك بالفروقات (إن وجدت)</p>
+          <div className="mt-6 p-4 bg-ios-yellow/20 rounded-2xl text-center">
+            <p className="text-[#B25000] font-bold">⏳ في انتظار إدخال المبيعات من الإدارة</p>
+            <p className="text-[#B25000]/80 text-sm mt-1">سيتم إشعارك بالفروقات (إن وجدت)</p>
           </div>
         </div>
       ) : items.length === 0 ? (
-        <div className="text-center p-10 bg-white rounded-xl shadow-sm border border-gray-100">
+        <div className="text-center p-10 card-ios">
           <div className="text-6xl mb-4">📭</div>
-          <div className="text-xl font-bold text-gray-700">لا توجد مواد في هذا الفرع</div>
+          <div className="text-xl font-bold text-ios-text">لا توجد مواد في هذا الفرع</div>
           {canManage ? (
             <button onClick={() => setShowManage(true)}
-              className="mt-4 bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700 transition">
+              className="btn-ios mt-4">
               🧾 إضافة المواد الآن
             </button>
           ) : (
-            <div className="text-gray-500">تواصل مع الإدارة لإضافة المواد</div>
+            <div className="text-ios-label mt-2">تواصل مع الإدارة لإضافة المواد</div>
           )}
         </div>
       ) : (
         // نموذج إدخال الجرد
         <>
-          <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6 flex items-center gap-3">
+          <div className="bg-ios-yellow/20 p-4 rounded-2xl mb-6 flex items-center gap-3">
             <span className="text-2xl">⚠️</span>
             <div>
-              <p className="text-yellow-800 font-bold">تذكير: أدخل الكميات بدقة</p>
-              <p className="text-yellow-700 text-sm">بعد الضغط على "حفظ وإرسال" لا يمكن التعديل إلا من قبل الإدارة</p>
+              <p className="text-[#B25000] font-bold">تذكير: أدخل الكميات بدقة</p>
+              <p className="text-[#B25000]/80 text-sm">بعد الضغط على "حفظ وإرسال" لا يمكن التعديل إلا من قبل الإدارة</p>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+          <div className="card-ios overflow-hidden mb-6">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50">
+              <thead className="bg-[#F2F2F7]">
                 <tr>
-                  <th className="p-4 text-right font-semibold text-gray-600">المادة</th>
-                  <th className="p-4 text-center font-semibold text-gray-600">الوحدة</th>
-                  <th className="p-4 text-center font-semibold text-gray-600">الحد الأدنى</th>
-                  <th className="p-4 text-center font-semibold text-gray-600">الحالة</th>
-                  <th className="p-4 text-center font-semibold text-gray-600">بداية اليوم</th>
-                  <th className="p-4 text-center font-semibold text-gray-600">وارد</th>
-                  <th className="p-4 text-center font-semibold text-gray-600">منصرف</th>
-                  <th className="p-4 text-center font-semibold text-gray-600">نهاية اليوم</th>
+                  <th className="p-4 text-right font-semibold text-ios-label text-xs">المادة</th>
+                  <th className="p-4 text-center font-semibold text-ios-label text-xs">الوحدة</th>
+                  <th className="p-4 text-center font-semibold text-ios-label text-xs">الحد الأدنى</th>
+                  <th className="p-4 text-center font-semibold text-ios-label text-xs">الحالة</th>
+                  <th className="p-4 text-center font-semibold text-ios-label text-xs">بداية اليوم</th>
+                  <th className="p-4 text-center font-semibold text-ios-label text-xs">وارد</th>
+                  <th className="p-4 text-center font-semibold text-ios-label text-xs">منصرف</th>
+                  <th className="p-4 text-center font-semibold text-ios-label text-xs">نهاية اليوم</th>
                 </tr>
               </thead>
               <tbody>
@@ -446,32 +445,32 @@ export default function Inventory({ user }) {
                   const status = getStatus(item)
                   const rec = records[item.id] || {}
                   return (
-                    <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="p-4 font-semibold text-gray-900">{item.name}</td>
-                      <td className="p-4 text-center text-gray-600">{item.unit}</td>
-                      <td className="p-4 text-center text-gray-600">{item.min_quantity}</td>
+                    <tr key={item.id} className="border-b border-ios-sep last:border-b-0 hover:bg-ios-bg">
+                      <td className="p-4 font-semibold text-ios-text">{item.name}</td>
+                      <td className="p-4 text-center text-ios-label">{item.unit}</td>
+                      <td className="p-4 text-center text-ios-label">{item.min_quantity}</td>
                       <td className="p-4 text-center">
-                        <span className={`text-xs px-2 py-1 rounded-full ${status.class}`}>{status.text}</span>
+                        <span className={`badge-ios ${status.class}`}>{status.text}</span>
                       </td>
                       <td className="p-4 text-center">
                         <input type="number" value={rec.opening_qty || 0}
                           onChange={e => handleChange(item.id, 'opening_qty', e.target.value)}
-                          className="w-20 p-2 border-2 border-gray-200 rounded-lg text-center focus:border-blue-500 focus:outline-none" />
+                          className="w-20 py-2 rounded-xl bg-[#F2F2F7] text-center focus:ring-2 focus:ring-ios-blue focus:outline-none" />
                       </td>
                       <td className="p-4 text-center">
                         <input type="number" value={rec.received_qty || 0}
                           onChange={e => handleChange(item.id, 'received_qty', e.target.value)}
-                          className="w-20 p-2 border-2 border-gray-200 rounded-lg text-center focus:border-blue-500 focus:outline-none" />
+                          className="w-20 py-2 rounded-xl bg-[#F2F2F7] text-center focus:ring-2 focus:ring-ios-blue focus:outline-none" />
                       </td>
                       <td className="p-4 text-center">
                         <input type="number" value={rec.consumed_qty || 0}
                           onChange={e => handleChange(item.id, 'consumed_qty', e.target.value)}
-                          className="w-20 p-2 border-2 border-gray-200 rounded-lg text-center focus:border-blue-500 focus:outline-none" />
+                          className="w-20 py-2 rounded-xl bg-[#F2F2F7] text-center focus:ring-2 focus:ring-ios-blue focus:outline-none" />
                       </td>
                       <td className="p-4 text-center">
                         <input type="number" value={rec.closing_qty || 0}
                           onChange={e => handleChange(item.id, 'closing_qty', e.target.value)}
-                          className="w-20 p-2 border-2 border-gray-200 rounded-lg text-center focus:border-blue-500 focus:outline-none font-bold" />
+                          className="w-20 py-2 rounded-xl bg-[#F2F2F7] text-center font-bold focus:ring-2 focus:ring-ios-blue focus:outline-none" />
                       </td>
                     </tr>
                   )
@@ -481,7 +480,7 @@ export default function Inventory({ user }) {
           </div>
 
           <button onClick={handleSave} disabled={saving}
-            className="w-full md:w-auto bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700 transition disabled:bg-gray-400">
+            className="btn-ios w-full md:w-auto text-base disabled:opacity-40">
             {saving ? 'جاري الإرسال...' : '📤 حفظ وإرسال للإدارة'}
           </button>
         </>

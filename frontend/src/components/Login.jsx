@@ -31,23 +31,23 @@ export default function Login({ setUser, apiUrl }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700" dir="rtl">
-      <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
-        <h1 className="text-2xl font-bold text-center mb-2 text-gray-900">📦 نظام الجرد اليومي</h1>
-        <p className="text-center text-gray-500 mb-6">تسجيل الدخول</p>
-        {error && <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-sm">{error}</div>}
+    <div className="min-h-screen flex items-center justify-center bg-ios-bg px-4" dir="rtl">
+      <div className="card-ios p-8 w-full max-w-md">
+        <h1 className="text-3xl font-bold text-center mb-2 text-ios-text tracking-tight">📦 نظام الجرد اليومي</h1>
+        <p className="text-center text-ios-label mb-6">تسجيل الدخول</p>
+        {error && <div className="bg-ios-red/10 text-ios-red p-3 rounded-2xl mb-4 text-sm font-semibold">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">البريد الإلكتروني</label>
+            <label className="label-ios">البريد الإلكتروني</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-              className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none" />
+              className="input-ios" />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">كلمة المرور</label>
+            <label className="label-ios">كلمة المرور</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none" />
+              className="input-ios" />
           </div>
-          <button type="submit" className="w-full bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition">
+          <button type="submit" className="btn-ios w-full py-3 text-lg">
             دخول
           </button>
         </form>

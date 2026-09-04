@@ -133,39 +133,39 @@ export default function AdminPanel() {
 
   return (
     <div dir="rtl">
-      <h2 className="text-2xl font-bold mb-6 text-gray-900">👑 لوحة الإدارة</h2>
+      <h2 className="text-2xl font-bold mb-6 text-ios-text tracking-tight">👑 لوحة الإدارة</h2>
 
       {message && (
-        <div className={`p-4 rounded-lg mb-4 font-bold ${message.includes('✅') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+        <div className={`p-4 rounded-2xl mb-4 font-bold ${message.includes('✅') ? 'bg-ios-green/15 text-[#1F7A33]' : 'bg-ios-red/10 text-ios-red'}`}>
           {message}
         </div>
       )}
 
       {selectedBranch ? (
         <div>
-          <button onClick={() => { setSelectedBranch(null); setMessage('') }} className="mb-4 text-blue-600 font-bold">← رجوع للقائمة</button>
-          <h3 className="text-xl font-bold mb-4">{selectedBranch.name} - جرد اليوم</h3>
+          <button onClick={() => { setSelectedBranch(null); setMessage('') }} className="mb-4 btn-ios-ghost">‹ رجوع للقائمة</button>
+          <h3 className="text-xl font-bold mb-4 text-ios-text">{selectedBranch.name} - جرد اليوم</h3>
 
           {inventoryData.length > 0 && (
-            <div className="bg-blue-50 p-4 rounded-lg mb-6">
-              <h4 className="font-bold mb-2">📋 بيانات الجرد المرسلة</h4>
+            <div className="bg-ios-blue/10 p-4 rounded-2xl mb-6">
+              <h4 className="font-bold mb-2 text-ios-text">📋 بيانات الجرد المرسلة</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                 {inventoryData.map(rec => (
-                  <div key={rec.id} className="bg-white p-2 rounded">
-                    <div className="font-semibold">{rec.item_name}</div>
-                    <div className="text-gray-600">نهاية: {rec.closing_qty}</div>
+                  <div key={rec.id} className="bg-white p-2 rounded-xl">
+                    <div className="font-semibold text-ios-text">{rec.item_name}</div>
+                    <div className="text-ios-label">نهاية: {rec.closing_qty}</div>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          <h4 className="font-bold text-lg mb-4">💰 إدخال مبيعات اليوم</h4>
+          <h4 className="font-bold text-lg mb-4 text-ios-text">💰 إدخال مبيعات اليوم</h4>
 
           {menuItems.length === 0 ? (
-            <div className="text-center p-6 bg-yellow-50 rounded-lg border border-yellow-200">
-              <p className="text-yellow-800 font-bold mb-2">⚠️ لا توجد أصناف مبيعات</p>
-              <p className="text-yellow-700 text-sm">أضف الأصناف من صفحة "🛠️ الإدارة العامة"</p>
+            <div className="text-center p-6 bg-ios-yellow/20 rounded-2xl">
+              <p className="text-[#B25000] font-bold mb-2">⚠️ لا توجد أصناف مبيعات</p>
+              <p className="text-[#B25000]/80 text-sm">أضف الأصناف من صفحة "🛠️ الإدارة العامة"</p>
             </div>
           ) : (
             <>
@@ -174,23 +174,23 @@ export default function AdminPanel() {
                   const sale = sales[item.id] || { quantity_sold: 0 }
                   const total = sale.quantity_sold * item.price
                   return (
-                    <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <div key={item.id} className="card-ios p-4">
                       <div className="flex justify-between items-center mb-2">
-                        <h5 className="font-bold">{item.name}</h5>
-                        <span className="text-blue-600 font-bold">{item.price} د.ع</span>
+                        <h5 className="font-bold text-ios-text">{item.name}</h5>
+                        <span className="text-ios-blue font-bold">{item.price} د.ع</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <button onClick={() => handleSalesChange(item.id, (sale.quantity_sold || 0) - 1)}
-                          className="w-8 h-8 bg-gray-100 rounded-lg font-bold">−</button>
+                          className="w-8 h-8 bg-ios-fill rounded-lg font-bold text-ios-text">−</button>
                         <input type="number" min="0"
                           value={sale.quantity_sold || 0}
                           onChange={e => handleSalesChange(item.id, e.target.value)}
-                          className="flex-1 p-2 border-2 border-gray-200 rounded-lg text-center font-bold" />
+                          className="flex-1 py-2 rounded-xl bg-[#F2F2F7] text-center font-bold focus:ring-2 focus:ring-ios-blue focus:outline-none" />
                         <button onClick={() => handleSalesChange(item.id, (sale.quantity_sold || 0) + 1)}
-                          className="w-8 h-8 bg-gray-100 rounded-lg font-bold">+</button>
+                          className="w-8 h-8 bg-ios-fill rounded-lg font-bold text-ios-text">+</button>
                       </div>
                       {total > 0 && (
-                        <div className="mt-2 text-green-600 font-bold text-center">
+                        <div className="mt-2 text-ios-green font-bold text-center">
                           الإجمالي: {total} د.ع
                         </div>
                       )}
@@ -199,8 +199,7 @@ export default function AdminPanel() {
                 })}
               </div>
 
-              <button onClick={submitSales}
-                className="w-full bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 transition">
+              <button onClick={submitSales} className="btn-ios w-full text-base">
                 💾 حفظ المبيعات
               </button>
             </>
@@ -208,21 +207,20 @@ export default function AdminPanel() {
         </div>
       ) : (
         <>
-          <h3 className="font-bold text-lg mb-4">📥 جرد بانتظار المراجعة ({submittedBranches.length})</h3>
+          <h3 className="font-bold text-lg mb-4 text-ios-text">📥 جرد بانتظار المراجعة ({submittedBranches.length})</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {branches.map(branch => {
               const hasInventory = submittedBranches.find(s => s.id === branch.id)
               return (
-                <div key={branch.id} className={`p-6 rounded-xl shadow-sm border ${hasInventory ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                  <h3 className="font-bold text-lg mb-2">{branch.name}</h3>
-                  <p className="text-gray-500 text-sm mb-4">{branch.location}</p>
+                <div key={branch.id} className={`p-6 rounded-2xl ${hasInventory ? 'bg-ios-green/10' : 'bg-ios-red/10'}`}>
+                  <h3 className="font-bold text-lg mb-2 text-ios-text">{branch.name}</h3>
+                  <p className="text-ios-label text-sm mb-4">{branch.location}</p>
                   {hasInventory ? (
-                    <div className="text-green-600 font-bold mb-3">✅ تم استلام الجرد</div>
+                    <div className="text-ios-green font-bold mb-3">✅ تم استلام الجرد</div>
                   ) : (
-                    <div className="text-red-600 font-bold mb-3">⏳ لم يتم الجرد</div>
+                    <div className="text-ios-red font-bold mb-3">⏳ لم يتم الجرد</div>
                   )}
-                  <button onClick={() => viewInventory(branch)}
-                    className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition">
+                  <button onClick={() => viewInventory(branch)} className="btn-ios w-full">
                     عرض / إدخال مبيعات
                   </button>
                 </div>

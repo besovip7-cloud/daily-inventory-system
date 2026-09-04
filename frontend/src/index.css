@@ -2,8 +2,76 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: 'Cairo', sans-serif;
-  background: #f8fafc;
-  direction: rtl;
+@layer base {
+  body {
+    @apply bg-ios-bg text-ios-text antialiased;
+    direction: rtl;
+  }
+}
+
+@layer components {
+  .card-ios {
+    @apply bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06)];
+  }
+
+  .btn-ios {
+    @apply inline-flex items-center justify-center font-semibold rounded-xl px-4 py-2.5 bg-ios-blue text-white active:opacity-70 transition;
+  }
+
+  .btn-ios-secondary {
+    @apply inline-flex items-center justify-center font-semibold rounded-xl px-4 py-2.5 bg-ios-fill text-ios-text active:opacity-70 transition;
+  }
+
+  .btn-ios-danger {
+    @apply inline-flex items-center justify-center font-semibold rounded-xl px-4 py-2.5 bg-ios-red text-white active:opacity-70 transition;
+  }
+
+  .btn-ios-ghost {
+    @apply text-ios-blue font-semibold active:opacity-70 transition;
+  }
+
+  .input-ios {
+    @apply w-full rounded-xl bg-[#F2F2F7] border-0 px-4 py-3 focus:ring-2 focus:ring-ios-blue focus:outline-none placeholder:text-ios-label;
+  }
+
+  .label-ios {
+    @apply block text-sm font-semibold text-ios-text mb-1.5;
+  }
+
+  .segmented {
+    @apply flex bg-[#E5E5EA] rounded-xl p-1 gap-1;
+  }
+
+  .segmented-item {
+    @apply flex-1 text-center px-3 py-1.5 rounded-lg text-sm font-semibold text-ios-text;
+  }
+
+  .segmented-item-active {
+    @apply bg-white shadow-sm;
+  }
+
+  .list-row {
+    @apply flex items-center justify-between px-4 py-3 border-b border-ios-sep last:border-b-0;
+  }
+
+  .badge-ios {
+    @apply text-xs font-bold rounded-full px-2 py-0.5;
+  }
+}
+
+/* thin iOS-style scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c7c7cc transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #c7c7cc;
+  border-radius: 3px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
 }

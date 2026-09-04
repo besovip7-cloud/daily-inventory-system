@@ -66,24 +66,24 @@ export default function AlertBell() {
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)}></div>
-          <div className="absolute left-0 top-8 z-20 w-80 bg-white text-gray-800 rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-            <div className="flex justify-between items-center p-3 border-b border-gray-100">
+          <div className="absolute left-0 top-8 z-20 w-80 bg-white text-ios-text rounded-2xl shadow-lg overflow-hidden">
+            <div className="flex justify-between items-center p-3 border-b border-ios-sep">
               <span className="font-bold">🔔 التنبيهات ({count})</span>
               {alerts.length > 0 && (
-                <button onClick={resolveAll} className="text-xs text-blue-600 font-bold hover:underline">
+                <button onClick={resolveAll} className="text-xs text-ios-blue font-bold active:opacity-70">
                   ✓ قرأت الكل
                 </button>
               )}
             </div>
             <div className="max-h-80 overflow-y-auto">
               {alerts.length === 0 ? (
-                <p className="text-center text-gray-400 py-6 text-sm">🎉 لا توجد تنبيهات جديدة</p>
+                <p className="text-center text-ios-label py-6 text-sm">🎉 لا توجد تنبيهات جديدة</p>
               ) : (
                 alerts.map(a => (
-                  <div key={a.id} className="p-3 border-b border-gray-50 hover:bg-gray-50">
-                    <div className="font-bold text-sm">{alertIcon(a.alert_type)} {a.title}</div>
-                    <div className="text-xs text-gray-600 mt-1">{a.message}</div>
-                    <div className="text-xs text-gray-400 mt-1">
+                  <div key={a.id} className="p-3 border-b border-ios-sep last:border-b-0 hover:bg-ios-bg">
+                    <div className="font-bold text-sm text-ios-text">{alertIcon(a.alert_type)} {a.title}</div>
+                    <div className="text-xs text-ios-text/70 mt-1">{a.message}</div>
+                    <div className="text-xs text-ios-label mt-1">
                       {a.branch_name && <span>{a.branch_name} • </span>}
                       {new Date(a.created_at).toLocaleString('ar')}
                     </div>
@@ -92,7 +92,7 @@ export default function AlertBell() {
               )}
             </div>
             <Link to="/alerts" onClick={() => setOpen(false)}
-              className="block text-center text-sm text-blue-600 font-bold p-2 hover:bg-blue-50 border-t border-gray-100">
+              className="block text-center text-sm text-ios-blue font-bold p-2.5 hover:bg-ios-bg border-t border-ios-sep">
               عرض صفحة التنبيهات
             </Link>
           </div>

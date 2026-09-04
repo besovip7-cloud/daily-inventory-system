@@ -84,21 +84,21 @@ export default function Sales() {
 
   return (
     <div dir="rtl">
-      <h2 className="text-2xl font-bold mb-6 text-gray-900">💰 جرد المبيعات اليومية</h2>
+      <h2 className="text-2xl font-bold mb-6 text-ios-text tracking-tight">💰 جرد المبيعات اليومية</h2>
 
       {message && (
-        <div className={`p-4 rounded-lg mb-4 font-bold ${message.includes('✅') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+        <div className={`p-4 rounded-2xl mb-4 font-bold ${message.includes('✅') ? 'bg-ios-green/15 text-[#1F7A33]' : 'bg-ios-red/10 text-ios-red'}`}>
           {message}
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">الفرع</label>
+        <div className="card-ios p-4">
+          <label className="label-ios">الفرع</label>
           <select
             value={selectedBranch}
             onChange={e => setSelectedBranch(e.target.value)}
-            className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+            className="input-ios"
           >
             {branches.map(b => (
               <option key={b.id} value={b.id}>{b.name}</option>
@@ -106,35 +106,35 @@ export default function Sales() {
           </select>
         </div>
 
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">💳 كردت / فيزا</label>
+        <div className="card-ios p-4">
+          <label className="label-ios">💳 كردت / فيزا</label>
           <input
             type="number"
             value={paymentCard}
             onChange={e => setPaymentCard(e.target.value)}
-            className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+            className="input-ios"
           />
         </div>
 
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">💵 كاش</label>
+        <div className="card-ios p-4">
+          <label className="label-ios">💵 كاش</label>
           <input
             type="number"
             value={paymentCash}
             onChange={e => setPaymentCash(e.target.value)}
-            className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+            className="input-ios"
           />
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+      <div className="card-ios overflow-hidden mb-6">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50">
+          <thead className="bg-[#F2F2F7]">
             <tr>
-              <th className="p-4 text-right font-semibold text-gray-600">الصنف</th>
-              <th className="p-4 text-center font-semibold text-gray-600">السعر</th>
-              <th className="p-4 text-center font-semibold text-gray-600">الكمية المباعة</th>
-              <th className="p-4 text-center font-semibold text-gray-600">الإجمالي</th>
+              <th className="p-4 text-right font-semibold text-ios-label text-xs">الصنف</th>
+              <th className="p-4 text-center font-semibold text-ios-label text-xs">السعر</th>
+              <th className="p-4 text-center font-semibold text-ios-label text-xs">الكمية المباعة</th>
+              <th className="p-4 text-center font-semibold text-ios-label text-xs">الإجمالي</th>
             </tr>
           </thead>
           <tbody>
@@ -142,28 +142,28 @@ export default function Sales() {
               const sale = sales[item.id] || { quantity_sold: 0, unit_price: item.price }
               const total = sale.quantity_sold * sale.unit_price
               return (
-                <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="p-4 font-semibold text-gray-900">{item.name}</td>
-                  <td className="p-4 text-center text-gray-600">{item.price} دينار</td>
+                <tr key={item.id} className="border-b border-ios-sep last:border-b-0 hover:bg-ios-bg">
+                  <td className="p-4 font-semibold text-ios-text">{item.name}</td>
+                  <td className="p-4 text-center text-ios-label">{item.price} دينار</td>
                   <td className="p-4 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <button
                         onClick={() => handleChange(item.id, (sale.quantity_sold || 0) - 1)}
-                        className="w-8 h-8 bg-gray-100 rounded-lg font-bold hover:bg-gray-200"
+                        className="w-8 h-8 bg-ios-fill rounded-lg font-bold text-ios-text active:opacity-70"
                       >−</button>
                       <input
                         type="number"
                         value={sale.quantity_sold || 0}
                         onChange={e => handleChange(item.id, e.target.value)}
-                        className="w-16 p-2 border-2 border-gray-200 rounded-lg text-center font-bold focus:border-blue-500 focus:outline-none"
+                        className="w-16 py-2 rounded-xl bg-[#F2F2F7] text-center font-bold focus:ring-2 focus:ring-ios-blue focus:outline-none"
                       />
                       <button
                         onClick={() => handleChange(item.id, (sale.quantity_sold || 0) + 1)}
-                        className="w-8 h-8 bg-gray-100 rounded-lg font-bold hover:bg-gray-200"
+                        className="w-8 h-8 bg-ios-fill rounded-lg font-bold text-ios-text active:opacity-70"
                       >+</button>
                     </div>
                   </td>
-                  <td className="p-4 text-center font-bold text-blue-600">{total} دينار
+                  <td className="p-4 text-center font-bold text-ios-blue">{total} دينار
                   </td>
                 </tr>
               )
@@ -172,21 +172,21 @@ export default function Sales() {
         </table>
       </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
+      <div className="card-ios p-6 mb-6">
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
-            <div className="text-3xl font-bold text-blue-600">{getTotalOrders()}</div>
-            <div className="text-sm text-gray-600">عدد القطع</div>
+            <div className="text-3xl font-bold text-ios-blue">{getTotalOrders()}</div>
+            <div className="text-sm text-ios-label">عدد القطع</div>
           </div>
           <div>
-            <div className="text-3xl font-bold text-green-600">{getTotalRevenue()} دينار</div>
-            <div className="text-sm text-gray-600">إجمالي المبيعات</div>
+            <div className="text-3xl font-bold text-ios-green">{getTotalRevenue()} دينار</div>
+            <div className="text-sm text-ios-label">إجمالي المبيعات</div>
           </div>
           <div>
-            <div className="text-3xl font-bold text-purple-600">
+            <div className="text-3xl font-bold text-ios-orange">
               {getTotalOrders() > 0 ? Math.round(getTotalRevenue() / getTotalOrders()) : 0} دينار
             </div>
-            <div className="text-sm text-gray-600">متوسط الطلب</div>
+            <div className="text-sm text-ios-label">متوسط الطلب</div>
           </div>
         </div>
       </div>
@@ -194,7 +194,7 @@ export default function Sales() {
       <button
         onClick={handleSave}
         disabled={saving}
-        className="w-full md:w-auto bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 transition disabled:bg-gray-400"
+        className="btn-ios w-full md:w-auto text-base disabled:opacity-40"
       >
         {saving ? 'جاري الحفظ...' : '💾 حفظ المبيعات اليومية'}
       </button>
