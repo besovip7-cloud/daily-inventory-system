@@ -724,6 +724,7 @@ function RecipesTab({ showMsg, headers }) {
   const [selectedMenu, setSelectedMenu] = useState('')
   const [recipes, setRecipes] = useState([])
   const [newRecipe, setNewRecipe] = useState({ inventory_item_id: '', quantity: '', unit: 'غرام' })
+  const [addToAll, setAddToAll] = useState(false)
 
   useEffect(() => {
     fetch(`${API_URL}/branches`, { headers }).then(r => r.json()).then(d => {
@@ -751,29 +752,61 @@ function RecipesTab({ showMsg, headers }) {
       .then(r => r.json()).then(d => setRecipes(d || []))
   }
 
+  const postRecipe = async (branchId, inventoryItemId, qty) => {
+    const res = await fetch(`${API_URL}/sales/recipes`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        branch_id: parseInt(branchId),
+        menu_item_id: parseInt(selectedMenu),
+        inventory_item_id: inventoryItemId,
+        quantity: qty
+      })
+    })
+    const data = await res.json().catch(() => ({}))
+    return { ok: res.ok, message: data.message }
+  }
+
   const handleAdd = async (e) => {
     e.preventDefault()
     const invItem = invItems.find(i => i.id === parseInt(newRecipe.inventory_item_id))
+
+    // نفس المكون لكل الفروع: نبحث عن مادة بنفس الاسم بكل فرع ونحفظ الوصفة هناك
+    if (addToAll && branches.length > 1) {
+      const results = await Promise.all(branches.map(async b => {
+        try {
+          const r = await fetch(`${API_URL}/inventory/items/${b.id}`, { headers })
+          const items = await r.json()
+          const match = (items || []).find(i => i.name.trim().toLowerCase() === invItem?.name.trim().toLowerCase())
+          if (!match) return { ok: false, branch: b.name, message: 'ما بيه مادة بهذا الاسم' }
+          const qty = toItemUnit(parseFloat(newRecipe.quantity), newRecipe.unit, match.unit)
+          const { ok, message } = await postRecipe(b.id, match.id, qty)
+          return { ok, branch: b.name, message: ok ? '' : (message || 'فشل الحفظ') }
+        } catch { return { ok: false, branch: b.name, message: 'خطأ في الاتصال' } }
+      }))
+      const okCount = results.filter(x => x.ok).length
+      const failed = results.filter(x => !x.ok)
+      if (failed.length === 0) {
+        showMsg(`✅ تم حفظ المكون لكل الفروع (${okCount})`)
+      } else {
+        showMsg(`⚠️ حُفظ في ${okCount} فرع — تجاوز: ${failed.map(f => `${f.branch} (${f.message})`).join('، ')}`)
+      }
+      setNewRecipe({ inventory_item_id: '', quantity: '', unit: 'غرام' })
+      setAddToAll(false)
+      loadRecipes()
+      return
+    }
+
     const finalQty = toItemUnit(parseFloat(newRecipe.quantity), newRecipe.unit, invItem?.unit)
     try {
-      const res = await fetch(`${API_URL}/sales/recipes`, {
-        method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          branch_id: parseInt(selectedBranch),
-          menu_item_id: parseInt(selectedMenu),
-          inventory_item_id: parseInt(newRecipe.inventory_item_id),
-          quantity: finalQty
-        })
-      })
-      const data = await res.json()
-      if (res.ok) {
+      const { ok, message } = await postRecipe(selectedBranch, parseInt(newRecipe.inventory_item_id), finalQty)
+      if (ok) {
         const converted = finalQty !== parseFloat(newRecipe.quantity)
         showMsg(`✅ تم حفظ المكون بنجاح!${converted ? ` (تم التحويل: ${newRecipe.quantity} ${newRecipe.unit} = ${finalQty} ${invItem?.unit})` : ''}`)
         setNewRecipe({ inventory_item_id: '', quantity: '', unit: 'غرام' })
         loadRecipes()
       } else {
-        showMsg('❌ فشل: ' + (data.message || ''))
+        showMsg('❌ فشل: ' + (message || ''))
       }
     } catch { showMsg('❌ خطأ في الاتصال') }
   }
@@ -833,9 +866,16 @@ function RecipesTab({ showMsg, headers }) {
             <option value="مليلتر">مليلتر</option>
             <option value="قطعة">قطعة</option>
           </select>
-          <button type="submit" className="btn-ios">
-            إضافة المكون
-          </button>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-sm font-semibold text-ios-text cursor-pointer select-none">
+              <input type="checkbox" checked={addToAll} onChange={e => setAddToAll(e.target.checked)}
+                className="w-4 h-4 accent-ios-blue" />
+              🏪 كل الفروع ({branches.length})
+            </label>
+            <button type="submit" className="btn-ios">
+              إضافة المكون
+            </button>
+          </div>
         </form>
         <p className="text-ios-label text-sm mt-3">
           💡 إذا اخترت وحدة مختلفة عن وحدة المادة (مثلاً غرام لمادة بوحدة كغم)، يتم التحويل تلقائياً
