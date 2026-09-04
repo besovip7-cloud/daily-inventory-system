@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { exportToExcel, printReport } from '../utils/export'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -97,6 +98,125 @@ export default function Reports({ user }) {
 
   const salesTotal = sales.reduce((sum, r) => sum + parseFloat(r.total_revenue || 0), 0)
   const lowStockLabels = { out_of_stock: 'نفذ', critical: 'حرج', low: 'منخفض' }
+
+  const branchName = branches.find(b => String(b.id) === selectedBranch)?.name || ''
+
+  const reportConfig = () => ({
+    sales: {
+      title: 'تقرير المبيعات',
+      filename: `مبيعات_${branchName}_${from}_${to}`,
+      columns: [
+        { key: 'record_date', label: 'التاريخ' },
+        { key: 'name', label: 'الصنف' },
+        { key: 'quantity_sold', label: 'الكمية' },
+        { key: 'total_revenue', label: 'الإيراد (د.ع)' },
+        { key: 'payment_card', label: 'شبكة (د.ع)' },
+        { key: 'payment_cash', label: 'نقدي (د.ع)' },
+      ],
+      rows: sales.map(r => ({
+        ...r,
+        record_date: fmtDate(new Date(r.record_date)),
+        total_revenue: parseFloat(r.total_revenue).toFixed(2),
+        payment_card: parseFloat(r.payment_card).toFixed(2),
+        payment_cash: parseFloat(r.payment_cash).toFixed(2),
+      })),
+      totals: [{ label: 'إجمالي الإيرادات', value: `${salesTotal.toFixed(2)} د.ع` }],
+    },
+    inventory: {
+      title: 'تقرير الجرد',
+      filename: `جرد_${branchName}_${from}_${to}`,
+      columns: [
+        { key: 'record_date', label: 'التاريخ' },
+        { key: 'name', label: 'المادة' },
+        { key: 'unit', label: 'الوحدة' },
+        { key: 'opening_qty', label: 'افتتاحي' },
+        { key: 'received_qty', label: 'مستلم' },
+        { key: 'consumed_qty', label: 'مستهلك' },
+        { key: 'closing_qty', label: 'ختامي' },
+      ],
+      rows: inventory.map(r => ({ ...r, record_date: fmtDate(new Date(r.record_date)) })),
+      totals: [],
+    },
+    lowstock: {
+      title: 'تقرير المخزون المنخفض',
+      filename: `مخزون_منخفض_${branchName}`,
+      columns: [
+        { key: 'name', label: 'المادة' },
+        { key: 'unit', label: 'الوحدة' },
+        { key: 'current_quantity', label: 'الكمية الحالية' },
+        { key: 'min_quantity', label: 'الحد الأدنى' },
+        { key: 'status', label: 'الحالة' },
+      ],
+      rows: lowStock.map(r => ({ ...r, status: lowStockLabels[r.status] || r.status })),
+      totals: [],
+    },
+    movements: {
+      title: 'سجل حركات المخزون',
+      filename: `حركات_${branchName}_${from}_${to}`,
+      columns: [
+        { key: 'created_at', label: 'الوقت' },
+        { key: 'item_name', label: 'المادة' },
+        { key: 'unit', label: 'الوحدة' },
+        { key: 'quantity', label: 'الكمية' },
+        { key: 'balance_before', label: 'قبل' },
+        { key: 'balance_after', label: 'بعد' },
+        { key: 'reference', label: 'البيان' },
+        { key: 'created_by_name', label: 'المستخدم' },
+      ],
+      rows: movements.map(m => ({
+        ...m,
+        created_at: new Date(m.created_at).toLocaleString('ar'),
+        reference: m.reference || '—',
+        created_by_name: m.created_by_name || '—',
+      })),
+      totals: [],
+    },
+    variance: {
+      title: `تقرير فروقات الجرد بتاريخ ${varianceDate}`,
+      filename: `فروقات_${branchName}_${varianceDate}`,
+      columns: [
+        { key: 'name', label: 'المادة' },
+        { key: 'unit', label: 'الوحدة' },
+        { key: 'opening_qty', label: 'افتتاحي' },
+        { key: 'received_qty', label: 'وارد' },
+        { key: 'recipe_deductions', label: 'خصم الوصفات' },
+        { key: 'expected', label: 'المتوقع' },
+        { key: 'closing_qty', label: 'الفعلي (الختامي)' },
+        { key: 'variance', label: 'الفرق' },
+      ],
+      rows: variance.map(r => ({ ...r, recipe_deductions: parseFloat(r.recipe_deductions).toFixed(3) })),
+      totals: [],
+    },
+  })
+
+  const activeConfig = reportConfig()[activeTab]
+
+  const handleExportExcel = () => {
+    if (!activeConfig || activeConfig.rows.length === 0) return
+    exportToExcel({
+      filename: activeConfig.filename,
+      sheetName: activeConfig.title.slice(0, 31),
+      columns: activeConfig.columns,
+      rows: activeConfig.rows,
+      totals: activeConfig.totals,
+    })
+  }
+
+  const handlePrint = () => {
+    if (!activeConfig || activeConfig.rows.length === 0) return
+    const subtitle = activeTab === 'variance'
+      ? `الفرع: ${branchName} • بتاريخ ${varianceDate}`
+      : activeTab === 'lowstock'
+        ? `الفرع: ${branchName}`
+        : `الفرع: ${branchName} • من ${from} إلى ${to}`
+    printReport({
+      title: activeConfig.title,
+      subtitle,
+      columns: activeConfig.columns,
+      rows: activeConfig.rows,
+      totals: activeConfig.totals,
+    })
+  }
 
   // تعديل/حذف السجلات (للأدمن فقط)
   const [editing, setEditing] = useState(null) // {table: 'sales'|'inventory', id, values: {}}
@@ -244,6 +364,15 @@ export default function Reports({ user }) {
       </div>
 
       <div className="card-ios overflow-hidden">
+        {activeConfig && activeConfig.rows.length > 0 && !loading && (
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-ios-sep bg-[#F9F9FB]">
+            <span className="font-bold text-ios-text text-sm">{activeConfig.title}</span>
+            <div className="flex gap-2">
+              <button onClick={handleExportExcel} className="btn-ios-secondary text-xs px-3 py-1.5">📊 Excel</button>
+              <button onClick={handlePrint} className="btn-ios-secondary text-xs px-3 py-1.5">🖨️ طباعة / PDF</button>
+            </div>
+          </div>
+        )}
         {loading ? (
           <div className="text-center p-10 text-ios-label">جاري التحميل...</div>
         ) : activeTab === 'sales' ? (
