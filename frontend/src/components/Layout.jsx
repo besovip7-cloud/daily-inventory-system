@@ -1,4 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
+import AlertBell from './AlertBell'
 
 export default function Layout({ user }) {
   const logout = () => {
@@ -12,7 +13,7 @@ export default function Layout({ user }) {
     { path: '/', label: '📊 لوحة التحكم', roles: ['admin', 'manager', 'staff'] },
     { path: '/inventory', label: '📦 جرد المخزون', roles: ['admin', 'manager', 'staff'] },
     { path: '/branches', label: '🏪 إدارة الفروع', roles: ['admin', 'manager', 'staff'] },
-    { path: '/sales', label: '💰 المبيعات', roles: ['admin', 'manager', 'staff'] },
+    { path: '/sales', label: '💰 المبيعات', roles: ['admin', 'manager', 'staff', 'accountant'] },
     { path: '/alerts', label: '🔔 التنبيهات', roles: ['admin', 'manager', 'staff'] },
     { path: '/reports', label: '📈 التقارير', roles: ['admin', 'accountant'] },
     { path: '/admin', label: '👑 الإدارة', roles: ['admin'] },
@@ -20,6 +21,7 @@ export default function Layout({ user }) {
   ]
 
   const navItems = allNavItems.filter(item => item.roles.includes(user?.role))
+  const showBell = user?.role === 'admin' || user?.role === 'manager'
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
@@ -27,6 +29,7 @@ export default function Layout({ user }) {
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <h1 className="text-xl font-bold">📦 نظام الجرد اليومي</h1>
           <div className="flex gap-4 items-center">
+            {showBell && <AlertBell />}
             <span className="text-sm text-gray-300">{user?.name}</span>
             <button onClick={logout} className="text-sm bg-red-600 px-3 py-1 rounded">خروج</button>
           </div>

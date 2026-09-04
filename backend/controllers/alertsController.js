@@ -85,3 +85,61 @@ exports.getUnreadCount = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// Bell badge: admins see all branches, managers only their own
+exports.getMyUnreadCount = async (req, res) => {
+  try {
+    let result;
+    if (req.user.role === 'admin') {
+      result = await pool.query(`SELECT COUNT(*) FROM alerts WHERE is_resolved = FALSE`);
+    } else if (req.user.role === 'manager' && req.user.branch_id) {
+      result = await pool.query(
+        `SELECT COUNT(*) FROM alerts WHERE branch_id = $1 AND is_resolved = FALSE`,
+        [req.user.branch_id]
+      );
+    } else {
+      return res.json({ count: 0 });
+    }
+    res.json({ count: parseInt(result.rows[0].count) });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Bell dropdown: latest unresolved alerts for the current user
+exports.getMyAlerts = async (req, res) => {
+  try {
+    let query = `SELECT a.*, ii.name as item_name, ii.unit, b.name as branch_name
+                 FROM alerts a
+                 LEFT JOIN inventory_items ii ON a.item_id = ii.id
+                 LEFT JOIN branches b ON a.branch_id = b.id
+                 WHERE a.is_resolved = FALSE`;
+    const params = [];
+    if (req.user.role !== 'admin') {
+      query += ` AND a.branch_id = $1`;
+      params.push(req.user.branch_id || -1);
+    }
+    query += ` ORDER BY a.created_at DESC LIMIT 15`;
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Mark all of the current user's alerts as read
+exports.resolveMine = async (req, res) => {
+  try {
+    let query = `UPDATE alerts SET is_resolved = TRUE, resolved_by = $1, resolved_at = CURRENT_TIMESTAMP
+                 WHERE is_resolved = FALSE`;
+    const params = [req.user.id];
+    if (req.user.role !== 'admin') {
+      query += ` AND branch_id = $2`;
+      params.push(req.user.branch_id || -1);
+    }
+    await pool.query(query, params);
+    res.json({ message: 'All alerts resolved' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

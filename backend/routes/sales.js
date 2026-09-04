@@ -3,10 +3,10 @@ const router = express.Router();
 const salesController = require('../controllers/salesController');
 const { auth, branchAccess, blockAccountant, adminOnly } = require('../middleware/auth');
 
-router.use(auth, blockAccountant);
+router.use(auth);
 
 router.get('/menu', auth, salesController.getMenuItems);
-router.post('/menu', auth, salesController.createMenuItem);
+router.post('/menu', auth, blockAccountant, salesController.createMenuItem);
 router.put('/menu/:id', auth, adminOnly, salesController.updateMenuItem);
 router.delete('/menu/:id', auth, adminOnly, salesController.deleteMenuItem);
 

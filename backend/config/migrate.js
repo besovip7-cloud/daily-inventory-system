@@ -112,6 +112,10 @@ const createTables = async () => {
       )
     `);
 
+    // Allow 'variance' alert type (idempotent for existing databases)
+    await pool.query(`ALTER TABLE alerts DROP CONSTRAINT IF EXISTS alerts_alert_type_check`);
+    await pool.query(`ALTER TABLE alerts ADD CONSTRAINT alerts_alert_type_check CHECK (alert_type IN ('critical', 'warning', 'info', 'variance'))`);
+
     // Menu Recipes (links menu items to inventory items per branch)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS menu_recipes (

@@ -1,5 +1,5 @@
 const pool = require('../config/database');
-const { checkAndCreateAlerts } = require('../utils/alerts');
+const { checkAndCreateAlerts, checkVarianceAndAlert } = require('../utils/alerts');
 
 // Deducts (or restores, for negative delta) recipe quantities from inventory.
 // Records every change in inventory_movements and returns the applied list.
@@ -36,7 +36,7 @@ const applyRecipeDelta = async (executor, branchId, menuItemId, deltaQty, refere
     );
     if (itemInfo.rows.length > 0) {
       await checkAndCreateAlerts(branchId, r.inventory_item_id, after, itemInfo.rows[0].min_quantity, itemInfo.rows[0].name);
-      applied.push({ name: itemInfo.rows[0].name, unit: itemInfo.rows[0].unit, deducted: used });
+      applied.push({ item_id: r.inventory_item_id, name: itemInfo.rows[0].name, unit: itemInfo.rows[0].unit, deducted: used });
     }
   }
   return applied;
@@ -174,7 +174,10 @@ exports.saveDailySales = async (req, res) => {
           const menuInfo = await client.query('SELECT name FROM menu_items WHERE id = $1', [record.item_id]);
           const menuName = menuInfo.rows.length ? menuInfo.rows[0].name : `صنف #${record.item_id}`;
           const reference = `بيع: ${menuName} ×${record.quantity_sold}${prev.rows.length ? ` (تعديل من ${prev.rows[0].quantity_sold})` : ''}`;
-          await applyRecipeDelta(client, branch_id, record.item_id, delta, reference, created_by);
+          const applied = await applyRecipeDelta(client, branch_id, record.item_id, delta, reference, created_by);
+          for (const a of applied) {
+            await checkVarianceAndAlert(client, branch_id, a.item_id, today);
+          }
         }
       }
 
@@ -224,7 +227,10 @@ exports.updateDailySale = async (req, res) => {
     );
     const menuName = menuInfo.rows.length ? menuInfo.rows[0].name : `صنف #${old.item_id}`;
     const reference = `تعديل بيع: ${menuName} من ${old.quantity_sold} إلى ${quantity_sold}`;
-    await applyRecipeDelta(pool, old.branch_id, old.item_id, quantity_sold - old.quantity_sold, reference, req.user.id);
+    const applied = await applyRecipeDelta(pool, old.branch_id, old.item_id, quantity_sold - old.quantity_sold, reference, req.user.id);
+    for (const a of applied) {
+      await checkVarianceAndAlert(pool, old.branch_id, a.item_id, old.record_date);
+    }
 
     res.json(result.rows[0]);
   } catch (err) {
@@ -245,7 +251,10 @@ exports.deleteDailySale = async (req, res) => {
     const menuInfo = await pool.query('SELECT name FROM menu_items WHERE id = $1', [old.rows[0].item_id]);
     const menuName = menuInfo.rows.length ? menuInfo.rows[0].name : `صنف #${old.rows[0].item_id}`;
     const reference = `حذف بيع: ${menuName} ×${old.rows[0].quantity_sold}`;
-    await applyRecipeDelta(pool, old.rows[0].branch_id, old.rows[0].item_id, -old.rows[0].quantity_sold, reference, req.user.id);
+    const applied = await applyRecipeDelta(pool, old.rows[0].branch_id, old.rows[0].item_id, -old.rows[0].quantity_sold, reference, req.user.id);
+    for (const a of applied) {
+      await checkVarianceAndAlert(pool, old.rows[0].branch_id, a.item_id, old.rows[0].record_date);
+    }
 
     res.json({ message: 'Record deleted' });
   } catch (err) {
