@@ -28,6 +28,7 @@ export default function Inventory({ user }) {
   const [showManage, setShowManage] = useState(false)
   const [itemForm, setItemForm] = useState(emptyItemForm)
   const [editingItem, setEditingItem] = useState(null)
+  const [addToAll, setAddToAll] = useState(false)
 
   const token = localStorage.getItem('token')
 
@@ -165,24 +166,43 @@ export default function Inventory({ user }) {
   const handleItemSubmit = async (e) => {
     e.preventDefault()
     setMessage('')
+    const buildBody = (branchId) => JSON.stringify({
+      branch_id: parseInt(branchId),
+      name: itemForm.name,
+      category: itemForm.category,
+      unit: itemForm.unit,
+      min_quantity: parseFloat(itemForm.min_quantity) || 0,
+      current_quantity: parseFloat(itemForm.current_quantity) || 0,
+      cost_per_unit: parseFloat(itemForm.cost_per_unit) || 0
+    })
+    const postHeaders = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
     try {
       const isEdit = !!editingItem
+
+      // إضافة المادة لكل الفروع دفعة واحدة (للأدمن فقط)
+      if (!isEdit && addToAll && branches.length > 1) {
+        const results = await Promise.all(branches.map(b =>
+          fetch(`${API_URL}/inventory/items`, { method: 'POST', headers: postHeaders, body: buildBody(b.id) })
+            .then(async r => ({ ok: r.ok, branch: b.name, message: (await r.json()).message }))
+        ))
+        const okCount = results.filter(x => x.ok).length
+        const failed = results.filter(x => !x.ok)
+        if (failed.length === 0) {
+          setMessage(`✅ تمت إضافة "${itemForm.name}" إلى ${okCount} فرع`)
+        } else {
+          setMessage(`⚠️ أُضيفت المادة إلى ${okCount} فرع — فشلت في: ${failed.map(f => f.branch).join('، ')} (${failed[0].message || 'موجودة مسبقاً'})`)
+        }
+        setItemForm(emptyItemForm)
+        setAddToAll(false)
+        loadItems()
+        return
+      }
+
       const url = isEdit ? `${API_URL}/inventory/items/${editingItem}` : `${API_URL}/inventory/items`
       const res = await fetch(url, {
         method: isEdit ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          branch_id: parseInt(selectedBranch),
-          name: itemForm.name,
-          category: itemForm.category,
-          unit: itemForm.unit,
-          min_quantity: parseFloat(itemForm.min_quantity) || 0,
-          current_quantity: parseFloat(itemForm.current_quantity) || 0,
-          cost_per_unit: parseFloat(itemForm.cost_per_unit) || 0
-        })
+        headers: postHeaders,
+        body: buildBody(selectedBranch)
       })
       const data = await res.json()
       if (res.ok) {
@@ -298,16 +318,25 @@ export default function Inventory({ user }) {
               value={itemForm.current_quantity}
               onChange={e => setItemForm({...itemForm, current_quantity: e.target.value})}
               className="input-ios" />
-            <div className="flex gap-2">
-              <button type="submit" className="btn-ios flex-1">
-                {editingItem ? 'حفظ' : 'إضافة'}
-              </button>
-              {editingItem && (
-                <button type="button" onClick={() => { setEditingItem(null); setItemForm(emptyItemForm) }}
-                  className="btn-ios-secondary">
-                  إلغاء
-                </button>
+            <div className="flex flex-col gap-2">
+              {user?.role === 'admin' && !editingItem && (
+                <label className="flex items-center gap-2 text-sm font-semibold text-ios-text cursor-pointer select-none">
+                  <input type="checkbox" checked={addToAll} onChange={e => setAddToAll(e.target.checked)}
+                    className="w-4 h-4 accent-ios-blue" />
+                  🏪 كل الفروع ({branches.length})
+                </label>
               )}
+              <div className="flex gap-2">
+                <button type="submit" className="btn-ios flex-1">
+                  {editingItem ? 'حفظ' : 'إضافة'}
+                </button>
+                {editingItem && (
+                  <button type="button" onClick={() => { setEditingItem(null); setItemForm(emptyItemForm) }}
+                    className="btn-ios-secondary">
+                    إلغاء
+                  </button>
+                )}
+              </div>
             </div>
           </form>
 
