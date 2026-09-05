@@ -4,7 +4,26 @@ import { visibleBranches, isBranchLocked } from '../utils/branchScope'
 
 const fmtMoney = n => parseFloat(n || 0).toFixed(2)
 
-function KpiCard({ icon, label, value, tone = 'blue' }) {
+// عدّاد متحرك يشتغل بالجافاسكربت مباشرة — ما يتأثر بأي إعدادات CSS
+function AnimatedNumber({ value, format = v => Math.round(v).toString(), duration = 900 }) {
+  const [display, setDisplay] = useState(0)
+  useEffect(() => {
+    const target = parseFloat(value) || 0
+    let raf
+    const start = performance.now()
+    const tick = (t) => {
+      const p = Math.min((t - start) / duration, 1)
+      const eased = 1 - Math.pow(1 - p, 3)
+      setDisplay(target * eased)
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [value])
+  return <>{format(display)}</>
+}
+
+function KpiCard({ icon, label, value, tone = 'blue', number }) {
   const tones = {
     blue: 'bg-ios-blue/10 text-ios-blue',
     green: 'bg-ios-green/15 text-[#1F7A33]',
@@ -17,7 +36,11 @@ function KpiCard({ icon, label, value, tone = 'blue' }) {
         {icon}
       </div>
       <div className="min-w-0">
-        <div className="text-2xl font-bold text-ios-text truncate">{value}</div>
+        <div className="text-2xl font-bold text-ios-text truncate">
+          {number !== undefined
+            ? <AnimatedNumber value={number} format={v => `${fmtMoney(v)} د.ع`} />
+            : value}
+        </div>
         <div className="text-xs text-ios-label">{label}</div>
       </div>
     </div>
@@ -103,7 +126,7 @@ export default function Dashboard({ apiUrl, user }) {
 
       {/* مؤشرات اليوم */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 anim-stagger">
-        <KpiCard icon="💰" label={myBranch ? 'مبيعات فرعك اليوم' : 'مبيعات كل الفروع اليوم'} value={`${fmtMoney(totalSales)} د.ع`} tone="green" />
+        <KpiCard icon="💰" label={myBranch ? 'مبيعات فرعك اليوم' : 'مبيعات كل الفروع اليوم'} number={totalSales} tone="green" />
         <KpiCard icon="📦" label="الجرد المسلَّم اليوم" value={`${submitted}/${branches.length}`} tone={submitted === branches.length ? 'green' : 'orange'} />
         <KpiCard icon="🔔" label="تنبيهات مفتوحة" value={openAlerts} tone={openAlerts > 0 ? 'red' : 'blue'} />
         <KpiCard icon="⚠️" label="مواد منخفضة" value={lowStock} tone={lowStock > 0 ? 'orange' : 'blue'} />

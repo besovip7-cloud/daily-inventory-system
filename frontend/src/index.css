@@ -12,7 +12,7 @@
 @layer components {
   .card-ios {
     @apply bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06)];
-    animation: fadeUp 0.35s ease both;
+    animation: fadeUp 0.45s ease-out both;
   }
 
   .btn-ios {
@@ -142,7 +142,7 @@
 
 /* ======= حركات ناعمة ======= */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
 @keyframes fadeIn {
@@ -150,21 +150,21 @@
   to { opacity: 1; }
 }
 @keyframes popIn {
-  from { opacity: 0; transform: scale(0.96); }
+  from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
-.anim-page { animation: fadeIn 0.25s ease both; }
-.anim-card { animation: fadeUp 0.35s ease both; }
-.anim-pop { animation: popIn 0.2s ease both; }
-.anim-stagger > * { animation: fadeUp 0.4s ease both; }
-.anim-stagger > *:nth-child(1) { animation-delay: 0.03s; }
-.anim-stagger > *:nth-child(2) { animation-delay: 0.08s; }
-.anim-stagger > *:nth-child(3) { animation-delay: 0.13s; }
-.anim-stagger > *:nth-child(4) { animation-delay: 0.18s; }
-.anim-stagger > *:nth-child(5) { animation-delay: 0.23s; }
-.anim-stagger > *:nth-child(6) { animation-delay: 0.28s; }
-.anim-stagger > *:nth-child(7) { animation-delay: 0.33s; }
-.anim-stagger > *:nth-child(8) { animation-delay: 0.38s; }
+.anim-page { animation: fadeIn 0.3s ease both; }
+.anim-card { animation: fadeUp 0.45s ease-out both; }
+.anim-pop { animation: popIn 0.25s ease-out both; }
+.anim-stagger > * { animation: fadeUp 0.45s ease-out both; }
+.anim-stagger > *:nth-child(1) { animation-delay: 0.05s; }
+.anim-stagger > *:nth-child(2) { animation-delay: 0.12s; }
+.anim-stagger > *:nth-child(3) { animation-delay: 0.19s; }
+.anim-stagger > *:nth-child(4) { animation-delay: 0.26s; }
+.anim-stagger > *:nth-child(5) { animation-delay: 0.33s; }
+.anim-stagger > *:nth-child(6) { animation-delay: 0.4s; }
+.anim-stagger > *:nth-child(7) { animation-delay: 0.47s; }
+.anim-stagger > *:nth-child(8) { animation-delay: 0.54s; }
 
 /* الجداول بالموبايل: تمرير أفقي داخل الجدول بدل قص المحتوى أو توسيع الصفحة */
 main table {
