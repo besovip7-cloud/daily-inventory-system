@@ -2,8 +2,8 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json* ./
+RUN npm install --omit=dev
 
 COPY . .
 
@@ -12,4 +12,5 @@ USER nodejs
 
 EXPOSE 10000
 
-CMD ["node", "server.js"]
+# تشغيل التهجير أولاً (آمن: CREATE TABLE IF NOT EXISTS) ثم تشغيل السيرفر
+CMD ["sh", "-c", "node config/migrate.js && node server.js"]
