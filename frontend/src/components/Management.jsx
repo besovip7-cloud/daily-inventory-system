@@ -284,23 +284,24 @@ function UsersTab({ showMsg, headers }) {
         <div className="text-center p-10 text-ios-label">جاري التحميل...</div>
       ) : (
         <div className="card-ios overflow-hidden">
-          <table className="w-full text-right">
+          <div className="overflow-x-auto">
+          <table className="w-full text-right min-w-[860px]">
             <thead className="bg-[#F2F2F7]">
               <tr>
-                <th className="p-4 font-bold text-ios-label text-xs">الاسم</th>
-                <th className="p-4 font-bold text-ios-label text-xs">البريد الإلكتروني</th>
-                <th className="p-4 font-bold text-ios-label text-xs">الصلاحية</th>
-                <th className="p-4 font-bold text-ios-label text-xs">الفرع</th>
-                <th className="p-4 font-bold text-ios-label text-xs">الحالة</th>
-                <th className="p-4 font-bold text-ios-label text-xs">إجراء</th>
+                <th className="p-4 font-bold text-ios-label text-xs whitespace-nowrap">الاسم</th>
+                <th className="p-4 font-bold text-ios-label text-xs whitespace-nowrap">البريد الإلكتروني</th>
+                <th className="p-4 font-bold text-ios-label text-xs whitespace-nowrap">الصلاحية</th>
+                <th className="p-4 font-bold text-ios-label text-xs whitespace-nowrap">الفرع</th>
+                <th className="p-4 font-bold text-ios-label text-xs whitespace-nowrap">الحالة</th>
+                <th className="p-4 font-bold text-ios-label text-xs whitespace-nowrap">الإجراءات</th>
               </tr>
             </thead>
             <tbody>
               {users.map(user => (
-                <tr key={user.id} className="border-t border-ios-sep">
-                  <td className="p-4 font-semibold text-ios-text">{user.name}</td>
-                  <td className="p-4 text-ios-label">{user.email}</td>
-                  <td className="p-4">
+                <tr key={user.id} className="border-t border-ios-sep align-top">
+                  <td className="p-4 font-semibold text-ios-text whitespace-nowrap">{user.name}</td>
+                  <td className="p-4 text-ios-label" style={{ direction: 'ltr', textAlign: 'right' }}>{user.email}</td>
+                  <td className="p-4 whitespace-nowrap">
                     <span className={`badge-ios ${
                       user.role === 'admin' ? 'bg-ios-purple/15 text-ios-purple' :
                       user.role === 'manager' ? 'bg-ios-blue/10 text-ios-blue' :
@@ -310,30 +311,30 @@ function UsersTab({ showMsg, headers }) {
                       {roleLabels[user.role] || user.role}
                     </span>
                   </td>
-                  <td className="p-4 text-ios-label">{user.branch_name || '—'}</td>
-                  <td className="p-4">
+                  <td className="p-4 text-ios-label whitespace-nowrap">{user.branch_name || '—'}</td>
+                  <td className="p-4 whitespace-nowrap">
                     {user.is_active
                       ? <span className="text-ios-green font-bold">✅ نشط</span>
                       : <span className="text-ios-red font-bold">⛔ معطل</span>}
                   </td>
                   <td className="p-4">
-                    <div className="flex flex-wrap gap-2 items-center">
+                    <div className="flex gap-2 items-center whitespace-nowrap">
                       <button onClick={() => toggleActive(user)}
-                        className={`px-3 py-1 rounded-lg font-bold text-sm active:opacity-70 ${
+                        className={`px-2 py-1 rounded-lg font-bold text-xs active:opacity-70 ${
                           user.is_active ? 'bg-ios-red/10 text-ios-red' : 'bg-ios-green/15 text-ios-green'
                         }`}>
                         {user.is_active ? 'تعطيل' : 'تفعيل'}
                       </button>
                       <button onClick={() => { setResetPwFor(resetPwFor === user.id ? null : user.id); setNewPassword('') }}
-                        className="px-3 py-1 rounded-lg font-bold text-sm bg-ios-blue/10 text-ios-blue active:opacity-70">
-                        🔑 كلمة المرور
+                        className="px-2 py-1 rounded-lg font-bold text-xs bg-ios-blue/10 text-ios-blue active:opacity-70">
+                        🔑 كلمة السر
                       </button>
                       <button onClick={() => { setEditingUser({ id: user.id, name: user.name, email: user.email, role: user.role, branch_id: user.branch_id }); setResetPwFor(null) }}
-                        className="px-3 py-1 rounded-lg font-bold text-sm bg-ios-blue/10 text-ios-blue active:opacity-70">
+                        className="px-2 py-1 rounded-lg font-bold text-xs bg-ios-blue/10 text-ios-blue active:opacity-70">
                         ✏️ تعديل
                       </button>
                       <button onClick={() => deleteUser(user)}
-                        className="px-3 py-1 rounded-lg font-bold text-sm bg-ios-fill text-ios-text active:opacity-70">
+                        className="px-2 py-1 rounded-lg font-bold text-xs bg-ios-fill text-ios-text active:opacity-70">
                         🗑️ حذف
                       </button>
                     </div>
@@ -343,9 +344,9 @@ function UsersTab({ showMsg, headers }) {
                           onChange={e => setNewPassword(e.target.value)}
                           className="flex-1 py-2 px-3 rounded-xl bg-[#F2F2F7] text-sm focus:ring-2 focus:ring-ios-blue focus:outline-none" />
                         <button onClick={() => resetPassword(user)}
-                          className="btn-ios text-xs px-3 py-1.5">حفظ</button>
+                          className="btn-ios text-xs px-3 py-1.5 whitespace-nowrap">حفظ</button>
                         <button onClick={() => setResetPwFor(null)}
-                          className="btn-ios-secondary text-xs px-3 py-1.5">إلغاء</button>
+                          className="btn-ios-secondary text-xs px-3 py-1.5 whitespace-nowrap">إلغاء</button>
                       </div>
                     )}
                   </td>
@@ -353,6 +354,7 @@ function UsersTab({ showMsg, headers }) {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>
