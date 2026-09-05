@@ -28,14 +28,6 @@ const apiLimiter = rateLimit({
   legacyHeaders: false
 });
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { message: 'Too many login attempts. Try again later.' }
-});
-
 app.use(express.json());
 
 app.use((req, res, next) => {
@@ -44,7 +36,7 @@ app.use((req, res, next) => {
 });
 
 app.use('/api', apiLimiter);
-app.use('/api/auth', loginLimiter, authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/branches', branchRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/sales', salesRoutes);

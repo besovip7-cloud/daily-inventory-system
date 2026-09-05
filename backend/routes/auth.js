@@ -1,8 +1,18 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const authController = require('../controllers/authController');
 const { auth, adminOnly } = require('../middleware/auth');
+
+// مقيّد يطبق على تسجيل الدخول فقط — مو على كل مسارات auth
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'محاولات دخول كثيرة — انتظر 15 دقيقة وحاول مرة أخرى' }
+});
 
 const handleValidation = (req, res, next) => {
   const errors = validationResult(req);
@@ -13,6 +23,7 @@ const handleValidation = (req, res, next) => {
 };
 
 router.post('/login',
+  loginLimiter,
   body('email').isEmail().withMessage('Valid email is required'),
   body('password').notEmpty().withMessage('Password is required'),
   handleValidation,
