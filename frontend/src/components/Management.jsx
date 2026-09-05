@@ -96,6 +96,7 @@ function UsersTab({ showMsg, headers }) {
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'manager', branch_id: '' })
   const [resetPwFor, setResetPwFor] = useState(null)
   const [newPassword, setNewPassword] = useState('')
+  const [editingUser, setEditingUser] = useState(null) // { id, name, email, role, branch_id }
 
   useEffect(() => {
     loadUsers()
@@ -126,6 +127,30 @@ function UsersTab({ showMsg, headers }) {
       if (res.ok) {
         showMsg('✅ تم إضافة المستخدم بنجاح!')
         setNewUser({ name: '', email: '', password: '', role: 'manager', branch_id: '' })
+        loadUsers()
+      } else {
+        showMsg('❌ فشل: ' + (data.message || ''))
+      }
+    } catch { showMsg('❌ خطأ في الاتصال') }
+  }
+
+  const saveEdit = async (e) => {
+    e.preventDefault()
+    try {
+      const res = await fetch(`${API_URL}/auth/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editingUser.name,
+          email: editingUser.email,
+          role: editingUser.role,
+          branch_id: editingUser.role === 'admin' ? null : (editingUser.branch_id || null)
+        })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        showMsg(`✅ تم تعديل بيانات ${editingUser.name}`)
+        setEditingUser(null)
         loadUsers()
       } else {
         showMsg('❌ فشل: ' + (data.message || ''))
@@ -218,6 +243,43 @@ function UsersTab({ showMsg, headers }) {
         </form>
       </div>
 
+      {editingUser && (
+        <div className="card-ios p-6 mb-6 border-2 border-ios-blue">
+          <h3 className="text-lg font-bold mb-4 text-ios-text">✏️ تعديل المستخدم: {editingUser.name}</h3>
+          <form onSubmit={saveEdit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <input type="text" placeholder="الاسم" required value={editingUser.name}
+              onChange={e => setEditingUser({...editingUser, name: e.target.value})}
+              className="input-ios" />
+            <input type="email" placeholder="البريد الإلكتروني" required value={editingUser.email}
+              onChange={e => setEditingUser({...editingUser, email: e.target.value})}
+              className="input-ios" />
+            <select value={editingUser.role}
+              onChange={e => setEditingUser({...editingUser, role: e.target.value})}
+              className="input-ios">
+              <option value="manager">مدير فرع</option>
+              <option value="staff">موظف</option>
+              <option value="accountant">محاسب</option>
+              <option value="admin">مدير النظام</option>
+            </select>
+            {editingUser.role !== 'admin' ? (
+              <select required value={editingUser.branch_id || ''}
+                onChange={e => setEditingUser({...editingUser, branch_id: e.target.value ? parseInt(e.target.value) : ''})}
+                className="input-ios">
+                <option value="">اختر الفرع...</option>
+                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            ) : (
+              <div className="flex items-center text-ios-label text-sm">الأدمن يشوف كل الفروع</div>
+            )}
+            <div className="flex gap-2">
+              <button type="submit" className="btn-ios flex-1">💾 حفظ التعديلات</button>
+              <button type="button" onClick={() => setEditingUser(null)}
+                className="btn-ios-secondary">إلغاء</button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {loading ? (
         <div className="text-center p-10 text-ios-label">جاري التحميل...</div>
       ) : (
@@ -265,6 +327,10 @@ function UsersTab({ showMsg, headers }) {
                       <button onClick={() => { setResetPwFor(resetPwFor === user.id ? null : user.id); setNewPassword('') }}
                         className="px-3 py-1 rounded-lg font-bold text-sm bg-ios-blue/10 text-ios-blue active:opacity-70">
                         🔑 كلمة المرور
+                      </button>
+                      <button onClick={() => { setEditingUser({ id: user.id, name: user.name, email: user.email, role: user.role, branch_id: user.branch_id }); setResetPwFor(null) }}
+                        className="px-3 py-1 rounded-lg font-bold text-sm bg-ios-blue/10 text-ios-blue active:opacity-70">
+                        ✏️ تعديل
                       </button>
                       <button onClick={() => deleteUser(user)}
                         className="px-3 py-1 rounded-lg font-bold text-sm bg-ios-fill text-ios-text active:opacity-70">

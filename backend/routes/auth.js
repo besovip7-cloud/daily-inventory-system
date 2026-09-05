@@ -34,6 +34,16 @@ router.post('/users',
   authController.createUser
 );
 
+router.put('/users/:id',
+  auth,
+  adminOnly,
+  body('name').notEmpty().withMessage('Name is required'),
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+  body('role').isIn(['admin', 'manager', 'staff', 'accountant']).withMessage('Invalid role'),
+  handleValidation,
+  authController.updateUser
+);
+
 router.put('/users/:id/active',
   auth,
   adminOnly,

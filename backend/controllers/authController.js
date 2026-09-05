@@ -82,6 +82,39 @@ exports.listUsers = async (req, res) => {
   }
 };
 
+exports.updateUser = async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+
+    if (userId === req.user.id) {
+      return res.status(400).json({ message: 'لا تقدر تعدل حسابك بنفسك' });
+    }
+
+    const { name, email, role, branch_id } = req.body;
+
+    const result = await pool.query(
+      `UPDATE users SET name = $1, email = $2, role = $3, branch_id = $4
+       WHERE id = $5
+       RETURNING id, name, email, role, branch_id, is_active`,
+      [name, email, role, role === 'admin' ? null : (branch_id || null), userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ user: result.rows[0] });
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({ message: 'Email already registered' });
+    }
+    if (err.code === '23514') {
+      return res.status(400).json({ message: 'Invalid role or data' });
+    }
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.setUserActive = async (req, res) => {
   try {
     if (parseInt(req.params.id) === req.user.id) {
