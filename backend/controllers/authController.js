@@ -137,7 +137,8 @@ exports.setUserActive = async (req, res) => {
 };
 
 exports.me = async (req, res) => {
-  res.json({ user: req.user });
+  const { id, name, email, role, branch_id, is_active } = req.user;
+  res.json({ user: { id, name, email, role, branch_id, is_active } });
 };
 
 exports.resetPassword = async (req, res) => {
