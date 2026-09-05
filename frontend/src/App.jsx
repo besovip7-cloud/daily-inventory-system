@@ -30,11 +30,11 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login setUser={setUser} apiUrl={API_URL} />} />
         <Route path="/" element={user ? <Layout user={user} /> : <Navigate to="/login" />}>
-          <Route index element={<Dashboard apiUrl={API_URL} />} />
+          <Route index element={<Dashboard apiUrl={API_URL} user={user} />} />
           <Route path="inventory" element={<Inventory user={user} />} />
           <Route path="branches" element={<Branches user={user} />} />
-          <Route path="sales" element={<Sales />} />
-          <Route path="alerts" element={<Alerts />} />    
+          <Route path="sales" element={<Sales user={user} />} />
+          <Route path="alerts" element={<Alerts user={user} />} />    
           <Route path="admin" element={<AdminPanel />} />
           <Route path="manage" element={user?.role === 'admin' ? <Management /> : <Navigate to="/" />} />
           <Route path="reports" element={['admin', 'accountant'].includes(user?.role) ? <Reports user={user} /> : <Navigate to="/" />} />

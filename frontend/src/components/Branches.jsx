@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react'
+import { visibleBranches } from '../utils/branchScope'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
-export default function Branches() {
+export default function Branches({ user }) {
   const [branches, setBranches] = useState([])
 
   useEffect(() => {
     const token = localStorage.getItem('token')
     fetch(`${API_URL}/branches`, { headers: { Authorization: `Bearer ${token}` }})
       .then(r => r.json())
-      .then(data => setBranches(data || []))
+      .then(data => setBranches(visibleBranches(user, data || [])))
   }, [])
 
   return (

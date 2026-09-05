@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
+import { visibleBranches } from '../utils/branchScope'
 
-export default function Dashboard({ apiUrl }) {
+export default function Dashboard({ apiUrl, user }) {
   const [branches, setBranches] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -8,7 +9,7 @@ export default function Dashboard({ apiUrl }) {
   useEffect(() => {
     fetch(`${apiUrl}/branches`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }})
       .then(r => r.json())
-      .then(data => { setBranches(data); setLoading(false) })
+      .then(data => { setBranches(visibleBranches(user, data || [])); setLoading(false) })
       .catch(() => { setError('فشل تحميل البيانات'); setLoading(false) })
   }, [apiUrl])
 

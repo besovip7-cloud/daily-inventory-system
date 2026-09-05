@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { visibleBranches, isBranchLocked } from '../utils/branchScope'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -13,7 +14,8 @@ const emptyItemForm = { name: '', category: 'raw', unit: '', min_quantity: '', c
 
 export default function Inventory({ user }) {
   const canManage = user?.role === 'admin' || user?.role === 'manager'
-  const managerBranch = user?.role === 'manager' ? user?.branch_id : null
+  const branchLocked = isBranchLocked(user)
+  const managerBranch = branchLocked ? user?.branch_id : null
 
   const [branches, setBranches] = useState([])
   const [selectedBranch, setSelectedBranch] = useState('')
@@ -40,11 +42,12 @@ export default function Inventory({ user }) {
     fetch(`${API_URL}/branches`, { headers: { Authorization: `Bearer ${token}` }})
       .then(r => r.json())
       .then(data => {
-        setBranches(data)
+        const visible = visibleBranches(user, data || [])
+        setBranches(visible)
         if (managerBranch) {
           setSelectedBranch(managerBranch.toString())
-        } else if (data.length > 0 && !selectedBranch) {
-          setSelectedBranch(data[0].id.toString())
+        } else if (visible.length > 0 && !selectedBranch) {
+          setSelectedBranch(visible[0].id.toString())
         }
       })
   }, [])
@@ -264,13 +267,13 @@ export default function Inventory({ user }) {
         </div>
       )}
 
-      {/* ✅ اختيار الفرع — مقفل للمدير على فرعه */}
+      {/* ✅ اختيار الفرع — مقفل لمدير/موظف الفرع على فرعه */}
       <div className="card-ios p-4 mb-6">
         <label className="label-ios">اختر الفرع</label>
         <select
           value={selectedBranch}
           onChange={e => setSelectedBranch(e.target.value)}
-          disabled={!!managerBranch}
+          disabled={branchLocked}
           className="input-ios md:w-80 disabled:opacity-60"
         >
           <option value="">-- اختر الفرع --</option>
@@ -278,7 +281,7 @@ export default function Inventory({ user }) {
             <option key={b.id} value={b.id.toString()}>{b.name}</option>
           ))}
         </select>
-        {managerBranch && <p className="text-sm text-ios-label mt-1">مدير الفرع مقيد على فرعه فقط</p>}
+        {branchLocked && <p className="text-sm text-ios-label mt-1">مقيد على فرعك فقط</p>}
       </div>
 
       {/* ===== لوحة إدارة المواد ===== */}

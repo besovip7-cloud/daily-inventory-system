@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
+import { visibleBranches, isBranchLocked } from '../utils/branchScope'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
-export default function Alerts() {
+export default function Alerts({ user }) {
+  const branchLocked = isBranchLocked(user)
   const [branches, setBranches] = useState([])
   const [selectedBranch, setSelectedBranch] = useState('')
   const [alerts, setAlerts] = useState([])
@@ -15,8 +17,9 @@ export default function Alerts() {
     fetch(`${API_URL}/branches`, { headers: { Authorization: `Bearer ${token}` }})
       .then(r => r.json())
       .then(data => {
-        setBranches(data)
-        if (data.length > 0) setSelectedBranch(data[0].id)
+        const visible = visibleBranches(user, data || [])
+        setBranches(visible)
+        if (visible.length > 0) setSelectedBranch(visible[0].id)
       })
   }, [])
 
@@ -105,7 +108,8 @@ export default function Alerts() {
           <select
             value={selectedBranch}
             onChange={e => setSelectedBranch(e.target.value)}
-            className="input-ios md:w-80"
+            disabled={branchLocked}
+            className="input-ios md:w-80 disabled:opacity-60"
           >
             {branches.map(b => (
               <option key={b.id} value={b.id}>{b.name}</option>

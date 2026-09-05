@@ -10,12 +10,12 @@ router.post('/menu', auth, blockAccountant, salesController.createMenuItem);
 router.put('/menu/:id', auth, adminOnly, salesController.updateMenuItem);
 router.delete('/menu/:id', auth, adminOnly, salesController.deleteMenuItem);
 
-router.get('/recipes', auth, salesController.getRecipes);
+router.get('/recipes', auth, branchAccess, salesController.getRecipes);
 router.post('/recipes', auth, adminOnly, salesController.saveRecipe);
 router.delete('/recipes/:id', auth, adminOnly, salesController.deleteRecipe);
 
 router.get('/daily/:branchId', auth, branchAccess, salesController.getDailySales);
-router.post('/daily', auth, salesController.saveDailySales);
+router.post('/daily', auth, branchAccess, salesController.saveDailySales);
 router.put('/daily/:id', auth, adminOnly, salesController.updateDailySale);
 router.delete('/daily/:id', auth, adminOnly, salesController.deleteDailySale);
 router.get('/summary/:branchId', auth, branchAccess, salesController.getSalesSummary);

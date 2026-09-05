@@ -35,9 +35,9 @@ const adminOnly = (req, res, next) => {
 };
 
 const branchAccess = (req, res, next) => {
-  // Managers can only access their branch
-  if (req.user.role === 'manager' && req.user.branch_id) {
-    const requestedBranch = req.params.branchId || req.body.branch_id;
+  // مدير الفرع والموظف يقدرون يشوفون فرعهم فقط
+  if (['manager', 'staff'].includes(req.user.role) && req.user.branch_id) {
+    const requestedBranch = req.params.branchId || req.body.branch_id || req.query.branch_id;
     if (requestedBranch && parseInt(requestedBranch) !== req.user.branch_id) {
       return res.status(403).json({ message: 'Access denied for this branch' });
     }
