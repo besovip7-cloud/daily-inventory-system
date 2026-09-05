@@ -266,13 +266,26 @@ exports.deleteDailySale = async (req, res) => {
 exports.getRecipes = async (req, res) => {
   try {
     const { branch_id, menu_id } = req.query;
+    if (menu_id) {
+      const result = await pool.query(
+        `SELECT r.id, r.inventory_item_id, r.quantity, ii.name as inventory_name, ii.unit
+         FROM menu_recipes r
+         JOIN inventory_items ii ON ii.id = r.inventory_item_id
+         WHERE r.branch_id = $1 AND r.menu_item_id = $2
+         ORDER BY ii.name`,
+        [branch_id, menu_id]
+      );
+      return res.json(result.rows);
+    }
+    // بدون menu_id: كل وصفات الفرع مجمعة حسب صنف البيع
     const result = await pool.query(
-      `SELECT r.id, r.inventory_item_id, r.quantity, ii.name as inventory_name, ii.unit
+      `SELECT r.id, r.menu_item_id, mi.name as menu_name, r.inventory_item_id, r.quantity, ii.name as inventory_name, ii.unit
        FROM menu_recipes r
        JOIN inventory_items ii ON ii.id = r.inventory_item_id
-       WHERE r.branch_id = $1 AND r.menu_item_id = $2
-       ORDER BY ii.name`,
-      [branch_id, menu_id]
+       JOIN menu_items mi ON mi.id = r.menu_item_id
+       WHERE r.branch_id = $1
+       ORDER BY mi.name, ii.name`,
+      [branch_id]
     );
     res.json(result.rows);
   } catch (err) {

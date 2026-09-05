@@ -725,6 +725,18 @@ function RecipesTab({ showMsg, headers }) {
   const [recipes, setRecipes] = useState([])
   const [newRecipe, setNewRecipe] = useState({ inventory_item_id: '', quantity: '', unit: 'غرام' })
   const [addToAll, setAddToAll] = useState(false)
+  const [view, setView] = useState('matrix')
+  const [allRecipes, setAllRecipes] = useState([])
+
+  const loadAllRecipes = () => {
+    fetch(`${API_URL}/sales/recipes?branch_id=${selectedBranch}`, { headers })
+      .then(r => r.json()).then(d => setAllRecipes(d || []))
+  }
+
+  useEffect(() => {
+    if (!selectedBranch) return
+    loadAllRecipes()
+  }, [selectedBranch])
 
   useEffect(() => {
     fetch(`${API_URL}/branches`, { headers }).then(r => r.json()).then(d => {
@@ -794,6 +806,7 @@ function RecipesTab({ showMsg, headers }) {
       setNewRecipe({ inventory_item_id: '', quantity: '', unit: 'غرام' })
       setAddToAll(false)
       loadRecipes()
+      loadAllRecipes()
       return
     }
 
@@ -805,6 +818,7 @@ function RecipesTab({ showMsg, headers }) {
         showMsg(`✅ تم حفظ المكون بنجاح!${converted ? ` (تم التحويل: ${newRecipe.quantity} ${newRecipe.unit} = ${finalQty} ${invItem?.unit})` : ''}`)
         setNewRecipe({ inventory_item_id: '', quantity: '', unit: 'غرام' })
         loadRecipes()
+        loadAllRecipes()
       } else {
         showMsg('❌ فشل: ' + (message || ''))
       }
@@ -815,10 +829,18 @@ function RecipesTab({ showMsg, headers }) {
     if (!window.confirm(`حذف مكون "${recipe.inventory_name}" من هذا الصنف؟`)) return
     try {
       const res = await fetch(`${API_URL}/sales/recipes/${recipe.id}`, { method: 'DELETE', headers })
-      if (res.ok) { showMsg('✅ تم حذف المكون'); loadRecipes() }
+      if (res.ok) { showMsg('✅ تم حذف المكون'); loadRecipes(); loadAllRecipes() }
       else showMsg('❌ فشل الحذف')
     } catch { showMsg('❌ خطأ في الاتصال') }
   }
+
+  const byMenuId = {}
+  allRecipes.forEach(r => {
+    if (!byMenuId[r.menu_item_id]) byMenuId[r.menu_item_id] = []
+    byMenuId[r.menu_item_id].push(r)
+  })
+  const matrixRows = menuItems.map(m => ({ menu: m.name, components: byMenuId[m.id] || [] }))
+  const maxComponents = Math.max(0, ...matrixRows.map(r => r.components.length))
 
   return (
     <div>
@@ -827,7 +849,7 @@ function RecipesTab({ showMsg, headers }) {
         عند حفظ المبيعات تنقص الكميات تلقائياً من مخزون الفرع.
       </div>
 
-      <div className="card-ios p-4 mb-6 flex flex-wrap gap-4">
+      <div className="card-ios p-4 mb-4 flex flex-wrap gap-4">
         <div>
           <label className="label-ios">الفرع</label>
           <select value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)}
@@ -835,14 +857,75 @@ function RecipesTab({ showMsg, headers }) {
             {branches.map(b => <option key={b.id} value={b.id.toString()}>{b.name}</option>)}
           </select>
         </div>
-        <div>
-          <label className="label-ios">صنف البيع</label>
-          <select value={selectedMenu} onChange={e => setSelectedMenu(e.target.value)}
-            className="input-ios">
-            {menuItems.map(m => <option key={m.id} value={m.id.toString()}>{m.name}</option>)}
-          </select>
-        </div>
+        {view === 'manage' && (
+          <div>
+            <label className="label-ios">صنف البيع</label>
+            <select value={selectedMenu} onChange={e => setSelectedMenu(e.target.value)}
+              className="input-ios">
+              {menuItems.map(m => <option key={m.id} value={m.id.toString()}>{m.name}</option>)}
+            </select>
+          </div>
+        )}
       </div>
+
+      <div className="segmented mb-6">
+        <button onClick={() => setView('matrix')}
+          className={`segmented-item ${view === 'matrix' ? 'segmented-item-active' : ''}`}>
+          📋 جدول الأصناف
+        </button>
+        <button onClick={() => setView('manage')}
+          className={`segmented-item ${view === 'manage' ? 'segmented-item-active' : ''}`}>
+          ⚙️ إدارة المكونات
+        </button>
+      </div>
+
+      {view === 'matrix' ? (
+        <div className="card-ios overflow-hidden">
+          <div className="px-4 py-3 border-b border-ios-sep bg-[#F9F9FB]">
+            <span className="font-bold text-ios-text text-sm">📋 مكونات كل صنف مبيعات</span>
+            <span className="text-ios-label text-xs mr-2">({branches.find(b => b.id.toString() === selectedBranch)?.name || ''})</span>
+          </div>
+          {maxComponents === 0 ? (
+            <p className="text-ios-label text-center py-10">لا توجد مكونات بعد — أضفها من تبويب "⚙️ إدارة المكونات"</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[640px]">
+                <thead className="bg-[#F2F2F7]">
+                  <tr>
+                    <th className="p-3 text-right font-semibold text-ios-label text-xs min-w-[120px]">صنف المبيعات</th>
+                    {Array.from({ length: maxComponents }, (_, i) => (
+                      <th key={i} className="p-3 text-center font-semibold text-ios-label text-xs">مكون {i + 1}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {matrixRows.map(row => (
+                    <tr key={row.menu} className="border-t border-ios-sep last:border-b-0 align-top">
+                      <td className="p-3 font-bold text-ios-text">{row.menu}</td>
+                      {Array.from({ length: maxComponents }, (_, i) => {
+                        const c = row.components[i]
+                        return (
+                          <td key={i} className="p-3 text-center">
+                            {c ? (
+                              <>
+                                <div className="font-semibold text-ios-text">{c.inventory_name}</div>
+                                <div className="text-ios-blue font-bold text-xs">{c.quantity} {c.unit || ''}</div>
+                              </>
+                            ) : (
+                              <span className="text-ios-sep">—</span>
+                            )}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+      <>
 
       <div className="card-ios p-6 mb-6">
         <h3 className="text-lg font-bold mb-4 text-ios-text">➕ إضافة مكون</h3>
@@ -913,6 +996,8 @@ function RecipesTab({ showMsg, headers }) {
           </tbody>
         </table>
       </div>
+      </>
+      )}
     </div>
   )
 }
