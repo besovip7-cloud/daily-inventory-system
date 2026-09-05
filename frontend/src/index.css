@@ -138,3 +138,11 @@
 *::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* الجداول بالموبايل: تمرير أفقي داخل الجدول بدل قص المحتوى أو توسيع الصفحة */
+main table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
