@@ -46,7 +46,7 @@ export default function Layout({ user }) {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`list-row transition ${
+                  className={`list-row transition active:opacity-60 ${
                     active
                       ? 'bg-ios-blue/10 text-ios-blue font-bold'
                       : 'text-ios-text hover:bg-ios-bg'
@@ -62,7 +62,9 @@ export default function Layout({ user }) {
 
         {/* Main Content */}
         <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6">
-          <Outlet />
+          <div key={location.pathname} className="anim-page">
+            <Outlet />
+          </div>
         </main>
       </div>
 
@@ -74,7 +76,7 @@ export default function Layout({ user }) {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex-1 py-2 text-center text-[11px] font-semibold transition ${
+              className={`flex-1 py-2 text-center text-[11px] font-semibold transition active:opacity-60 ${
                 active ? 'text-ios-blue' : 'text-ios-label'
               }`}
             >

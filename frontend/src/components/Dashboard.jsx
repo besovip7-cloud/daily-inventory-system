@@ -102,7 +102,7 @@ export default function Dashboard({ apiUrl, user }) {
       </div>
 
       {/* مؤشرات اليوم */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 anim-stagger">
         <KpiCard icon="💰" label={myBranch ? 'مبيعات فرعك اليوم' : 'مبيعات كل الفروع اليوم'} value={`${fmtMoney(totalSales)} د.ع`} tone="green" />
         <KpiCard icon="📦" label="الجرد المسلَّم اليوم" value={`${submitted}/${branches.length}`} tone={submitted === branches.length ? 'green' : 'orange'} />
         <KpiCard icon="🔔" label="تنبيهات مفتوحة" value={openAlerts} tone={openAlerts > 0 ? 'red' : 'blue'} />
@@ -132,7 +132,7 @@ export default function Dashboard({ apiUrl, user }) {
           </div>
 
           {/* بطاقات الفروع */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 anim-stagger">
             {branches.map(b => {
               const s = stats[b.id] || {}
               return (

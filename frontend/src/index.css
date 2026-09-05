@@ -12,18 +12,19 @@
 @layer components {
   .card-ios {
     @apply bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06)];
+    animation: fadeUp 0.35s ease both;
   }
 
   .btn-ios {
-    @apply inline-flex items-center justify-center font-semibold rounded-xl px-4 py-2.5 bg-ios-blue text-white active:opacity-70 transition;
+    @apply inline-flex items-center justify-center font-semibold rounded-xl px-4 py-2.5 bg-ios-blue text-white transition active:opacity-70 active:scale-[0.97] active:duration-75;
   }
 
   .btn-ios-secondary {
-    @apply inline-flex items-center justify-center font-semibold rounded-xl px-4 py-2.5 bg-ios-fill text-ios-text active:opacity-70 transition;
+    @apply inline-flex items-center justify-center font-semibold rounded-xl px-4 py-2.5 bg-ios-fill text-ios-text transition active:opacity-70 active:scale-[0.97] active:duration-75;
   }
 
   .btn-ios-danger {
-    @apply inline-flex items-center justify-center font-semibold rounded-xl px-4 py-2.5 bg-ios-red text-white active:opacity-70 transition;
+    @apply inline-flex items-center justify-center font-semibold rounded-xl px-4 py-2.5 bg-ios-red text-white transition active:opacity-70 active:scale-[0.97] active:duration-75;
   }
 
   .btn-ios-ghost {
@@ -43,7 +44,7 @@
   }
 
   .segmented-item {
-    @apply flex-1 text-center px-3 py-1.5 rounded-lg text-sm font-semibold text-ios-text;
+    @apply flex-1 text-center px-3 py-1.5 rounded-lg text-sm font-semibold text-ios-text transition active:scale-[0.97] active:duration-75;
   }
 
   .segmented-item-active {
@@ -138,6 +139,32 @@
 *::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* ======= حركات ناعمة ======= */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+.anim-page { animation: fadeIn 0.25s ease both; }
+.anim-card { animation: fadeUp 0.35s ease both; }
+.anim-pop { animation: popIn 0.2s ease both; }
+.anim-stagger > * { animation: fadeUp 0.4s ease both; }
+.anim-stagger > *:nth-child(1) { animation-delay: 0.03s; }
+.anim-stagger > *:nth-child(2) { animation-delay: 0.08s; }
+.anim-stagger > *:nth-child(3) { animation-delay: 0.13s; }
+.anim-stagger > *:nth-child(4) { animation-delay: 0.18s; }
+.anim-stagger > *:nth-child(5) { animation-delay: 0.23s; }
+.anim-stagger > *:nth-child(6) { animation-delay: 0.28s; }
+.anim-stagger > *:nth-child(7) { animation-delay: 0.33s; }
+.anim-stagger > *:nth-child(8) { animation-delay: 0.38s; }
 
 /* الجداول بالموبايل: تمرير أفقي داخل الجدول بدل قص المحتوى أو توسيع الصفحة */
 main table {
