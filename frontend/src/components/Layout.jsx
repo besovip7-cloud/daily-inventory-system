@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import AlertBell from './AlertBell'
 
@@ -8,6 +9,14 @@ export default function Layout({ user }) {
   }
 
   const location = useLocation()
+  const [dark, setDark] = useState(document.documentElement.classList.contains('dark'))
+
+  const toggleDark = () => {
+    const next = !dark
+    setDark(next)
+    document.documentElement.classList.toggle('dark', next)
+    localStorage.setItem('theme', next ? 'dark' : 'light')
+  }
 
   const allNavItems = [
     { path: '/', label: '📊 لوحة التحكم', roles: ['admin', 'manager', 'staff'] },
@@ -29,6 +38,10 @@ export default function Layout({ user }) {
         <div className="max-w-7xl mx-auto flex justify-between items-center px-4 py-3">
           <h1 className="text-lg font-semibold text-ios-text">📦 نظام الجرد اليومي</h1>
           <div className="flex gap-3 items-center">
+            <button onClick={toggleDark} title={dark ? 'الوضع النهاري' : 'الوضع الليلي'}
+              className="w-9 h-9 rounded-full bg-ios-fill flex items-center justify-center text-lg active:scale-90 transition">
+              {dark ? '☀️' : '🌙'}
+            </button>
             {showBell && <AlertBell />}
             <span className="text-xs text-ios-label">{user?.name}</span>
             <button onClick={logout} className="btn-ios-danger text-xs px-3 py-1.5">خروج</button>

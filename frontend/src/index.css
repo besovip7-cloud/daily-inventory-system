@@ -173,3 +173,34 @@ main table {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+/* ======= الوضع الليلي (iOS dark palette) ======= */
+.dark body {
+  background: #000;
+  color: #f2f2f7;
+}
+.dark .bg-ios-bg { background-color: #1c1c1e; }
+.dark .bg-white { background-color: #1c1c1e; }
+.dark .bg-\[\#F2F2F7\] { background-color: #2c2c2e; }
+.dark .bg-\[\#E5E5EA\] { background-color: #2c2c2e; }
+.dark .bg-\[\#F9F9FB\] { background-color: #1c1c1e; }
+.dark .bg-ios-fill { background-color: #2c2c2e; }
+.dark .text-ios-text { color: #f2f2f7; }
+.dark .text-ios-label { color: #98989f; }
+.dark .border-ios-sep { border-color: #38383a; }
+.dark .card-ios {
+  background: #1c1c1e;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.dark .input-ios {
+  background: #2c2c2e;
+  color: #f2f2f7;
+}
+.dark .segmented-item-active {
+  background: #3a3a3c;
+  box-shadow: none;
+}
+.dark nav.bg-white\/80,
+.dark nav.bg-white\/90 {
+  background-color: rgba(28, 28, 30, 0.85);
+}
