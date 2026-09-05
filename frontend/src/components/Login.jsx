@@ -2,14 +2,17 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 export default function Login({ setUser, apiUrl }) {
-  const [email, setEmail] = useState('admin@system.com')
-  const [password, setPassword] = useState('admin123')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [showPw, setShowPw] = useState(false)
+  const [busy, setBusy] = useState(false)
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setBusy(true)
     try {
       const res = await fetch(`${apiUrl}/auth/login`, {
         method: 'POST',
@@ -28,29 +31,63 @@ export default function Login({ setUser, apiUrl }) {
       console.error(err)
       setError('حدث خطأ في الاتصال بالسيرفر')
     }
+    setBusy(false)
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-ios-bg px-4" dir="rtl">
-      <div className="card-ios p-8 w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center mb-2 text-ios-text tracking-tight">📦 نظام الجرد اليومي</h1>
-        <p className="text-center text-ios-label mb-6">تسجيل الدخول</p>
-        {error && <div className="bg-ios-red/10 text-ios-red p-3 rounded-2xl mb-4 text-sm font-semibold">{error}</div>}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="label-ios">البريد الإلكتروني</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-              className="input-ios" />
-          </div>
-          <div>
-            <label className="label-ios">كلمة المرور</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              className="input-ios" />
-          </div>
-          <button type="submit" className="btn-ios w-full py-3 text-lg">
-            دخول
-          </button>
-        </form>
+    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden"
+      dir="rtl"
+      style={{ background: 'linear-gradient(160deg, #0A84FF 0%, #5E5CE6 60%, #BF5AF2 100%)' }}>
+      {/* دوائر زخرفية */}
+      <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-white/10 blur-2xl" />
+      <div className="absolute -bottom-32 -left-24 w-96 h-96 rounded-full bg-white/10 blur-2xl" />
+
+      <div className="relative w-full max-w-md anim-pop">
+        {/* الشعار */}
+        <div className="text-center mb-6">
+          <div className="w-20 h-20 mx-auto rounded-3xl bg-white/20 backdrop-blur flex items-center justify-center text-5xl shadow-lg mb-4">📦</div>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight drop-shadow-sm">نظام الجرد اليومي</h1>
+          <p className="text-white/80 mt-1 text-sm">تسجيل الدخول لحسابك</p>
+        </div>
+
+        {/* البطاقة */}
+        <div className="bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-8">
+          {error && <div className="bg-ios-red/10 text-ios-red p-3 rounded-2xl mb-4 text-sm font-semibold anim-pop">{error}</div>}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="label-ios">البريد الإلكتروني</label>
+              <div className="relative">
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-ios-label">✉️</span>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="example@mail.com"
+                  required
+                  style={{ direction: 'ltr', textAlign: 'right' }}
+                  className="input-ios pr-11" />
+              </div>
+            </div>
+            <div>
+              <label className="label-ios">كلمة المرور</label>
+              <div className="relative">
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-ios-label">🔒</span>
+                <input type={showPw ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  style={{ direction: 'ltr', textAlign: 'right' }}
+                  className="input-ios pr-11 pl-12" />
+                <button type="button" onClick={() => setShowPw(!showPw)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-ios-label text-lg active:opacity-60">
+                  {showPw ? '🙈' : '👁️'}
+                </button>
+              </div>
+            </div>
+            <button type="submit" disabled={busy}
+              className="btn-ios w-full py-3.5 text-lg shadow-lg shadow-ios-blue/30 disabled:opacity-60">
+              {busy ? 'جاري الدخول...' : 'دخول'}
+            </button>
+          </form>
+        </div>
+
+        <p className="text-center text-white/70 text-xs mt-6">نظام إدارة الجرد والمبيعات للفروع</p>
       </div>
     </div>
   )
