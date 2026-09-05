@@ -157,15 +157,20 @@ const createTables = async () => {
       )
     `);
 
-    // Insert default branches
-    await pool.query(`
-      INSERT INTO branches (name, location, manager_name) VALUES
-      ('فرع الرياض', 'الطريق الرئيسي', 'أحمد العلي'),
-      ('فرع جدة', 'شارع التحلية', 'خالد السعيد'),
-      ('فرع الدمام', 'الخليج', 'فهد الحربي'),
-      ('فرع أبها', 'الفيصلية', 'سعد القحطاني')
-      ON CONFLICT DO NOTHING
-    `);
+    // Insert default branches فقط إذا الجدول فاضي (قاعدة جديدة) — حتى لا تتكرر بالقواعد الحية
+    const branchCount = await pool.query('SELECT COUNT(*) FROM branches');
+    if (parseInt(branchCount.rows[0].count) === 0) {
+      await pool.query(`
+        INSERT INTO branches (name, location, manager_name) VALUES
+        ('فرع الرياض', 'الطريق الرئيسي', 'أحمد العلي'),
+        ('فرع جدة', 'شارع التحلية', 'خالد السعيد'),
+        ('فرع الدمام', 'الخليج', 'فهد الحربي'),
+        ('فرع أبها', 'الفيصلية', 'سعد القحطاني')
+      `);
+      console.log('✅ 4 branches seeded');
+    } else {
+      console.log('⏭️  Branches already exist — skipping seed');
+    }
 
     // Insert default admin
     const bcrypt = require('bcryptjs');
@@ -177,8 +182,6 @@ const createTables = async () => {
     `, [hashedPassword]);
 
     console.log('✅ All tables created successfully!');
-    console.log('✅ 4 branches seeded');
-    console.log('✅ Default admin created: admin@system.com / admin123');
 
   } catch (err) {
     console.error('❌ Migration failed:', err);
