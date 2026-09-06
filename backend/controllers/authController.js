@@ -35,7 +35,8 @@ exports.login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        branch_id: user.branch_id
+        branch_id: user.branch_id,
+        avatar: user.avatar
       }
     });
   } catch (err) {
@@ -137,8 +138,66 @@ exports.setUserActive = async (req, res) => {
 };
 
 exports.me = async (req, res) => {
-  const { id, name, email, role, branch_id, is_active } = req.user;
-  res.json({ user: { id, name, email, role, branch_id, is_active } });
+  const { id, name, email, role, branch_id, is_active, avatar, created_at } = req.user;
+  const branch = branch_id
+    ? await pool.query('SELECT name FROM branches WHERE id = $1', [branch_id])
+    : { rows: [] };
+  res.json({
+    user: {
+      id, name, email, role, branch_id, is_active, avatar, created_at,
+      branch_name: branch.rows[0]?.name || null
+    }
+  });
+};
+
+// تعديل البروفايل الشخصي: الاسم والصورة فقط
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, avatar } = req.body;
+
+    if (name !== undefined) {
+      const trimmed = String(name).trim();
+      if (!trimmed) return res.status(400).json({ message: 'الاسم مطلوب' });
+      await pool.query('UPDATE users SET name = $1 WHERE id = $2', [trimmed.slice(0, 100), req.user.id]);
+    }
+
+    if (avatar !== undefined) {
+      const value = String(avatar || '');
+      if (value && !/^data:image\/(png|jpe?g|webp);base64,/.test(value)) {
+        return res.status(400).json({ message: 'صيغة الصورة غير مدعومة (PNG أو JPG)' });
+      }
+      if (value.length > 1500000) {
+        return res.status(400).json({ message: 'حجم الصورة كبير جداً (الحد الأقصى ~1MB)' });
+      }
+      await pool.query('UPDATE users SET avatar = $1 WHERE id = $2', [value || null, req.user.id]);
+    }
+
+    const result = await pool.query(
+      'SELECT id, name, email, role, branch_id, avatar, created_at FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    res.json({ user: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// تغيير الباسورد الشخصي — يتطلب الباسورد الحالي
+exports.changePassword = async (req, res) => {
+  try {
+    const { current_password, new_password } = req.body;
+
+    const isMatch = await bcrypt.compare(String(current_password || ''), req.user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'كلمة المرور الحالية غير صحيحة' });
+    }
+
+    const hashed = await bcrypt.hash(new_password, 10);
+    await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashed, req.user.id]);
+    res.json({ message: 'تم تغيير كلمة المرور بنجاح' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 exports.resetPassword = async (req, res) => {

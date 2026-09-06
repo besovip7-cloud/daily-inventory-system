@@ -30,6 +30,9 @@ const createTables = async () => {
       )
     `);
 
+    // صورة المستخدم الشخصية (base64)
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT`);
+
     // Inventory Items (master list per branch)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS inventory_items (

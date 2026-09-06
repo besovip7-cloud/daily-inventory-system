@@ -32,6 +32,20 @@ router.post('/login',
 
 router.get('/me', auth, authController.me);
 
+// البروفايل الشخصي — أي مستخدم مسجل
+router.put('/profile',
+  auth,
+  authController.updateProfile
+);
+
+router.put('/change-password',
+  auth,
+  body('current_password').notEmpty().withMessage('كلمة المرور الحالية مطلوبة'),
+  body('new_password').isLength({ min: 6 }).withMessage('كلمة المرور الجديدة 6 أحرف على الأقل'),
+  handleValidation,
+  authController.changePassword
+);
+
 router.get('/users', auth, adminOnly, authController.listUsers);
 
 router.post('/users',

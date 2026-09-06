@@ -54,7 +54,14 @@ export default function Layout({ user }) {
               {dark ? '☀️' : '🌙'}
             </button>
             {showBell && <AlertBell />}
-            <span className="text-xs text-ios-label">{user?.name}</span>
+            <Link to="/profile" className="flex items-center gap-2 active:opacity-60">
+              <span className="w-8 h-8 rounded-full bg-ios-blue text-white text-sm font-extrabold flex items-center justify-center overflow-hidden">
+                {user?.avatar
+                  ? <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                  : (user?.name || '?').trim().charAt(0).toUpperCase()}
+              </span>
+              <span className="text-xs text-ios-label hidden sm:inline">{user?.name}</span>
+            </Link>
             <button onClick={logout} className="btn-ios-danger text-xs px-3 py-1.5">خروج</button>
           </div>
         </div>
