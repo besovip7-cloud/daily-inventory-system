@@ -31,7 +31,7 @@ export function exportToExcel({ filename, sheetName = 'التقرير', columns,
  * طباعة التقرير (أو حفظه PDF من نافذة الطباعة)
  * columns: [{ key, label }]
  */
-export function printReport({ title, subtitle = '', columns, rows, totals = [] }) {
+export function printReport({ title, subtitle = '', columns, rows, totals = [], company = null }) {
   const area = document.getElementById('print-area') || (() => {
     const el = document.createElement('div')
     el.id = 'print-area'
@@ -41,8 +41,12 @@ export function printReport({ title, subtitle = '', columns, rows, totals = [] }
 
   const esc = v => String(v ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]))
 
+  const safeLogo = company?.logo && /^data:image\/(png|jpe?g|webp);base64,/.test(company.logo) ? company.logo : null
+
   area.innerHTML = `
     <div class="print-header">
+      ${safeLogo ? `<img src="${safeLogo}" class="print-logo" alt="" />` : ''}
+      ${company?.name ? `<div class="print-company">${esc(company.name)}</div>` : ''}
       <h1>${esc(title)}</h1>
       ${subtitle ? `<p>${esc(subtitle)}</p>` : ''}
     </div>

@@ -11,6 +11,7 @@ const inventoryRoutes = require('./routes/inventory');
 const salesRoutes = require('./routes/sales');
 const alertsRoutes = require('./routes/alerts');
 const reportsRoutes = require('./routes/reports');
+const settingsRoutes = require('./routes/settings');
 
 const app = express();
 
@@ -28,7 +29,7 @@ const apiLimiter = rateLimit({
   legacyHeaders: false
 });
 
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
@@ -42,6 +43,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/alerts', alertsRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/settings', settingsRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString(), version: '1.0.0' });

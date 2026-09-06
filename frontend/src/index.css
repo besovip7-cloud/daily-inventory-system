@@ -94,6 +94,17 @@
     font-weight: 800;
     margin: 0 0 2mm;
   }
+  .print-logo {
+    height: 18mm;
+    max-width: 40mm;
+    object-fit: contain;
+    margin-bottom: 2mm;
+  }
+  .print-company {
+    font-size: 15pt;
+    font-weight: 800;
+    margin-bottom: 2mm;
+  }
   .print-header p {
     font-size: 10pt;
     color: #444;

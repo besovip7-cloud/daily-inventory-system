@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { exportToExcel, printReport } from '../utils/export'
+import { fetchSettings, getCachedSettings } from '../utils/settings'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -27,6 +28,7 @@ export default function Reports({ user }) {
   const [varianceDate, setVarianceDate] = useState(fmtDate(today))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [settings, setSettings] = useState(getCachedSettings())
 
   const authHeaders = { Authorization: `Bearer ${token}` }
 
@@ -43,6 +45,10 @@ export default function Reports({ user }) {
   useEffect(() => {
     loadComparison()
   }, [from, to])
+
+  useEffect(() => {
+    fetchSettings().then(setSettings)
+  }, [])
 
   useEffect(() => {
     if (selectedBranch) loadBranchReports()
@@ -244,6 +250,7 @@ export default function Reports({ user }) {
       columns: activeConfig.columns,
       rows: activeConfig.rows,
       totals: activeConfig.totals,
+      company: { name: settings.company_name, logo: settings.company_logo },
     })
   }
 

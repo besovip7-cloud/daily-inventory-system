@@ -1,8 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import AlertBell from './AlertBell'
+import { fetchSettings, getCachedSettings } from '../utils/settings'
 
 export default function Layout({ user }) {
+  const [settings, setSettings] = useState(getCachedSettings())
+
+  useEffect(() => {
+    fetchSettings().then(setSettings)
+  }, [])
   const logout = () => {
     localStorage.removeItem('token')
     window.location.reload()
@@ -36,7 +42,12 @@ export default function Layout({ user }) {
     <div className="min-h-screen bg-ios-bg" dir="rtl">
       <nav className="bg-white/80 backdrop-blur border-b border-ios-sep sticky top-0 z-30">
         <div className="max-w-7xl mx-auto flex justify-between items-center px-4 py-3">
-          <h1 className="text-lg font-semibold text-ios-text">📦 نظام الجرد اليومي</h1>
+          <h1 className="text-lg font-semibold text-ios-text flex items-center gap-2">
+            {settings.company_logo
+              ? <img src={settings.company_logo} alt="logo" className="w-8 h-8 rounded-lg object-contain" />
+              : <span>📦</span>}
+            <span className="hidden sm:inline">{settings.company_name}</span>
+          </h1>
           <div className="flex gap-3 items-center">
             <button onClick={toggleDark} title={dark ? 'الوضع النهاري' : 'الوضع الليلي'}
               className="w-9 h-9 rounded-full bg-ios-fill flex items-center justify-center text-lg active:scale-90 transition">

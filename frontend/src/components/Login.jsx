@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { fetchSettings, getCachedSettings } from '../utils/settings'
 
 export default function Login({ setUser, apiUrl }) {
   const [email, setEmail] = useState('')
@@ -7,7 +8,12 @@ export default function Login({ setUser, apiUrl }) {
   const [error, setError] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [settings, setSettings] = useState(getCachedSettings())
   const navigate = useNavigate()
+
+  useEffect(() => {
+    fetchSettings().then(setSettings)
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -45,9 +51,13 @@ export default function Login({ setUser, apiUrl }) {
       <div className="relative w-full max-w-md anim-pop">
         {/* الشعار */}
         <div className="text-center mb-6">
-          <div className="w-20 h-20 mx-auto rounded-3xl bg-white/20 backdrop-blur flex items-center justify-center text-5xl shadow-lg mb-4">📦</div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight drop-shadow-sm">نظام الجرد اليومي</h1>
-          <p className="text-white/80 mt-1 text-sm">تسجيل الدخول لحسابك</p>
+          <div className="w-24 h-24 mx-auto rounded-3xl bg-white shadow-lg mb-4 overflow-hidden flex items-center justify-center">
+            {settings.company_logo
+              ? <img src={settings.company_logo} alt="logo" className="w-full h-full object-contain" />
+              : <span className="text-5xl">📦</span>}
+          </div>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight drop-shadow-sm">{settings.company_name}</h1>
+          <p className="text-white/80 mt-1 text-sm">نظام الجرد اليومي — تسجيل الدخول لحسابك</p>
         </div>
 
         {/* البطاقة */}

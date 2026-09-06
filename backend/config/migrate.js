@@ -157,6 +157,19 @@ const createTables = async () => {
       )
     `);
 
+    // إعدادات النظام (اسم الشركة واللوكو)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key VARCHAR(50) PRIMARY KEY,
+        value TEXT
+      )
+    `);
+
+    await pool.query(`
+      INSERT INTO app_settings (key, value) VALUES ('company_name', 'Saj Alreef Express')
+      ON CONFLICT (key) DO NOTHING
+    `);
+
     // Insert default branches فقط إذا الجدول فاضي (قاعدة جديدة) — حتى لا تتكرر بالقواعد الحية
     const branchCount = await pool.query('SELECT COUNT(*) FROM branches');
     if (parseInt(branchCount.rows[0].count) === 0) {

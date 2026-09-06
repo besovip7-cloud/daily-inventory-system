@@ -77,6 +77,10 @@ export default function Management() {
           className={`segmented-item ${activeTab === 'recipes' ? 'segmented-item-active' : ''}`}>
           🧪 المكونات
         </button>
+        <button onClick={() => setActiveTab('settings')}
+          className={`segmented-item ${activeTab === 'settings' ? 'segmented-item-active' : ''}`}>
+          ⚙️ الإعدادات
+        </button>
       </div>
 
       {activeTab === 'users' && <UsersTab showMsg={showMsg} headers={headers} />}
@@ -84,6 +88,7 @@ export default function Management() {
       {activeTab === 'items' && <ItemsTab showMsg={showMsg} headers={headers} />}
       {activeTab === 'menu' && <MenuTab showMsg={showMsg} headers={headers} />}
       {activeTab === 'recipes' && <RecipesTab showMsg={showMsg} headers={headers} />}
+      {activeTab === 'settings' && <SettingsTab showMsg={showMsg} headers={headers} />}
     </div>
   )
 }
@@ -1066,6 +1071,101 @@ function RecipesTab({ showMsg, headers }) {
       </div>
       </>
       )}
+    </div>
+  )
+}
+
+/* ================= ⚙️ الإعدادات ================= */
+function SettingsTab({ showMsg, headers }) {
+  const [companyName, setCompanyName] = useState('')
+  const [logo, setLogo] = useState('') // data URL
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    fetch(`${API_URL}/settings`, { headers })
+      .then(r => r.json())
+      .then(d => {
+        setCompanyName(d.company_name || '')
+        setLogo(d.company_logo || '')
+      })
+      .catch(() => {})
+  }, [])
+
+  const handleLogoFile = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!/^image\/(png|jpe?g|webp)$/.test(file.type)) {
+      showMsg('❌ صيغة غير مدعومة — استخدم PNG أو JPG')
+      return
+    }
+    if (file.size > 1000000) {
+      showMsg('❌ حجم الصورة كبير — الحد الأقصى 1MB')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => setLogo(reader.result)
+    reader.readAsDataURL(file)
+  }
+
+  const save = async () => {
+    if (!companyName.trim()) {
+      showMsg('❌ اسم الشركة مطلوب')
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await fetch(`${API_URL}/settings`, {
+        method: 'PUT',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_name: companyName.trim(), company_logo: logo })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        localStorage.setItem('app_settings', JSON.stringify(data))
+        showMsg('✅ تم حفظ الإعدادات بنجاح!')
+      } else {
+        showMsg('❌ فشل الحفظ: ' + (data.message || ''))
+      }
+    } catch {
+      showMsg('❌ خطأ في الاتصال')
+    }
+    setSaving(false)
+  }
+
+  return (
+    <div>
+      <div className="card-ios p-5 space-y-4 max-w-lg">
+        <h3 className="font-bold text-ios-text">🏷️ اسم الشركة</h3>
+        <input type="text" value={companyName} onChange={e => setCompanyName(e.target.value)}
+          className="input-ios" placeholder="اسم الشركة" />
+
+        <h3 className="font-bold text-ios-text pt-2">🖼️ شعار الشركة</h3>
+        <div className="flex items-center gap-4">
+          <div className="w-20 h-20 rounded-2xl bg-ios-fill flex items-center justify-center overflow-hidden">
+            {logo
+              ? <img src={logo} alt="logo" className="w-full h-full object-contain" />
+              : <span className="text-3xl">📦</span>}
+          </div>
+          <div className="flex-1">
+            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLogoFile}
+              className="block w-full text-xs text-ios-label bg-ios-fill rounded-xl p-2" />
+            <p className="text-xs text-ios-label mt-1">PNG أو JPG — حد أقصى 1MB</p>
+            {logo && (
+              <button onClick={() => setLogo('')} className="text-ios-red text-xs font-bold mt-1 active:opacity-70">
+                🗑️ إزالة الشعار
+              </button>
+            )}
+          </div>
+        </div>
+
+        <button onClick={save} disabled={saving}
+          className="btn-ios w-full py-3 disabled:opacity-60">
+          {saving ? 'جاري الحفظ...' : '💾 حفظ الإعدادات'}
+        </button>
+      </div>
+      <p className="text-ios-label text-sm mt-3 max-w-lg">
+        💡 الاسم والشعار يظهرون بصفحة الدخول والقائمة العلوية وكل تقرير مطبوع.
+      </p>
     </div>
   )
 }
