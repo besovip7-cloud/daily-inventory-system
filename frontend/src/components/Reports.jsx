@@ -17,6 +17,7 @@ export default function Reports({ user }) {
   const [to, setTo] = useState(fmtDate(today))
   const [selectedBranch, setSelectedBranch] = useState('')
   const [activeTab, setActiveTab] = useState('sales')
+  const [salesView, setSalesView] = useState('detailed')
   const [comparison, setComparison] = useState([])
   const [sales, setSales] = useState([])
   const [inventory, setInventory] = useState([])
@@ -97,12 +98,40 @@ export default function Reports({ user }) {
   }
 
   const salesTotal = sales.reduce((sum, r) => sum + parseFloat(r.total_revenue || 0), 0)
+
+  const groupedSales = Object.values(
+    sales.reduce((acc, r) => {
+      if (!acc[r.name]) acc[r.name] = { name: r.name, quantity_sold: 0, total_revenue: 0, payment_card: 0, payment_cash: 0 }
+      acc[r.name].quantity_sold += parseInt(r.quantity_sold) || 0
+      acc[r.name].total_revenue += parseFloat(r.total_revenue) || 0
+      acc[r.name].payment_card += parseFloat(r.payment_card) || 0
+      acc[r.name].payment_cash += parseFloat(r.payment_cash) || 0
+      return acc
+    }, {})
+  ).map(g => ({
+    ...g,
+    total_revenue: g.total_revenue.toFixed(2),
+    payment_card: g.payment_card.toFixed(2),
+    payment_cash: g.payment_cash.toFixed(2),
+  }))
   const lowStockLabels = { out_of_stock: 'نفذ', critical: 'حرج', low: 'منخفض' }
 
   const branchName = branches.find(b => String(b.id) === selectedBranch)?.name || ''
 
   const reportConfig = () => ({
-    sales: {
+    sales: salesView === 'grouped' ? {
+      title: 'تقرير المبيعات المجمّعة',
+      filename: `مبيعات-مجمعة_${branchName}_${from}_${to}`,
+      columns: [
+        { key: 'name', label: 'الصنف' },
+        { key: 'quantity_sold', label: 'إجمالي الكمية' },
+        { key: 'total_revenue', label: 'إجمالي الإيراد (د.ع)' },
+        { key: 'payment_card', label: 'شبكة (د.ع)' },
+        { key: 'payment_cash', label: 'نقدي (د.ع)' },
+      ],
+      rows: groupedSales,
+      totals: [{ label: 'الإجمالي', value: `${salesTotal.toFixed(2)} د.ع` }],
+    } : {
       title: 'تقرير المبيعات',
       filename: `مبيعات_${branchName}_${from}_${to}`,
       columns: [
@@ -367,7 +396,19 @@ export default function Reports({ user }) {
         {activeConfig && activeConfig.rows.length > 0 && !loading && (
           <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-ios-sep bg-[#F9F9FB]">
             <span className="font-bold text-ios-text text-sm">{activeConfig.title}</span>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {activeTab === 'sales' && (
+                <div className="segmented">
+                  <button onClick={() => setSalesView('detailed')}
+                    className={`segmented-item ${salesView === 'detailed' ? 'segmented-item-active' : ''}`}>
+                    مفصل
+                  </button>
+                  <button onClick={() => setSalesView('grouped')}
+                    className={`segmented-item ${salesView === 'grouped' ? 'segmented-item-active' : ''}`}>
+                    مجمّع بالصنف
+                  </button>
+                </div>
+              )}
               <button onClick={handleExportExcel} className="btn-ios-secondary text-xs px-3 py-1.5">📊 Excel</button>
               <button onClick={handlePrint} className="btn-ios-secondary text-xs px-3 py-1.5">🖨️ طباعة / PDF</button>
             </div>
@@ -383,6 +424,37 @@ export default function Reports({ user }) {
               <div className="p-4 bg-ios-blue/10 font-bold text-ios-blue">
                 إجمالي الإيرادات: {salesTotal.toFixed(2)} د.ع
               </div>
+              {salesView === 'grouped' ? (
+                <table className="w-full text-right">
+                  <thead className="bg-[#F2F2F7]">
+                    <tr>
+                      <th className="p-3 font-bold text-ios-label text-xs">الصنف</th>
+                      <th className="p-3 font-bold text-ios-label text-xs">إجمالي الكمية</th>
+                      <th className="p-3 font-bold text-ios-label text-xs">إجمالي الإيراد</th>
+                      <th className="p-3 font-bold text-ios-label text-xs">شبكة</th>
+                      <th className="p-3 font-bold text-ios-label text-xs">نقدي</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groupedSales.map((g, i) => (
+                      <tr key={i} className="border-t border-ios-sep">
+                        <td className="p-3 font-semibold text-ios-text">{g.name}</td>
+                        <td className="p-3 font-bold">{g.quantity_sold}</td>
+                        <td className="p-3 font-bold text-ios-green">{g.total_revenue} د.ع</td>
+                        <td className="p-3">{g.payment_card}</td>
+                        <td className="p-3">{g.payment_cash}</td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 border-ios-sep bg-[#F2F2F7] font-bold">
+                      <td className="p-3">الإجمالي</td>
+                      <td className="p-3">{groupedSales.reduce((s, g) => s + g.quantity_sold, 0)}</td>
+                      <td className="p-3 text-ios-green">{salesTotal.toFixed(2)} د.ع</td>
+                      <td className="p-3">{groupedSales.reduce((s, g) => s + parseFloat(g.payment_card), 0).toFixed(2)}</td>
+                      <td className="p-3">{groupedSales.reduce((s, g) => s + parseFloat(g.payment_cash), 0).toFixed(2)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              ) : (
               <table className="w-full text-right">
                 <thead className="bg-[#F2F2F7]">
                   <tr>
@@ -445,6 +517,7 @@ export default function Reports({ user }) {
                   ))}
                 </tbody>
               </table>
+              )}
             </>
           )
         ) : activeTab === 'inventory' ? (
