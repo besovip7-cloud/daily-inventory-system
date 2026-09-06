@@ -29,6 +29,7 @@ export default function Reports({ user }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [settings, setSettings] = useState(getCachedSettings())
+  const [selected, setSelected] = useState({}) // صفوف محددة بتقرير المبيعات المفصل
 
   const authHeaders = { Authorization: `Bearer ${token}` }
 
@@ -75,6 +76,7 @@ export default function Reports({ user }) {
       if (activeTab === 'sales') {
         const res = await fetch(`${API_URL}/reports/sales/${selectedBranch}?from=${from}&to=${to}`, { headers: authHeaders })
         setSales(await res.json() || [])
+        setSelected({})
       } else if (activeTab === 'inventory') {
         const res = await fetch(`${API_URL}/reports/inventory/${selectedBranch}?from=${from}&to=${to}`, { headers: authHeaders })
         setInventory(await res.json() || [])
@@ -226,30 +228,47 @@ export default function Reports({ user }) {
 
   const activeConfig = reportConfig()[activeTab]
 
+  // التصدير والطباعة يطبقان على الصفوف المحددة فقط إذا فيه تحديد بتقرير المبيعات
+  const selectedCount = Object.values(selected).filter(Boolean).length
+  const effectiveConfig = (activeTab === 'sales' && salesView === 'detailed' && selectedCount > 0) ? {
+    ...activeConfig,
+    rows: activeConfig.rows.filter((_, i) => selected[i]),
+    totals: [{
+      label: `إجمالي الإيرادات (محدد ${selectedCount})`,
+      value: `${sales.filter((_, i) => selected[i]).reduce((s, r) => s + parseFloat(r.total_revenue || 0), 0).toFixed(2)} د.ع`
+    }],
+  } : activeConfig
+
+  const toggleSelectAll = () => {
+    const allOn = sales.length > 0 && sales.every((_, i) => selected[i])
+    setSelected(allOn ? {} : Object.fromEntries(sales.map((_, i) => [i, true])))
+  }
+  const toggleRowSelect = (i) => setSelected(s => ({ ...s, [i]: !s[i] }))
+
   const handleExportExcel = () => {
-    if (!activeConfig || activeConfig.rows.length === 0) return
+    if (!effectiveConfig || effectiveConfig.rows.length === 0) return
     exportToExcel({
-      filename: activeConfig.filename,
-      sheetName: activeConfig.title.slice(0, 31),
-      columns: activeConfig.columns,
-      rows: activeConfig.rows,
-      totals: activeConfig.totals,
+      filename: effectiveConfig.filename,
+      sheetName: effectiveConfig.title.slice(0, 31),
+      columns: effectiveConfig.columns,
+      rows: effectiveConfig.rows,
+      totals: effectiveConfig.totals,
     })
   }
 
   const handlePrint = () => {
-    if (!activeConfig || activeConfig.rows.length === 0) return
+    if (!effectiveConfig || effectiveConfig.rows.length === 0) return
     const subtitle = activeTab === 'variance'
       ? `الفرع: ${branchName} • بتاريخ ${varianceDate}`
       : activeTab === 'lowstock'
         ? `الفرع: ${branchName}`
         : `الفرع: ${branchName} • من ${from} إلى ${to}`
     printReport({
-      title: activeConfig.title,
+      title: effectiveConfig.title,
       subtitle,
-      columns: activeConfig.columns,
-      rows: activeConfig.rows,
-      totals: activeConfig.totals,
+      columns: effectiveConfig.columns,
+      rows: effectiveConfig.rows,
+      totals: effectiveConfig.totals,
       company: { name: settings.company_name, logo: settings.company_logo },
     })
   }
@@ -403,6 +422,12 @@ export default function Reports({ user }) {
         {activeConfig && activeConfig.rows.length > 0 && !loading && (
           <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-ios-sep bg-[#F9F9FB]">
             <span className="font-bold text-ios-text text-sm">{activeConfig.title}</span>
+            {selectedCount > 0 && (
+              <span className="text-xs font-bold bg-ios-blue/10 text-ios-blue px-2.5 py-1 rounded-full">
+                🎯 محدد {selectedCount} من {sales.length}
+                <button onClick={() => setSelected({})} className="mr-1 active:opacity-60">✕</button>
+              </span>
+            )}
             <div className="flex flex-wrap items-center gap-2">
               {activeTab === 'sales' && (
                 <div className="segmented">
@@ -465,6 +490,11 @@ export default function Reports({ user }) {
               <table className="w-full text-right">
                 <thead className="bg-[#F2F2F7]">
                   <tr>
+                    <th className="p-3 text-center w-10">
+                      <input type="checkbox" className="w-4 h-4 accent-ios-blue cursor-pointer"
+                        checked={sales.length > 0 && sales.every((_, i) => selected[i])}
+                        onChange={toggleSelectAll} title="تحديد الكل" />
+                    </th>
                     <th className="p-3 font-bold text-ios-label text-xs">التاريخ</th>
                     <th className="p-3 font-bold text-ios-label text-xs">الصنف</th>
                     <th className="p-3 font-bold text-ios-label text-xs">الكمية</th>
@@ -477,7 +507,11 @@ export default function Reports({ user }) {
                 <tbody>
                   {sales.map((r, i) => (
                     editing && editing.table === 'sales' && editing.id === r.id ? (
-                      <tr key={i} className="border-t border-ios-sep bg-ios-blue/10">
+                      <tr key={i} className={`border-t border-ios-sep bg-ios-blue/10 ${selected[i] ? '' : 'opacity-50'}`}>
+                        <td className="p-3 text-center">
+                          <input type="checkbox" className="w-4 h-4 accent-ios-blue cursor-pointer"
+                            checked={!!selected[i]} onChange={() => toggleRowSelect(i)} />
+                        </td>
                         <td className="p-3 text-ios-label">{fmtDate(new Date(r.record_date))}</td>
                         <td className="p-3 font-semibold text-ios-text">{r.name}</td>
                         <td className="p-2">
@@ -504,7 +538,11 @@ export default function Reports({ user }) {
                         </td>
                       </tr>
                     ) : (
-                      <tr key={i} className="border-t border-ios-sep">
+                      <tr key={i} className={`border-t border-ios-sep ${selected[i] ? '' : 'opacity-50'}`}>
+                        <td className="p-3 text-center">
+                          <input type="checkbox" className="w-4 h-4 accent-ios-blue cursor-pointer"
+                            checked={!!selected[i]} onChange={() => toggleRowSelect(i)} />
+                        </td>
                         <td className="p-3 text-ios-label">{fmtDate(new Date(r.record_date))}</td>
                         <td className="p-3 font-semibold text-ios-text">{r.name}</td>
                         <td className="p-3">{r.quantity_sold}</td>
