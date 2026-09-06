@@ -18,6 +18,7 @@ router.get('/daily/:branchId', auth, branchAccess, salesController.getDailySales
 router.post('/daily', auth, branchAccess, salesController.saveDailySales);
 router.put('/daily/:id', auth, adminOnly, salesController.updateDailySale);
 router.delete('/daily/:id', auth, adminOnly, salesController.deleteDailySale);
+router.delete('/daily', auth, adminOnly, salesController.deleteDailySalesBulk);
 router.get('/summary/:branchId', auth, branchAccess, salesController.getSalesSummary);
 router.get('/trend/:branchId', auth, branchAccess, salesController.getSalesTrend);
 

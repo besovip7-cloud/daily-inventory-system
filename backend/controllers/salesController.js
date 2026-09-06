@@ -240,25 +240,59 @@ exports.updateDailySale = async (req, res) => {
   }
 };
 
+// حذف سجل بيع واحد مع استرجاع المكونات — يشتغل مع pool أو transaction client
+const deleteSaleById = async (executor, id) => {
+  const old = await executor.query('SELECT * FROM daily_sales WHERE id = $1', [id]);
+  if (old.rows.length === 0) return null;
+
+  await executor.query('DELETE FROM daily_sales WHERE id = $1', [id]);
+
+  // Restore recipe ingredients to inventory and log the movement
+  const menuInfo = await executor.query('SELECT name FROM menu_items WHERE id = $1', [old.rows[0].item_id]);
+  const menuName = menuInfo.rows.length ? menuInfo.rows[0].name : `صنف #${old.rows[0].item_id}`;
+  const reference = `حذف بيع: ${menuName} ×${old.rows[0].quantity_sold}`;
+  const applied = await applyRecipeDelta(executor, old.rows[0].branch_id, old.rows[0].item_id, -old.rows[0].quantity_sold, reference, null);
+  for (const a of applied) {
+    await checkVarianceAndAlert(executor, old.rows[0].branch_id, a.item_id, old.rows[0].record_date);
+  }
+  return old.rows[0];
+};
+
 exports.deleteDailySale = async (req, res) => {
   try {
-    const old = await pool.query('SELECT * FROM daily_sales WHERE id = $1', [req.params.id]);
-    if (old.rows.length === 0) {
+    const deleted = await deleteSaleById(pool, req.params.id);
+    if (!deleted) {
       return res.status(404).json({ message: 'Record not found' });
     }
-
-    await pool.query('DELETE FROM daily_sales WHERE id = $1', [req.params.id]);
-
-    // Restore recipe ingredients to inventory and log the movement
-    const menuInfo = await pool.query('SELECT name FROM menu_items WHERE id = $1', [old.rows[0].item_id]);
-    const menuName = menuInfo.rows.length ? menuInfo.rows[0].name : `صنف #${old.rows[0].item_id}`;
-    const reference = `حذف بيع: ${menuName} ×${old.rows[0].quantity_sold}`;
-    const applied = await applyRecipeDelta(pool, old.rows[0].branch_id, old.rows[0].item_id, -old.rows[0].quantity_sold, reference, req.user.id);
-    for (const a of applied) {
-      await checkVarianceAndAlert(pool, old.rows[0].branch_id, a.item_id, old.rows[0].record_date);
-    }
-
     res.json({ message: 'Record deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// حذف جماعي للسجلات المحددة (تقارير المبيعات)
+exports.deleteDailySalesBulk = async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body.ids) ? req.body.ids.map(Number).filter(Boolean) : [];
+    if (ids.length === 0) return res.status(400).json({ message: 'لا توجد سجلات محددة' });
+    if (ids.length > 500) return res.status(400).json({ message: 'الحد الأقصى 500 سجل بالعملية الواحدة' });
+
+    const client = await pool.connect();
+    let deleted = 0;
+    try {
+      await client.query('BEGIN');
+      for (const id of ids) {
+        const r = await deleteSaleById(client, id);
+        if (r) deleted++;
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+    res.json({ message: 'تم الحذف', deleted });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

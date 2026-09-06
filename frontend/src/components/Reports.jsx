@@ -334,6 +334,29 @@ export default function Reports({ user }) {
     }
   }
 
+  const deleteSelected = async () => {
+    const rows = sales.filter((_, i) => selected[i])
+    if (rows.length === 0) return
+    if (!window.confirm(`⚠️ هل أنت متأكد من حذف ${rows.length} سجل بيع محدد؟\nراح يترجع خصم المكونات لمواد الجرد.`)) return
+    try {
+      const res = await fetch(`${API_URL}/sales/daily`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ids: rows.map(r => r.id) })
+      })
+      if (res.ok) {
+        setSelected({})
+        loadBranchReports()
+        loadComparison()
+      } else {
+        const data = await res.json()
+        setError('❌ فشل الحذف: ' + (data.message || ''))
+      }
+    } catch (e) {
+      setError('❌ خطأ في الاتصال')
+    }
+  }
+
   return (
     <div dir="rtl">
       <h2 className="text-2xl font-bold mb-6 text-ios-text tracking-tight">📈 التقارير</h2>
@@ -427,6 +450,12 @@ export default function Reports({ user }) {
                 🎯 محدد {selectedCount} من {sales.length}
                 <button onClick={() => setSelected({})} className="mr-1 active:opacity-60">✕</button>
               </span>
+            )}
+            {isAdmin && activeTab === 'sales' && selectedCount > 0 && (
+              <button onClick={deleteSelected}
+                className="text-xs font-bold bg-ios-red/10 text-ios-red px-3 py-1.5 rounded-full active:opacity-60">
+                🗑️ حذف المحدد ({selectedCount})
+              </button>
             )}
             <div className="flex flex-wrap items-center gap-2">
               {activeTab === 'sales' && (
