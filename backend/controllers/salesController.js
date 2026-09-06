@@ -143,8 +143,10 @@ exports.getDailySales = async (req, res) => {
 
 exports.saveDailySales = async (req, res) => {
   try {
-    const { branch_id, records, payment_card, payment_cash } = req.body;
-    const today = new Date().toISOString().split('T')[0];
+    const { branch_id, records, payment_card, payment_cash, record_date } = req.body;
+    // تاريخ محدد (للاستيراد) أو اليوم الحالي
+    let today = new Date().toISOString().split('T')[0];
+    if (record_date && /^\d{4}-\d{2}-\d{2}$/.test(record_date)) today = record_date;
     const created_by = req.user.id;
 
     const client = await pool.connect();

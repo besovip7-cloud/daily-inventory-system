@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { visibleBranches, isBranchLocked } from '../utils/branchScope'
+import SalesImport from './SalesImport'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -14,6 +15,7 @@ export default function Sales({ user }) {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [entryMode, setEntryMode] = useState('manual') // 'manual' | 'import'
 
   const token = localStorage.getItem('token')
 
@@ -95,6 +97,21 @@ export default function Sales({ user }) {
         </div>
       )}
 
+      <div className="segmented mb-6 max-w-md">
+        <button onClick={() => setEntryMode('manual')}
+          className={`segmented-item ${entryMode === 'manual' ? 'segmented-item-active' : ''}`}>
+          ✍️ إدخال يدوي
+        </button>
+        <button onClick={() => setEntryMode('import')}
+          className={`segmented-item ${entryMode === 'import' ? 'segmented-item-active' : ''}`}>
+          📥 استيراد من Excel
+        </button>
+      </div>
+
+      {entryMode === 'import' ? (
+        <SalesImport user={user} branches={branches} />
+      ) : (
+      <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="card-ios p-4">
           <label className="label-ios">الفرع</label>
@@ -202,6 +219,8 @@ export default function Sales({ user }) {
       >
         {saving ? 'جاري الحفظ...' : '💾 حفظ المبيعات اليومية'}
       </button>
+      </>
+      )}
     </div>
   )
 }
