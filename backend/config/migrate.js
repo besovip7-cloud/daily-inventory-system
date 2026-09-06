@@ -173,6 +173,33 @@ const createTables = async () => {
       ON CONFLICT (key) DO NOTHING
     `);
 
+    // Allow 'purchase' movement type for purchase requests received
+    await pool.query(`ALTER TABLE inventory_movements DROP CONSTRAINT IF EXISTS inventory_movements_movement_type_check`);
+    await pool.query(`ALTER TABLE inventory_movements ADD CONSTRAINT inventory_movements_movement_type_check CHECK (movement_type IN ('sale', 'sale_adjust', 'count', 'purchase'))`);
+
+    // Purchase Requests (طلبات شراء مواد الجرد)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS purchase_requests (
+        id SERIAL PRIMARY KEY,
+        branch_id INTEGER REFERENCES branches(id) ON DELETE CASCADE,
+        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'received', 'cancelled')),
+        notes TEXT,
+        created_by INTEGER REFERENCES users(id),
+        confirmed_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        confirmed_at TIMESTAMP
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS purchase_request_items (
+        id SERIAL PRIMARY KEY,
+        request_id INTEGER REFERENCES purchase_requests(id) ON DELETE CASCADE,
+        inventory_item_id INTEGER REFERENCES inventory_items(id) ON DELETE CASCADE,
+        quantity DECIMAL(12,3) NOT NULL
+      )
+    `);
+
     // Insert default branches فقط إذا الجدول فاضي (قاعدة جديدة) — حتى لا تتكرر بالقواعد الحية
     const branchCount = await pool.query('SELECT COUNT(*) FROM branches');
     if (parseInt(branchCount.rows[0].count) === 0) {

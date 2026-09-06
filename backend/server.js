@@ -12,6 +12,7 @@ const salesRoutes = require('./routes/sales');
 const alertsRoutes = require('./routes/alerts');
 const reportsRoutes = require('./routes/reports');
 const settingsRoutes = require('./routes/settings');
+const purchaseRoutes = require('./routes/purchases');
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.use('/api/sales', salesRoutes);
 app.use('/api/alerts', alertsRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/purchases', purchaseRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString(), version: '1.0.0' });

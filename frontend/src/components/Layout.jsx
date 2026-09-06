@@ -29,6 +29,7 @@ export default function Layout({ user }) {
     { path: '/inventory', label: '📦 جرد المخزون', roles: ['admin', 'manager', 'staff'] },
     { path: '/branches', label: '🏪 إدارة الفروع', roles: ['admin', 'manager', 'staff'] },
     { path: '/sales', label: '💰 المبيعات', roles: ['admin', 'manager', 'staff', 'accountant'] },
+    { path: '/purchases', label: '🛒 طلبات الشراء', roles: ['admin', 'manager', 'staff'] },
     { path: '/alerts', label: '🔔 التنبيهات', roles: ['admin', 'manager', 'staff'] },
     { path: '/reports', label: '📈 التقارير', roles: ['admin', 'accountant'] },
     { path: '/admin', label: '👑 الإدارة', roles: ['admin'] },
