@@ -76,6 +76,7 @@ export default function SalesImport({ user, branches }) {
   const [importDate, setImportDate] = useState(new Date().toISOString().split('T')[0])
   const [menuItems, setMenuItems] = useState([])
   const [parsed, setParsed] = useState(null) // {items, fileTotal, dateTo, branch, matched[], unmatched[]}
+  const [selected, setSelected] = useState({}) // {index: true} — الأصناف المختارة للاستيراد
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -111,6 +112,7 @@ export default function SalesImport({ user, branches }) {
       }
 
       setParsed({ ...result, matched, unmatched, skipped })
+      setSelected(Object.fromEntries(matched.map((_, i) => [i, true])))
       if (result.dateTo) setImportDate(result.dateTo)
     } catch {
       setParsed(null)
@@ -119,18 +121,26 @@ export default function SalesImport({ user, branches }) {
     e.target.value = ''
   }
 
-  const totalQty = parsed ? parsed.matched.reduce((s, i) => s + i.qty, 0) : 0
-  const totalAmount = parsed ? parsed.matched.reduce((s, i) => s + i.amount, 0) : 0
+  const selectedItems = parsed ? parsed.matched.filter((_, i) => selected[i]) : []
+  const totalQty = selectedItems.reduce((s, i) => s + i.qty, 0)
+  const totalAmount = selectedItems.reduce((s, i) => s + i.amount, 0)
   const totalMatchesFile = parsed?.fileTotal &&
     Math.abs(totalAmount - parsed.fileTotal.amount) < 1
 
+  const toggleAll = () => {
+    const allOn = parsed.matched.every((_, i) => selected[i])
+    setSelected(allOn ? {} : Object.fromEntries(parsed.matched.map((_, i) => [i, true])))
+  }
+
+  const toggleRow = (i) => setSelected(s => ({ ...s, [i]: !s[i] }))
+
   const handleSave = async () => {
-    if (!parsed || parsed.matched.length === 0) return
+    if (selectedItems.length === 0) return
     if (!selectedBranch) { setMessage('❌ اختر الفرع'); return }
     setSaving(true)
     setMessage('')
     try {
-      const records = parsed.matched.map(i => ({
+      const records = selectedItems.map(i => ({
         item_id: i.item_id,
         quantity_sold: Math.round(i.qty),
         unit_price: Math.round((i.amount / i.qty) * 10000) / 10000 // الإيراد الفعلي ÷ الكمية
@@ -209,6 +219,11 @@ export default function SalesImport({ user, branches }) {
             <table className="w-full text-sm">
               <thead className="bg-[#F2F2F7]">
                 <tr>
+                  <th className="p-3 text-center w-10">
+                    <input type="checkbox" className="w-4 h-4 accent-ios-blue cursor-pointer"
+                      checked={parsed.matched.length > 0 && parsed.matched.every((_, i) => selected[i])}
+                      onChange={toggleAll} title="تحديد الكل" />
+                  </th>
                   <th className="p-3 text-right font-semibold text-ios-label text-xs">الصنف</th>
                   <th className="p-3 text-center font-semibold text-ios-label text-xs">الكمية</th>
                   <th className="p-3 text-center font-semibold text-ios-label text-xs">الإيراد (د.ع)</th>
@@ -217,7 +232,11 @@ export default function SalesImport({ user, branches }) {
               </thead>
               <tbody>
                 {parsed.matched.map((it, i) => (
-                  <tr key={i} className="border-t border-ios-sep">
+                  <tr key={i} className={`border-t border-ios-sep ${selected[i] ? '' : 'opacity-40'}`}>
+                    <td className="p-3 text-center">
+                      <input type="checkbox" className="w-4 h-4 accent-ios-blue cursor-pointer"
+                        checked={!!selected[i]} onChange={() => toggleRow(i)} />
+                    </td>
                     <td className="p-3 font-semibold text-ios-text">{it.displayName}</td>
                     <td className="p-3 text-center font-bold">{it.qty.toLocaleString()}</td>
                     <td className="p-3 text-center font-bold text-ios-green">{it.amount.toLocaleString()}</td>
@@ -225,7 +244,8 @@ export default function SalesImport({ user, branches }) {
                   </tr>
                 ))}
                 <tr className="border-t-2 border-ios-sep bg-[#F2F2F7] font-bold">
-                  <td className="p-3">الإجمالي</td>
+                  <td className="p-3"></td>
+                  <td className="p-3">الإجمالي ({selectedItems.length} مختار)</td>
                   <td className="p-3 text-center">{totalQty.toLocaleString()}</td>
                   <td className="p-3 text-center text-ios-green">{totalAmount.toLocaleString()} د.ع</td>
                   <td className="p-3"></td>
@@ -234,9 +254,9 @@ export default function SalesImport({ user, branches }) {
             </table>
           </div>
 
-          <button onClick={handleSave} disabled={saving || parsed.matched.length === 0}
+          <button onClick={handleSave} disabled={saving || selectedItems.length === 0}
             className="btn-ios w-full md:w-auto text-base disabled:opacity-40">
-            {saving ? 'جاري الاستيراد...' : `💾 حفظ ${parsed.matched.length} صنف بتاريخ ${importDate}`}
+            {saving ? 'جاري الاستيراد...' : `💾 حفظ ${selectedItems.length} صنف بتاريخ ${importDate}`}
           </button>
         </>
       )}
