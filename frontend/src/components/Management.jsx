@@ -691,6 +691,11 @@ function MenuTab({ showMsg, headers }) {
   const [menuItems, setMenuItems] = useState([])
   const [menuForm, setMenuForm] = useState(emptyMenuForm)
   const [editingMenu, setEditingMenu] = useState(null)
+  const [menuSearch, setMenuSearch] = useState('')
+
+  const filteredMenu = menuSearch
+    ? menuItems.filter(i => i.name.toLowerCase().includes(menuSearch.trim().toLowerCase()))
+    : menuItems
 
   useEffect(() => { loadMenu() }, [])
 
@@ -766,22 +771,49 @@ function MenuTab({ showMsg, headers }) {
         </form>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {menuItems.map(item => (
-          <div key={item.id} className="card-ios p-4">
-            <h4 className="font-bold text-ios-text">{item.name}</h4>
-            <p className="text-ios-label text-sm">{menuCategories.find(c => c.value === item.category)?.label || item.category}</p>
-            <p className="text-ios-blue font-bold mt-2">{item.price} د.ع</p>
-            <div className="flex gap-2 mt-3">
-              <button onClick={() => startEdit(item)}
-                className="flex-1 text-ios-blue py-1 rounded-lg font-bold text-sm bg-ios-blue/10 active:opacity-70">✏️ تعديل</button>
-              <button onClick={() => handleDelete(item)}
-                className="flex-1 text-ios-red py-1 rounded-lg font-bold text-sm bg-ios-red/10 active:opacity-70">🗑️ حذف</button>
-            </div>
-          </div>
-        ))}
+      {menuItems.length > 0 && (
+        <div className="mb-3">
+          <input type="text" placeholder="🔍 بحث باسم الصنف..." value={menuSearch}
+            onChange={e => setMenuSearch(e.target.value)}
+            className="input-ios max-w-sm" />
+        </div>
+      )}
+
+      <div className="card-ios overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-[#F2F2F7]">
+            <tr>
+              <th className="p-3 text-right font-semibold text-ios-label text-xs">اسم الصنف</th>
+              <th className="p-3 text-right font-semibold text-ios-label text-xs">المجموعة</th>
+              <th className="p-3 text-center font-semibold text-ios-label text-xs">السعر (د.ع)</th>
+              <th className="p-3 text-center font-semibold text-ios-label text-xs">التكلفة</th>
+              <th className="p-3 text-center font-semibold text-ios-label text-xs">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredMenu.map(item => (
+              <tr key={item.id} className="border-t border-ios-sep last:border-b-0">
+                <td className="p-3 font-semibold text-ios-text">{item.name}</td>
+                <td className="p-3 text-ios-label">{menuCategories.find(c => c.value === item.category)?.label || item.category}</td>
+                <td className="p-3 text-center font-bold text-ios-blue">{item.price}</td>
+                <td className="p-3 text-center text-ios-label">{item.cost || '—'}</td>
+                <td className="p-3 text-center whitespace-nowrap">
+                  <button onClick={() => startEdit(item)}
+                    className="text-ios-blue font-bold text-xs px-2 active:opacity-70">✏️ تعديل</button>
+                  <button onClick={() => handleDelete(item)}
+                    className="text-ios-red font-bold text-xs px-2 active:opacity-70">🗑️ حذف</button>
+                </td>
+              </tr>
+            ))}
+            {filteredMenu.length === 0 && (
+              <tr><td colSpan="5" className="p-6 text-center text-ios-label">
+                {menuSearch ? 'لا توجد نتائج مطابقة للبحث' : 'لا توجد أصناف مبيعات'}
+              </td></tr>
+            )}
+          </tbody>
+        </table>
       </div>
-      {menuItems.length === 0 && (
+      {menuItems.length === 0 && !menuSearch && (
         <p className="text-center text-ios-label py-10">لا توجد أصناف مبيعات</p>
       )}
     </div>
