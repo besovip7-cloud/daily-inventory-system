@@ -28,7 +28,10 @@ export default function Purchases({ user }) {
   const [branches, setBranches] = useState([])
   const [selectedBranch, setSelectedBranch] = useState('')
   const [invItems, setInvItems] = useState([])
-  const [rows, setRows] = useState([{ inventory_item_id: '', quantity: '' }])
+  const [cart, setCart] = useState([]) // مواد مضافة بانتظار الإرسال
+  const [search, setSearch] = useState('')
+  const [pickItem, setPickItem] = useState('')
+  const [pickQty, setPickQty] = useState('')
   const [notes, setNotes] = useState('')
   const [requests, setRequests] = useState([])
   const [source, setSource] = useState('store') // 'store' مخزن | 'kitchen' معمل
@@ -65,19 +68,39 @@ export default function Purchases({ user }) {
       .catch(() => {})
   }
 
-  const setRow = (i, field, value) => {
-    setRows(prev => prev.map((row, j) => j === i ? { ...row, [field]: value } : row))
+  const filteredItems = search.trim()
+    ? invItems.filter(i => i.name.toLowerCase().includes(search.trim().toLowerCase()))
+    : invItems
+
+  const pickedInfo = invItems.find(i => i.id === parseInt(pickItem))
+
+  const addToCart = (e) => {
+    e.preventDefault()
+    const qty = parseFloat(pickQty)
+    if (!pickItem) return show('❌ اختر المادة أولاً')
+    if (!qty || qty <= 0) return show('❌ أدخل كمية صحيحة')
+    const existing = cart.find(c => c.inventory_item_id === parseInt(pickItem))
+    if (existing) {
+      setCart(prev => prev.map(c => c.inventory_item_id === parseInt(pickItem)
+        ? { ...c, quantity: c.quantity + qty } : c))
+    } else {
+      setCart(prev => [...prev, {
+        inventory_item_id: parseInt(pickItem),
+        name: pickedInfo?.name || '',
+        unit: pickedInfo?.unit || '',
+        quantity: qty
+      }])
+    }
+    setPickItem('')
+    setPickQty('')
+    setSearch('')
   }
 
-  const addRow = () => setRows(prev => [...prev, { inventory_item_id: '', quantity: '' }])
-  const removeRow = (i) => setRows(prev => prev.filter((_, j) => j !== i))
-
-  const itemUnit = (id) => invItems.find(i => i.id === parseInt(id))?.unit || ''
+  const removeFromCart = (id) => setCart(prev => prev.filter(c => c.inventory_item_id !== id))
 
   const submit = async (e) => {
     e.preventDefault()
-    const clean = rows.filter(r => r.inventory_item_id && parseFloat(r.quantity) > 0)
-    if (clean.length === 0) return show('❌ أضف مادة بكمية صحيحة أولاً')
+    if (cart.length === 0) return show('❌ أضف مادة واحدة على الأقل للطلب')
     setSaving(true)
     try {
       const res = await fetch(`${API_URL}/purchases`, {
@@ -85,15 +108,15 @@ export default function Purchases({ user }) {
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           branch_id: parseInt(selectedBranch),
-          items: clean.map(r => ({ inventory_item_id: parseInt(r.inventory_item_id), quantity: parseFloat(r.quantity) })),
+          items: cart.map(r => ({ inventory_item_id: r.inventory_item_id, quantity: r.quantity })),
           notes: notes || undefined,
           source
         })
       })
       const data = await res.json()
       if (res.ok) {
-        show('✅ تم إنشاء طلب الشراء — باقي معلق لحد تأكيد الاستلام')
-        setRows([{ inventory_item_id: '', quantity: '' }])
+        show(`✅ تم إرسال طلب ${source === 'store' ? 'المخزن' : 'المعمل'} (${cart.length} مادة) — باقي معلق لحد تأكيد الاستلام`)
+        setCart([])
         setNotes('')
         loadRequests()
       } else {
@@ -191,7 +214,8 @@ export default function Purchases({ user }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="label-ios">الفرع</label>
-                <select value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)}
+                <select value={selectedBranch}
+                  onChange={e => { setSelectedBranch(e.target.value); setCart([]) }}
                   disabled={branchLocked} className="input-ios disabled:opacity-60">
                   {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
@@ -204,61 +228,65 @@ export default function Purchases({ user }) {
             </div>
 
             <div>
-              <label className="label-ios">المواد المطلوبة</label>
-              <div className="card-ios overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-right min-w-[560px]">
-                    <thead className="bg-[#F2F2F7]">
-                      <tr>
-                        <th className="p-3 font-bold text-ios-label text-xs w-10">#</th>
-                        <th className="p-3 font-bold text-ios-label text-xs">المادة</th>
-                        <th className="p-3 font-bold text-ios-label text-xs w-36">الكمية</th>
-                        <th className="p-3 font-bold text-ios-label text-xs w-20">الوحدة</th>
-                        <th className="p-3 font-bold text-ios-label text-xs w-12"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((row, i) => (
-                        <tr key={i} className="border-t border-ios-sep align-middle">
-                          <td className="p-2 text-ios-label text-sm font-bold">{i + 1}</td>
-                          <td className="p-2">
-                            <select value={row.inventory_item_id} onChange={e => setRow(i, 'inventory_item_id', e.target.value)}
-                              required className="input-ios w-full">
-                              <option value="">— اختر المادة —</option>
-                              {invItems.map(item => (
-                                <option key={item.id} value={item.id}>
-                                  {item.name} {item.unit ? `(${item.unit})` : ''}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="p-2">
-                            <input type="number" min="0" step="0.001" value={row.quantity} required
-                              onChange={e => setRow(i, 'quantity', e.target.value)}
-                              placeholder="الكمية" className="input-ios w-full" />
-                          </td>
-                          <td className="p-2 text-xs text-ios-label whitespace-nowrap">{itemUnit(row.inventory_item_id) || '—'}</td>
-                          <td className="p-2 text-center">
-                            {rows.length > 1 && (
-                              <button type="button" onClick={() => removeRow(i)}
-                                className="text-ios-red font-bold px-2 active:opacity-60">✕</button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="p-3 border-t border-ios-sep">
-                  <button type="button" onClick={addRow}
-                    className="btn-ios-secondary text-sm px-4 py-2">➕ إضافة مادة</button>
-                </div>
+              <label className="label-ios">إضافة مادة للطلب</label>
+              <div className="card-ios p-4">
+                <form onSubmit={addToCart} className="grid grid-cols-1 md:grid-cols-[1fr_2fr_130px_auto] gap-2 items-center">
+                  <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                    placeholder="🔍 بحث بالاسم..." className="input-ios" />
+                  <select value={pickItem} onChange={e => setPickItem(e.target.value)} className="input-ios">
+                    <option value="">— اختر المادة {search.trim() ? `(${filteredItems.length} نتيجة)` : ''} —</option>
+                    {filteredItems.map(item => (
+                      <option key={item.id} value={item.id}>
+                        {item.name} {item.unit ? `(${item.unit})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <input type="number" min="0" step="0.001" value={pickQty}
+                    onChange={e => setPickQty(e.target.value)}
+                    placeholder="الكمية" className="input-ios" />
+                  <button type="submit" className="btn-ios px-5 py-2.5 text-sm whitespace-nowrap">➕ إضافة</button>
+                </form>
               </div>
+
+              {cart.length > 0 && (
+                <div className="card-ios overflow-hidden mt-3">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-right min-w-[480px]">
+                      <thead className="bg-[#F2F2F7]">
+                        <tr>
+                          <th className="p-3 font-bold text-ios-label text-xs w-10">#</th>
+                          <th className="p-3 font-bold text-ios-label text-xs">المادة</th>
+                          <th className="p-3 font-bold text-ios-label text-xs w-32">الكمية</th>
+                          <th className="p-3 font-bold text-ios-label text-xs w-20">الوحدة</th>
+                          <th className="p-3 font-bold text-ios-label text-xs w-12"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cart.map((c, i) => (
+                          <tr key={c.inventory_item_id} className="border-t border-ios-sep align-middle">
+                            <td className="p-2 text-ios-label text-sm font-bold">{i + 1}</td>
+                            <td className="p-2 font-semibold text-ios-text">{c.name}</td>
+                            <td className="p-2 text-center font-bold text-ios-blue">{fmtQty(c.quantity)}</td>
+                            <td className="p-2 text-xs text-ios-label whitespace-nowrap">{c.unit || '—'}</td>
+                            <td className="p-2 text-center">
+                              <button type="button" onClick={() => removeFromCart(c.inventory_item_id)}
+                                className="text-ios-red font-bold px-2 active:opacity-60">✕</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="p-3 border-t border-ios-sep text-sm font-semibold text-ios-label">
+                    🧾 {cart.length} مادة بالطلب — راجع القائمة ثم اضغط "إرسال الطلب"
+                  </div>
+                </div>
+              )}
             </div>
 
-            <button type="submit" disabled={saving || invItems.length === 0}
+            <button type="submit" disabled={saving || cart.length === 0}
               className="btn-ios w-full md:w-auto disabled:opacity-40">
-              {saving ? 'جاري الإرسال...' : '📨 إرسال الطلب'}
+              {saving ? 'جاري الإرسال...' : `📨 إرسال الطلب (${cart.length} مادة)`}
             </button>
             {invItems.length === 0 && (
               <p className="text-ios-orange text-sm font-semibold">⚠️ هذا الفرع ما بيه مواد جرد — أضفها من الإدارة العامة أولاً</p>
