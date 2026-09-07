@@ -86,8 +86,7 @@ export default function Purchases({ user }) {
 
   const pickedInfo = invItems.find(i => i.id === parseInt(pickItem))
 
-  const addToCart = (e) => {
-    e.preventDefault()
+  const addToCart = () => {
     const qty = parseFloat(pickQty)
     if (!pickItem) return show('❌ اختر المادة أولاً')
     if (!qty || qty <= 0) return show('❌ أدخل كمية صحيحة')
@@ -243,7 +242,7 @@ export default function Purchases({ user }) {
             <div>
               <label className="label-ios">إضافة مادة للطلب</label>
               <div className="card-ios p-4">
-                <form onSubmit={addToCart} className="grid grid-cols-1 md:grid-cols-[1fr_2fr_130px_auto] gap-2 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr_130px_auto] gap-2 items-start">
                   <div className="relative">
                     <input type="text" value={search}
                       onChange={e => { setSearch(e.target.value); setSuggestClosed(false) }}
@@ -275,8 +274,9 @@ export default function Purchases({ user }) {
                   <input type="number" min="0" step="0.001" value={pickQty}
                     onChange={e => setPickQty(e.target.value)}
                     placeholder="الكمية" className="input-ios" />
-                  <button type="submit" className="btn-ios px-5 py-2.5 text-sm whitespace-nowrap">➕ إضافة</button>
-                </form>
+                  <button type="button" onClick={addToCart}
+                    className="btn-ios px-5 py-2.5 text-sm whitespace-nowrap">➕ إضافة</button>
+                </div>
               </div>
 
               {cart.length > 0 && (
