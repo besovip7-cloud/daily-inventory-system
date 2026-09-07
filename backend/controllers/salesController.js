@@ -120,6 +120,18 @@ exports.deleteMenuItem = async (req, res) => {
   }
 };
 
+// حذف جماعي — للأدمن فقط
+exports.deleteMenuItems = async (req, res) => {
+  try {
+    const ids = (Array.isArray(req.body.ids) ? req.body.ids : []).map(Number).filter(Boolean);
+    if (ids.length === 0) return res.status(400).json({ message: 'لم يتم تحديد أصناف' });
+    await pool.query('UPDATE menu_items SET is_active = FALSE WHERE id = ANY($1)', [ids]);
+    res.json({ message: `تم حذف ${ids.length} صنف` });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getDailySales = async (req, res) => {
   try {
     const { branchId } = req.params;

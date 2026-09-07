@@ -88,8 +88,8 @@ export default function Management({ user }) {
       {activeTab === 'users' && canUsers && <UsersTab showMsg={showMsg} headers={headers} />}
       {activeTab === 'roles' && canUsers && <RolesTab showMsg={showMsg} headers={headers} />}
       {activeTab === 'branches' && canCatalog && <BranchesTab showMsg={showMsg} headers={headers} />}
-      {activeTab === 'items' && canCatalog && <ItemsTab showMsg={showMsg} headers={headers} />}
-      {activeTab === 'menu' && canCatalog && <MenuTab showMsg={showMsg} headers={headers} />}
+      {activeTab === 'items' && canCatalog && <ItemsTab showMsg={showMsg} headers={headers} user={user} />}
+      {activeTab === 'menu' && canCatalog && <MenuTab showMsg={showMsg} headers={headers} user={user} />}
       {activeTab === 'recipes' && canCatalog && <RecipesTab showMsg={showMsg} headers={headers} />}
       {activeTab === 'settings' && canSettings && <SettingsTab showMsg={showMsg} headers={headers} />}
     </div>
@@ -516,13 +516,15 @@ function BranchesTab({ showMsg, headers }) {
 }
 
 /* ================= 📦 مواد الجرد ================= */
-function ItemsTab({ showMsg, headers }) {
+function ItemsTab({ showMsg, headers, user }) {
   const [branches, setBranches] = useState([])
   const [selectedBranch, setSelectedBranch] = useState('')
   const [items, setItems] = useState([])
   const [itemForm, setItemForm] = useState(emptyItemForm)
   const [editingItem, setEditingItem] = useState(null)
   const [addToAll, setAddToAll] = useState(false)
+  const [selected, setSelected] = useState([])
+  const isAdmin = user?.role === 'admin'
 
   useEffect(() => {
     fetch(`${API_URL}/branches`, { headers }).then(r => r.json()).then(d => {
@@ -534,8 +536,31 @@ function ItemsTab({ showMsg, headers }) {
   useEffect(() => { if (selectedBranch) loadItems() }, [selectedBranch])
 
   const loadItems = () => {
+    setSelected([])
     fetch(`${API_URL}/inventory/items/${selectedBranch}`, { headers })
       .then(r => r.json()).then(d => setItems(d || []))
+  }
+
+  const toggleSelect = (id) => {
+    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  const toggleSelectAll = () => {
+    setSelected(prev => prev.length === items.length ? [] : items.map(i => i.id))
+  }
+
+  const deleteSelected = async () => {
+    if (!window.confirm(`حذف ${selected.length} مادة نهائياً؟ (السجلات السابقة تبقى محفوظة)`)) return
+    try {
+      const res = await fetch(`${API_URL}/inventory/items`, {
+        method: 'DELETE',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selected })
+      })
+      const data = await res.json()
+      if (res.ok) { showMsg(`✅ ${data.message || `تم حذف ${selected.length} مادة`}`); loadItems() }
+      else showMsg('❌ فشل الحذف: ' + (data.message || ''))
+    } catch { showMsg('❌ خطأ في الاتصال') }
   }
 
   const startEdit = (item) => {
@@ -668,10 +693,30 @@ function ItemsTab({ showMsg, headers }) {
         </form>
       </div>
 
+      {isAdmin && (
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm text-ios-label">
+            {selected.length > 0 ? `تم تحديد ${selected.length} مادة` : 'حدد المواد بعلامة ✔ ثم احذف'}
+          </p>
+          {selected.length > 0 && (
+            <button onClick={deleteSelected}
+              className="px-4 py-2 rounded-xl bg-ios-red/10 text-ios-red text-sm font-bold active:opacity-70 anim-pop">
+              🗑️ حذف المحدد ({selected.length})
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="card-ios overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-[#F2F2F7]">
             <tr>
+              {isAdmin && (
+                <th className="p-3 w-10 text-center">
+                  <input type="checkbox" checked={items.length > 0 && selected.length === items.length}
+                    onChange={toggleSelectAll} className="w-4 h-4 accent-ios-blue cursor-pointer" />
+                </th>
+              )}
               <th className="p-3 text-right font-semibold text-ios-label text-xs">المادة</th>
               <th className="p-3 text-center font-semibold text-ios-label text-xs">الفئة</th>
               <th className="p-3 text-center font-semibold text-ios-label text-xs">الوحدة</th>
@@ -683,6 +728,12 @@ function ItemsTab({ showMsg, headers }) {
           <tbody>
             {items.map(item => (
               <tr key={item.id} className="border-t border-ios-sep last:border-b-0">
+                {isAdmin && (
+                  <td className="p-3 text-center">
+                    <input type="checkbox" checked={selected.includes(item.id)}
+                      onChange={() => toggleSelect(item.id)} className="w-4 h-4 accent-ios-blue cursor-pointer" />
+                  </td>
+                )}
                 <td className="p-3 font-semibold text-ios-text">{item.name}</td>
                 <td className="p-3 text-center text-ios-label">{itemCategories.find(c => c.value === item.category)?.label || item.category}</td>
                 <td className="p-3 text-center text-ios-label">{item.unit || '—'}</td>
@@ -699,7 +750,7 @@ function ItemsTab({ showMsg, headers }) {
               </tr>
             ))}
             {items.length === 0 && (
-              <tr><td colSpan="6" className="p-6 text-center text-ios-label">لا توجد مواد في هذا الفرع</td></tr>
+              <tr><td colSpan={isAdmin ? 7 : 6} className="p-6 text-center text-ios-label">لا توجد مواد في هذا الفرع</td></tr>
             )}
           </tbody>
         </table>
@@ -709,11 +760,13 @@ function ItemsTab({ showMsg, headers }) {
 }
 
 /* ================= 🍽️ أصناف المبيعات ================= */
-function MenuTab({ showMsg, headers }) {
+function MenuTab({ showMsg, headers, user }) {
   const [menuItems, setMenuItems] = useState([])
   const [menuForm, setMenuForm] = useState(emptyMenuForm)
   const [editingMenu, setEditingMenu] = useState(null)
   const [menuSearch, setMenuSearch] = useState('')
+  const [selected, setSelected] = useState([])
+  const isAdmin = user?.role === 'admin'
 
   const filteredMenu = menuSearch
     ? menuItems.filter(i => i.name.toLowerCase().includes(menuSearch.trim().toLowerCase()))
@@ -722,7 +775,30 @@ function MenuTab({ showMsg, headers }) {
   useEffect(() => { loadMenu() }, [])
 
   const loadMenu = () => {
+    setSelected([])
     fetch(`${API_URL}/sales/menu`, { headers }).then(r => r.json()).then(d => setMenuItems(d || []))
+  }
+
+  const toggleSelect = (id) => {
+    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  const toggleSelectAll = () => {
+    setSelected(prev => prev.length === filteredMenu.length ? [] : filteredMenu.map(i => i.id))
+  }
+
+  const deleteSelected = async () => {
+    if (!window.confirm(`حذف ${selected.length} صنف نهائياً؟ (سجلات البيع السابقة تبقى محفوظة)`)) return
+    try {
+      const res = await fetch(`${API_URL}/sales/menu`, {
+        method: 'DELETE',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selected })
+      })
+      const data = await res.json()
+      if (res.ok) { showMsg(`✅ ${data.message || `تم حذف ${selected.length} صنف`}`); loadMenu() }
+      else showMsg('❌ فشل الحذف: ' + (data.message || ''))
+    } catch { showMsg('❌ خطأ في الاتصال') }
   }
 
   const startEdit = (item) => {
@@ -801,10 +877,30 @@ function MenuTab({ showMsg, headers }) {
         </div>
       )}
 
+      {isAdmin && menuItems.length > 0 && (
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm text-ios-label">
+            {selected.length > 0 ? `تم تحديد ${selected.length} صنف` : 'حدد الأصناف بعلامة ✔ ثم احذف'}
+          </p>
+          {selected.length > 0 && (
+            <button onClick={deleteSelected}
+              className="px-4 py-2 rounded-xl bg-ios-red/10 text-ios-red text-sm font-bold active:opacity-70 anim-pop">
+              🗑️ حذف المحدد ({selected.length})
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="card-ios overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-[#F2F2F7]">
             <tr>
+              {isAdmin && (
+                <th className="p-3 w-10 text-center">
+                  <input type="checkbox" checked={filteredMenu.length > 0 && selected.length === filteredMenu.length}
+                    onChange={toggleSelectAll} className="w-4 h-4 accent-ios-blue cursor-pointer" />
+                </th>
+              )}
               <th className="p-3 text-right font-semibold text-ios-label text-xs">اسم الصنف</th>
               <th className="p-3 text-right font-semibold text-ios-label text-xs">المجموعة</th>
               <th className="p-3 text-center font-semibold text-ios-label text-xs">السعر (د.ع)</th>
@@ -815,6 +911,12 @@ function MenuTab({ showMsg, headers }) {
           <tbody>
             {filteredMenu.map(item => (
               <tr key={item.id} className="border-t border-ios-sep last:border-b-0">
+                {isAdmin && (
+                  <td className="p-3 text-center">
+                    <input type="checkbox" checked={selected.includes(item.id)}
+                      onChange={() => toggleSelect(item.id)} className="w-4 h-4 accent-ios-blue cursor-pointer" />
+                  </td>
+                )}
                 <td className="p-3 font-semibold text-ios-text">{item.name}</td>
                 <td className="p-3 text-ios-label">{menuCategories.find(c => c.value === item.category)?.label || item.category}</td>
                 <td className="p-3 text-center font-bold text-ios-blue">{item.price}</td>
@@ -828,7 +930,7 @@ function MenuTab({ showMsg, headers }) {
               </tr>
             ))}
             {filteredMenu.length === 0 && (
-              <tr><td colSpan="5" className="p-6 text-center text-ios-label">
+              <tr><td colSpan={isAdmin ? 6 : 5} className="p-6 text-center text-ios-label">
                 {menuSearch ? 'لا توجد نتائج مطابقة للبحث' : 'لا توجد أصناف مبيعات'}
               </td></tr>
             )}

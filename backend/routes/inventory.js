@@ -9,6 +9,7 @@ router.use(auth);
 router.get('/items/:branchId', requirePerm('inventory.view'), branchAccess, inventoryController.getItems);
 router.post('/items', requirePerm('catalog.manage'), inventoryController.createItem);
 router.put('/items/:id', requirePerm('catalog.manage'), inventoryController.updateItem);
+router.delete('/items', adminOnly, inventoryController.deleteItems);
 router.delete('/items/:id', requirePerm('catalog.manage'), inventoryController.deleteItem);
 
 router.get('/daily/:branchId', requirePerm('inventory.view'), branchAccess, inventoryController.getDailyInventory);

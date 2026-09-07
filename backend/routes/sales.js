@@ -9,6 +9,7 @@ router.use(auth);
 router.get('/menu', requirePerm('sales.view'), salesController.getMenuItems);
 router.post('/menu', requirePerm('catalog.manage'), salesController.createMenuItem);
 router.put('/menu/:id', requirePerm('catalog.manage'), salesController.updateMenuItem);
+router.delete('/menu', adminOnly, salesController.deleteMenuItems);
 router.delete('/menu/:id', requirePerm('catalog.manage'), salesController.deleteMenuItem);
 
 router.get('/recipes', requirePerm('sales.view'), salesController.getRecipes);

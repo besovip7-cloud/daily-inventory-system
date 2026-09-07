@@ -126,6 +126,18 @@ exports.deleteItem = async (req, res) => {
   }
 };
 
+// حذف جماعي — للأدمن فقط
+exports.deleteItems = async (req, res) => {
+  try {
+    const ids = (Array.isArray(req.body.ids) ? req.body.ids : []).map(Number).filter(Boolean);
+    if (ids.length === 0) return res.status(400).json({ message: 'لم يتم تحديد مواد' });
+    await pool.query('UPDATE inventory_items SET is_active = FALSE WHERE id = ANY($1)', [ids]);
+    res.json({ message: `تم حذف ${ids.length} مادة` });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // Daily Inventory Record
 exports.getDailyInventory = async (req, res) => {
   try {
