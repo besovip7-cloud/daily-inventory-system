@@ -31,6 +31,7 @@ export default function Purchases({ user }) {
   const [rows, setRows] = useState([{ inventory_item_id: '', quantity: '' }])
   const [notes, setNotes] = useState('')
   const [requests, setRequests] = useState([])
+  const [source, setSource] = useState('store') // 'store' مخزن | 'kitchen' معمل
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [settings, setSettings] = useState(getCachedSettings())
@@ -55,10 +56,10 @@ export default function Purchases({ user }) {
       .catch(() => setInvItems([]))
   }, [selectedBranch])
 
-  useEffect(() => { loadRequests() }, [])
+  useEffect(() => { loadRequests() }, [source])
 
   const loadRequests = () => {
-    fetch(`${API_URL}/purchases`, { headers })
+    fetch(`${API_URL}/purchases?source=${source}`, { headers })
       .then(r => r.json())
       .then(d => setRequests(d || []))
       .catch(() => {})
@@ -85,7 +86,8 @@ export default function Purchases({ user }) {
         body: JSON.stringify({
           branch_id: parseInt(selectedBranch),
           items: clean.map(r => ({ inventory_item_id: parseInt(r.inventory_item_id), quantity: parseFloat(r.quantity) })),
-          notes: notes || undefined
+          notes: notes || undefined,
+          source
         })
       })
       const data = await res.json()
@@ -112,6 +114,7 @@ export default function Purchases({ user }) {
     printReport({
       title: `طلب شراء #${req.id}`,
       subtitle: [
+        `النوع: ${req.source === 'kitchen' ? 'معمل' : 'مخزن'}`,
         `الفرع: ${req.branch_name}`,
         `التاريخ: ${new Date(req.created_at).toLocaleString('ar')}`,
         `طلب بواسطة: ${req.created_by_name || '—'}`,
@@ -173,7 +176,17 @@ export default function Purchases({ user }) {
 
       {canCreate && (
         <div className="card-ios p-6 mb-6">
-          <h3 className="text-lg font-bold mb-4 text-ios-text">📝 طلب شراء جديد</h3>
+          <div className="segmented mb-5">
+            <button type="button" onClick={() => setSource('store')}
+              className={`segmented-item ${source === 'store' ? 'segmented-item-active' : ''}`}>
+              🏬 طلب مخزن
+            </button>
+            <button type="button" onClick={() => setSource('kitchen')}
+              className={`segmented-item ${source === 'kitchen' ? 'segmented-item-active' : ''}`}>
+              🔥 طلب معمل
+            </button>
+          </div>
+          <h3 className="text-lg font-bold mb-4 text-ios-text">📝 {source === 'store' ? 'طلب شراء مخزن' : 'طلب شراء معمل'} جديد</h3>
           <form onSubmit={submit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -254,7 +267,9 @@ export default function Purchases({ user }) {
         </div>
       )}
 
-      <h3 className="font-bold text-ios-text mb-3">📋 الطلبات ({requests.length})</h3>
+      <h3 className="font-bold text-ios-text mb-3">
+        📋 طلبات {source === 'store' ? '🏬 المخزن' : '🔥 المعمل'} ({requests.length})
+      </h3>
       {requests.length === 0 ? (
         <p className="text-center text-ios-label py-8">لا توجد طلبات شراء</p>
       ) : (

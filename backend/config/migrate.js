@@ -183,6 +183,7 @@ const createTables = async () => {
         id SERIAL PRIMARY KEY,
         branch_id INTEGER REFERENCES branches(id) ON DELETE CASCADE,
         status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'received', 'cancelled')),
+        source VARCHAR(20) DEFAULT 'store' CHECK (source IN ('store', 'kitchen')),
         notes TEXT,
         created_by INTEGER REFERENCES users(id),
         confirmed_by INTEGER REFERENCES users(id),
@@ -190,6 +191,9 @@ const createTables = async () => {
         confirmed_at TIMESTAMP
       )
     `);
+
+    // إضافة عمود المصدر للجداول القديمة
+    await pool.query(`ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS source VARCHAR(20) DEFAULT 'store'`);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS purchase_request_items (

@@ -13,6 +13,12 @@ exports.getRequests = async (req, res) => {
       where = 'WHERE pr.branch_id = $1';
       params.push(req.user.branch_id || -1);
     }
+    // فلترة حسب المصدر (مخزن / معمل)
+    const source = ['store', 'kitchen'].includes(req.query.source) ? req.query.source : null;
+    if (source) {
+      where += where ? ' AND pr.source = $2' : 'WHERE pr.source = $1';
+      params.push(source);
+    }
     const result = await pool.query(
       `SELECT pr.*, b.name AS branch_name, u.name AS created_by_name, cu.name AS confirmed_by_name
        FROM purchase_requests pr
@@ -52,10 +58,11 @@ exports.getRequests = async (req, res) => {
 exports.createRequest = async (req, res) => {
   const client = await pool.connect();
   try {
-    const { branch_id, items, notes } = req.body;
+    const { branch_id, items, notes, source } = req.body;
     if (!canManageBranch(req.user, branch_id)) {
       return res.status(403).json({ message: 'ما عندك صلاحية لهذا الفرع' });
     }
+    const requestSource = source === 'kitchen' ? 'kitchen' : 'store';
     const clean = (Array.isArray(items) ? items : [])
       .map(i => ({ inventory_item_id: parseInt(i.inventory_item_id), quantity: parseFloat(i.quantity) }))
       .filter(i => i.inventory_item_id && i.quantity > 0);
@@ -65,9 +72,9 @@ exports.createRequest = async (req, res) => {
 
     await client.query('BEGIN');
     const reqResult = await client.query(
-      `INSERT INTO purchase_requests (branch_id, notes, created_by)
-       VALUES ($1, $2, $3) RETURNING *`,
-      [branch_id, notes || null, req.user.id]
+      `INSERT INTO purchase_requests (branch_id, notes, created_by, source)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [branch_id, notes || null, req.user.id, requestSource]
     );
     const request = reqResult.rows[0];
 
