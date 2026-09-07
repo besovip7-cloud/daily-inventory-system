@@ -631,7 +631,7 @@ function ItemsTab({ showMsg, headers }) {
             onChange={e => setItemForm({...itemForm, unit: e.target.value})}
             className="input-ios">
             <option value="">بدون وحدة (اختياري)</option>
-            {itemForm.unit && !['كغم', 'غرام', 'لتر', 'مليلتر', 'قطعة'].includes(itemForm.unit) && (
+            {itemForm.unit && !['كغم', 'غرام', 'لتر', 'مليلتر', 'قطعة', 'متر'].includes(itemForm.unit) && (
               <option value={itemForm.unit}>{itemForm.unit} (حالية)</option>
             )}
             <option value="كغم">كغم</option>
@@ -639,6 +639,7 @@ function ItemsTab({ showMsg, headers }) {
             <option value="لتر">لتر</option>
             <option value="مليلتر">مليلتر</option>
             <option value="قطعة">قطعة</option>
+            <option value="متر">متر</option>
           </select>
           <input type="number" placeholder="الحد الأدنى" min="0" step="0.01" value={itemForm.min_quantity}
             onChange={e => setItemForm({...itemForm, min_quantity: e.target.value})}

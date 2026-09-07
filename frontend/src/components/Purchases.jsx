@@ -12,6 +12,13 @@ const statusStyles = {
   cancelled: 'bg-ios-fill text-ios-label',
 }
 
+// عرض الكمية كما أُدخلت يدوياً بدون أصفار زائدة (30 بدل 30.000)
+const fmtQty = (v) => {
+  const n = parseFloat(v)
+  if (isNaN(n)) return v ?? ''
+  return String(Number(n.toFixed(3)))
+}
+
 export default function Purchases({ user }) {
   const token = localStorage.getItem('token')
   const headers = { Authorization: `Bearer ${token}` }
@@ -118,7 +125,7 @@ export default function Purchases({ user }) {
         { key: 'quantity', label: 'الكمية' },
         { key: 'unit', label: 'الوحدة' },
       ],
-      rows: req.items.map((it, i) => ({ n: i + 1, ...it })),
+      rows: req.items.map((it, i) => ({ n: i + 1, item_name: it.item_name, quantity: fmtQty(it.quantity), unit: it.unit || '' })),
       totals: [{ label: 'عدد المواد', value: String(req.items.length) }],
       company: { name: settings.company_name, logo: settings.company_logo },
     })
@@ -256,7 +263,7 @@ export default function Purchases({ user }) {
                       <div className="flex flex-wrap gap-1 max-w-md">
                         {req.items.map(it => (
                           <span key={it.id} className="inline-block bg-ios-fill rounded-lg px-2 py-0.5 text-xs whitespace-nowrap">
-                            {it.item_name} <b className="text-ios-blue">{it.quantity}</b> {it.unit || ''}
+                            {it.item_name} <b className="text-ios-blue">{fmtQty(it.quantity)}</b> {it.unit || ''}
                           </span>
                         ))}
                       </div>

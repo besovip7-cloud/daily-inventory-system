@@ -28,7 +28,7 @@ exports.getRequests = async (req, res) => {
     if (result.rows.length > 0) {
       const ids = result.rows.map(r => r.id);
       const items = await pool.query(
-        `SELECT pri.request_id, pri.id, pri.inventory_item_id, pri.quantity,
+        `SELECT pri.request_id, pri.id, pri.inventory_item_id, pri.quantity::float8 AS quantity,
                 ii.name AS item_name, ii.unit
          FROM purchase_request_items pri
          JOIN inventory_items ii ON ii.id = pri.inventory_item_id
