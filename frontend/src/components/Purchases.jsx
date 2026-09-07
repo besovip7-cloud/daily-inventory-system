@@ -32,6 +32,7 @@ export default function Purchases({ user }) {
   const [search, setSearch] = useState('')
   const [pickItem, setPickItem] = useState('')
   const [pickQty, setPickQty] = useState('')
+  const [suggestClosed, setSuggestClosed] = useState(false)
   const [notes, setNotes] = useState('')
   const [requests, setRequests] = useState([])
   const [source, setSource] = useState('store') // 'store' مخزن | 'kitchen' معمل
@@ -72,6 +73,17 @@ export default function Purchases({ user }) {
     ? invItems.filter(i => i.name.toLowerCase().includes(search.trim().toLowerCase()))
     : invItems
 
+  // اقتراحات تظهر أثناء الكتابة (أول 8 نتائج)
+  const suggestions = search.trim() && !suggestClosed
+    ? invItems.filter(i => i.name.toLowerCase().includes(search.trim().toLowerCase())).slice(0, 8)
+    : []
+
+  const pickSuggestion = (item) => {
+    setPickItem(String(item.id))
+    setSearch(item.name)
+    setSuggestClosed(true)
+  }
+
   const pickedInfo = invItems.find(i => i.id === parseInt(pickItem))
 
   const addToCart = (e) => {
@@ -94,6 +106,7 @@ export default function Purchases({ user }) {
     setPickItem('')
     setPickQty('')
     setSearch('')
+    setSuggestClosed(false)
   }
 
   const removeFromCart = (id) => setCart(prev => prev.filter(c => c.inventory_item_id !== id))
@@ -230,9 +243,25 @@ export default function Purchases({ user }) {
             <div>
               <label className="label-ios">إضافة مادة للطلب</label>
               <div className="card-ios p-4">
-                <form onSubmit={addToCart} className="grid grid-cols-1 md:grid-cols-[1fr_2fr_130px_auto] gap-2 items-center">
-                  <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                    placeholder="🔍 بحث بالاسم..." className="input-ios" />
+                <form onSubmit={addToCart} className="grid grid-cols-1 md:grid-cols-[1fr_2fr_130px_auto] gap-2 items-start">
+                  <div className="relative">
+                    <input type="text" value={search}
+                      onChange={e => { setSearch(e.target.value); setSuggestClosed(false) }}
+                      placeholder="🔍 اكتب اسم المادة..."
+                      className="input-ios w-full" />
+                    {suggestions.length > 0 && (
+                      <div className="absolute z-20 top-full right-0 left-0 mt-1 card-ios overflow-hidden max-h-60 overflow-y-auto shadow-lg">
+                        {suggestions.map(item => (
+                          <button key={item.id} type="button" onClick={() => pickSuggestion(item)}
+                            className={`w-full text-right px-3 py-2.5 text-sm font-semibold border-b border-ios-sep last:border-0 active:bg-ios-fill ${
+                              parseInt(pickItem) === item.id ? 'bg-ios-blue/10 text-ios-blue' : 'text-ios-text'
+                            }`}>
+                            {item.name} <span className="text-xs text-ios-label font-normal">{item.unit ? `(${item.unit})` : ''}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <select value={pickItem} onChange={e => setPickItem(e.target.value)} className="input-ios">
                     <option value="">— اختر المادة {search.trim() ? `(${filteredItems.length} نتيجة)` : ''} —</option>
                     {filteredItems.map(item => (
