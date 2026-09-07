@@ -31,6 +31,12 @@ export default function Inventory({ user }) {
   const [itemForm, setItemForm] = useState(emptyItemForm)
   const [editingItem, setEditingItem] = useState(null)
   const [addToAll, setAddToAll] = useState(false)
+  const [search, setSearch] = useState('')
+
+  // فلترة المواد بالبحث
+  const filteredItems = search.trim()
+    ? items.filter(i => i.name.toLowerCase().includes(search.trim().toLowerCase()))
+    : items
 
   const token = localStorage.getItem('token')
 
@@ -269,19 +275,31 @@ export default function Inventory({ user }) {
 
       {/* ✅ اختيار الفرع — مقفل لمدير/موظف الفرع على فرعه */}
       <div className="card-ios p-4 mb-6">
-        <label className="label-ios">اختر الفرع</label>
-        <select
-          value={selectedBranch}
-          onChange={e => setSelectedBranch(e.target.value)}
-          disabled={branchLocked}
-          className="input-ios md:w-80 disabled:opacity-60"
-        >
-          <option value="">-- اختر الفرع --</option>
-          {branches.map(b => (
-            <option key={b.id} value={b.id.toString()}>{b.name}</option>
-          ))}
-        </select>
-        {branchLocked && <p className="text-sm text-ios-label mt-1">مقيد على فرعك فقط</p>}
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[200px]">
+            <label className="label-ios">اختر الفرع</label>
+            <select
+              value={selectedBranch}
+              onChange={e => setSelectedBranch(e.target.value)}
+              disabled={branchLocked}
+              className="input-ios md:w-80 disabled:opacity-60"
+            >
+              <option value="">-- اختر الفرع --</option>
+              {branches.map(b => (
+                <option key={b.id} value={b.id.toString()}>{b.name}</option>
+              ))}
+            </select>
+            {branchLocked && <p className="text-sm text-ios-label mt-1">مقيد على فرعك فقط</p>}
+          </div>
+          {selectedBranch && items.length > 0 && (
+            <div className="flex-1 min-w-[220px]">
+              <label className="label-ios">🔍 بحث باسم المادة</label>
+              <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                placeholder={search.trim() ? `${filteredItems.length} نتيجة` : `ابحث بين ${items.length} مادة...`}
+                className="input-ios md:w-80" />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ===== لوحة إدارة المواد ===== */}
@@ -304,13 +322,14 @@ export default function Inventory({ user }) {
               onChange={e => setItemForm({...itemForm, unit: e.target.value})}
               className="input-ios">
               <option value="">بدون وحدة (اختياري)</option>
-              {itemForm.unit && !['كغم', 'غرام', 'لتر', 'مليلتر', 'قطعة'].includes(itemForm.unit) && (
+              {itemForm.unit && !['كغم', 'غرام', 'لتر', 'مليلتر', 'قطعة', 'متر'].includes(itemForm.unit) && (
                 <option value={itemForm.unit}>{itemForm.unit} (حالية)</option>
               )}
               <option value="كغم">كغم</option>
               <option value="غرام">غرام</option>
               <option value="لتر">لتر</option>
               <option value="مليلتر">مليلتر</option>
+              <option value="متر">متر</option>
               <option value="قطعة">قطعة</option>
             </select>
             <input type="number" placeholder="الحد الأدنى" min="0" step="0.01"
@@ -360,7 +379,7 @@ export default function Inventory({ user }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map(item => {
+                  {filteredItems.map(item => {
                     const status = getStatus(item)
                     return (
                       <tr key={item.id} className="border-b border-ios-sep last:border-b-0">
@@ -473,7 +492,7 @@ export default function Inventory({ user }) {
                 </tr>
               </thead>
               <tbody>
-                {items.map(item => {
+                {filteredItems.map(item => {
                   const status = getStatus(item)
                   const rec = records[item.id] || {}
                   return (
