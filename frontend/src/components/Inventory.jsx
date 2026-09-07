@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { visibleBranches, isBranchLocked } from '../utils/branchScope'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
@@ -28,6 +28,7 @@ export default function Inventory({ user }) {
 
   // إدارة المواد
   const [showManage, setShowManage] = useState(false)
+  const manageFormRef = useRef(null)
   const [itemForm, setItemForm] = useState(emptyItemForm)
   const [editingItem, setEditingItem] = useState(null)
   const [addToAll, setAddToAll] = useState(false)
@@ -170,6 +171,7 @@ export default function Inventory({ user }) {
       cost_per_unit: item.cost_per_unit ?? ''
     })
     setShowManage(true)
+    setTimeout(() => manageFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
   }
 
   const handleItemSubmit = async (e) => {
@@ -304,7 +306,7 @@ export default function Inventory({ user }) {
 
       {/* ===== لوحة إدارة المواد ===== */}
       {showManage && canManage && selectedBranch && (
-        <div className="bg-ios-blue/10 rounded-2xl p-6 mb-6">
+        <div ref={manageFormRef} className={`bg-ios-blue/10 rounded-2xl p-6 mb-6 ${editingItem ? 'ring-2 ring-ios-blue' : ''}`}>
           <h3 className="text-lg font-bold mb-4 text-ios-text">
             {editingItem ? '✏️ تعديل مادة' : '➕ إضافة مادة جديدة'}
           </h3>

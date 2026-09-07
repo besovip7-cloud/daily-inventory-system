@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { hasPerm } from '../utils/permissions'
 import ItemsImport from './ItemsImport'
 
@@ -523,6 +523,7 @@ function ItemsTab({ showMsg, headers, user }) {
   const [items, setItems] = useState([])
   const [itemForm, setItemForm] = useState(emptyItemForm)
   const [editingItem, setEditingItem] = useState(null)
+  const itemsFormRef = useRef(null)
   const [addToAll, setAddToAll] = useState(false)
   const [selected, setSelected] = useState([])
   const [showImport, setShowImport] = useState(false)
@@ -572,6 +573,7 @@ function ItemsTab({ showMsg, headers, user }) {
       min_quantity: item.min_quantity ?? '', current_quantity: item.current_quantity ?? '',
       cost_per_unit: item.cost_per_unit ?? ''
     })
+    setTimeout(() => itemsFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
   }
 
   const handleSubmit = async (e) => {
@@ -661,7 +663,7 @@ function ItemsTab({ showMsg, headers, user }) {
         />
       )}
 
-      <div className="bg-ios-blue/10 rounded-2xl p-6 mb-6">
+      <div ref={itemsFormRef} className={`bg-ios-blue/10 rounded-2xl p-6 mb-6 ${editingItem ? 'ring-2 ring-ios-blue' : ''}`}>
         <h3 className="text-lg font-bold mb-4 text-ios-text">{editingItem ? '✏️ تعديل مادة' : '➕ إضافة مادة جديدة'}</h3>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-3">
           <input type="text" placeholder="اسم المادة *" required value={itemForm.name}
@@ -784,6 +786,7 @@ function MenuTab({ showMsg, headers, user }) {
   const [menuItems, setMenuItems] = useState([])
   const [menuForm, setMenuForm] = useState(emptyMenuForm)
   const [editingMenu, setEditingMenu] = useState(null)
+  const menuFormRef = useRef(null)
   const [menuSearch, setMenuSearch] = useState('')
   const [selected, setSelected] = useState([])
   const isAdmin = user?.role === 'admin'
@@ -824,6 +827,7 @@ function MenuTab({ showMsg, headers, user }) {
   const startEdit = (item) => {
     setEditingMenu(item.id)
     setMenuForm({ name: item.name, category: item.category || 'main', price: item.price ?? '', cost: item.cost ?? '' })
+    setTimeout(() => menuFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
   }
 
   const handleSubmit = async (e) => {
@@ -860,7 +864,7 @@ function MenuTab({ showMsg, headers, user }) {
 
   return (
     <div>
-      <div className="card-ios p-6 mb-6">
+      <div ref={menuFormRef} className={`card-ios p-6 mb-6 ${editingMenu ? 'ring-2 ring-ios-blue' : ''}`}>
         <h3 className="text-lg font-bold mb-4 text-ios-text">{editingMenu ? '✏️ تعديل صنف' : '➕ إضافة صنف مبيعات'}</h3>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <input type="text" placeholder="اسم الصنف *" required value={menuForm.name}
