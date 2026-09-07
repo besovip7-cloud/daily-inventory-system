@@ -478,7 +478,7 @@ export default function Inventory({ user }) {
             </div>
           </div>
 
-          <div className="card-ios overflow-hidden mb-6">
+          <div className="hidden md:block card-ios overflow-hidden mb-6">
             <table className="table-ios">
               <thead>
                 <tr>
@@ -529,6 +529,47 @@ export default function Inventory({ user }) {
                 })}
               </tbody>
             </table>
+          </div>
+
+          <div className="md:hidden space-y-3 mb-6">
+            {filteredItems.map(item => {
+              const status = getStatus(item)
+              const rec = records[item.id] || {}
+              return (
+                <div key={item.id} className="card-ios p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-ios-text">{item.name}</span>
+                    <span className={`badge-ios ${status.class}`}>{status.text}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="label-ios">بداية اليوم</label>
+                      <input type="number" value={rec.opening_qty || 0}
+                        onChange={e => handleChange(item.id, 'opening_qty', e.target.value)}
+                        className="input-ios py-2 text-center" />
+                    </div>
+                    <div>
+                      <label className="label-ios">وارد</label>
+                      <input type="number" value={rec.received_qty || 0}
+                        onChange={e => handleChange(item.id, 'received_qty', e.target.value)}
+                        className="input-ios py-2 text-center" />
+                    </div>
+                    <div>
+                      <label className="label-ios">منصرف</label>
+                      <input type="number" value={rec.consumed_qty || 0}
+                        onChange={e => handleChange(item.id, 'consumed_qty', e.target.value)}
+                        className="input-ios py-2 text-center" />
+                    </div>
+                    <div>
+                      <label className="label-ios">نهاية اليوم</label>
+                      <input type="number" value={rec.closing_qty || 0}
+                        onChange={e => handleChange(item.id, 'closing_qty', e.target.value)}
+                        className="input-ios py-2 text-center font-bold" />
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
 
           <button onClick={handleSave} disabled={saving}

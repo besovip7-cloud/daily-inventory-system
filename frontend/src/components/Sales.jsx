@@ -149,7 +149,7 @@ export default function Sales({ user }) {
         </div>
       </div>
 
-      <div className="card-ios overflow-hidden mb-6">
+      <div className="hidden md:block card-ios overflow-hidden mb-6">
         <table className="table-ios">
           <thead>
             <tr>
@@ -192,6 +192,40 @@ export default function Sales({ user }) {
             })}
           </tbody>
         </table>
+      </div>
+
+      <div className="md:hidden space-y-3 mb-6">
+        {menuItems.map(item => {
+          const sale = sales[item.id] || { quantity_sold: 0, unit_price: item.price }
+          const total = sale.quantity_sold * sale.unit_price
+          return (
+            <div key={item.id} className={`card-ios p-4 space-y-3 ${sale.quantity_sold === 0 ? 'opacity-60' : ''}`}>
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-ios-text">{item.name}</span>
+                <span className="text-ios-label text-sm">{item.price} دينار</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleChange(item.id, (sale.quantity_sold || 0) - 1)}
+                    className="w-9 h-9 bg-ios-fill rounded-lg font-bold text-ios-text active:opacity-70"
+                  >−</button>
+                  <input
+                    type="number"
+                    value={sale.quantity_sold || 0}
+                    onChange={e => handleChange(item.id, e.target.value)}
+                    className="w-16 py-2 rounded-xl bg-[#F2F2F7] text-center font-bold focus:ring-2 focus:ring-ios-blue focus:outline-none"
+                  />
+                  <button
+                    onClick={() => handleChange(item.id, (sale.quantity_sold || 0) + 1)}
+                    className="w-9 h-9 bg-ios-fill rounded-lg font-bold text-ios-text active:opacity-70"
+                  >+</button>
+                </div>
+                <span className="font-bold text-ios-blue">{total} دينار</span>
+              </div>
+            </div>
+          )
+        })}
       </div>
 
       <div className="card-ios p-6 mb-6">

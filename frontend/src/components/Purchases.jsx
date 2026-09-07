@@ -333,7 +333,7 @@ export default function Purchases({ user }) {
       {requests.length === 0 ? (
         <p className="text-center text-ios-label py-8">لا توجد طلبات شراء</p>
       ) : (
-        <div className="card-ios overflow-hidden">
+        <div className="hidden md:block card-ios overflow-hidden">
           <div className="overflow-x-auto">
             <table className="table-ios min-w-[900px]">
               <thead>
@@ -406,6 +406,70 @@ export default function Purchases({ user }) {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {requests.length > 0 && (
+        <div className="md:hidden space-y-3">
+          {requests.map(req => (
+            <div key={req.id} className="card-ios p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-ios-text">طلب #{req.id}</span>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${statusStyles[req.status]}`}>
+                  {statusLabels[req.status]}
+                </span>
+              </div>
+              {req.status === 'received' && req.confirmed_by_name && (
+                <div className="text-[10px] text-ios-green font-semibold">✓ {req.confirmed_by_name}</div>
+              )}
+              <div className="text-sm text-ios-label">
+                <span className="label-ios">الفرع</span>
+                {req.branch_name}
+              </div>
+              <div className="space-y-1">
+                <span className="label-ios">المواد المطلوبة</span>
+                {req.items.map(it => (
+                  <div key={it.id} className="flex items-center justify-between gap-2 bg-ios-fill rounded-lg px-2 py-1 text-xs">
+                    <span className="font-semibold text-ios-text">{it.item_name}</span>
+                    <span className="text-ios-blue font-bold">{fmtQty(it.quantity)} {it.unit || ''}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="text-xs text-ios-label">
+                <span className="label-ios">ملاحظات</span>
+                {req.notes || '—'}
+              </div>
+              <div className="text-xs text-ios-label">
+                <span className="label-ios">التاريخ / الطالب</span>
+                {new Date(req.created_at).toLocaleString('ar')}
+                <div>{req.created_by_name || '—'}</div>
+              </div>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {req.status === 'pending' && (
+                  <>
+                    <button onClick={() => confirm(req)}
+                      className="px-3 py-1.5 rounded-xl bg-ios-green/15 text-[#1F7A33] text-xs font-bold active:opacity-70">
+                      ✅ تأكيد
+                    </button>
+                    <button onClick={() => cancel(req)}
+                      className="px-3 py-1.5 rounded-xl bg-ios-red/10 text-ios-red text-xs font-bold active:opacity-70">
+                      إلغاء
+                    </button>
+                  </>
+                )}
+                <button onClick={() => printRequest(req)}
+                  className="px-3 py-1.5 rounded-xl bg-ios-fill text-ios-text text-xs font-bold active:opacity-70">
+                  🖨️ طباعة
+                </button>
+                {user?.role === 'admin' && req.status !== 'pending' && (
+                  <button onClick={() => deleteRequest(req)}
+                    className="px-3 py-1.5 rounded-xl bg-ios-red/10 text-ios-red text-xs font-bold active:opacity-70">
+                    🗑️
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
