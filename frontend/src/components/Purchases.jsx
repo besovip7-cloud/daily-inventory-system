@@ -192,29 +192,55 @@ export default function Purchases({ user }) {
 
             <div>
               <label className="label-ios">المواد المطلوبة</label>
-              {rows.map((row, i) => (
-                <div key={i} className="flex gap-2 mb-2">
-                  <select value={row.inventory_item_id} onChange={e => setRow(i, 'inventory_item_id', e.target.value)}
-                    required className="input-ios flex-1">
-                    <option value="">— اختر المادة —</option>
-                    {invItems.map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.name} {item.unit ? `(${item.unit})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <input type="number" min="0" step="0.001" value={row.quantity} required
-                    onChange={e => setRow(i, 'quantity', e.target.value)}
-                    placeholder="الكمية" className="input-ios w-32" />
-                  <span className="self-center text-xs text-ios-label w-14">{itemUnit(row.inventory_item_id)}</span>
-                  {rows.length > 1 && (
-                    <button type="button" onClick={() => removeRow(i)}
-                      className="text-ios-red font-bold px-2 active:opacity-60 self-center">✕</button>
-                  )}
+              <div className="card-ios overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-right min-w-[560px]">
+                    <thead className="bg-[#F2F2F7]">
+                      <tr>
+                        <th className="p-3 font-bold text-ios-label text-xs w-10">#</th>
+                        <th className="p-3 font-bold text-ios-label text-xs">المادة</th>
+                        <th className="p-3 font-bold text-ios-label text-xs w-36">الكمية</th>
+                        <th className="p-3 font-bold text-ios-label text-xs w-20">الوحدة</th>
+                        <th className="p-3 font-bold text-ios-label text-xs w-12"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row, i) => (
+                        <tr key={i} className="border-t border-ios-sep align-middle">
+                          <td className="p-2 text-ios-label text-sm font-bold">{i + 1}</td>
+                          <td className="p-2">
+                            <select value={row.inventory_item_id} onChange={e => setRow(i, 'inventory_item_id', e.target.value)}
+                              required className="input-ios w-full">
+                              <option value="">— اختر المادة —</option>
+                              {invItems.map(item => (
+                                <option key={item.id} value={item.id}>
+                                  {item.name} {item.unit ? `(${item.unit})` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="p-2">
+                            <input type="number" min="0" step="0.001" value={row.quantity} required
+                              onChange={e => setRow(i, 'quantity', e.target.value)}
+                              placeholder="الكمية" className="input-ios w-full" />
+                          </td>
+                          <td className="p-2 text-xs text-ios-label whitespace-nowrap">{itemUnit(row.inventory_item_id) || '—'}</td>
+                          <td className="p-2 text-center">
+                            {rows.length > 1 && (
+                              <button type="button" onClick={() => removeRow(i)}
+                                className="text-ios-red font-bold px-2 active:opacity-60">✕</button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              ))}
-              <button type="button" onClick={addRow}
-                className="btn-ios-secondary text-sm px-4 py-2">➕ إضافة مادة</button>
+                <div className="p-3 border-t border-ios-sep">
+                  <button type="button" onClick={addRow}
+                    className="btn-ios-secondary text-sm px-4 py-2">➕ إضافة مادة</button>
+                </div>
+              </div>
             </div>
 
             <button type="submit" disabled={saving || invItems.length === 0}
