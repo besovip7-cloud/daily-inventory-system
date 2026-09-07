@@ -173,3 +173,26 @@ exports.cancelRequest = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// حذف نهائي — للأدمن فقط
+exports.deleteRequest = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query('SELECT * FROM purchase_requests WHERE id = $1', [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ message: 'الطلب غير موجود' });
+    const request = result.rows[0];
+    if (request.status === 'pending') {
+      return res.status(400).json({ message: 'الطلب المعلق لازم يلغى أولاً حتى ما ينحذف بالغلط — استخدم زر إلغاء الطلب' });
+    }
+    await client.query('BEGIN');
+    await client.query('DELETE FROM purchase_request_items WHERE request_id = $1', [request.id]);
+    await client.query('DELETE FROM purchase_requests WHERE id = $1', [request.id]);
+    await client.query('COMMIT');
+    res.json({ message: `تم حذف طلب #${request.id} نهائياً` });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ message: err.message });
+  } finally {
+    client.release();
+  }
+};

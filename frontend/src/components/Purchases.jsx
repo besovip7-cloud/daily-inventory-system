@@ -144,6 +144,16 @@ export default function Purchases({ user }) {
     } catch { show('❌ خطأ في الاتصال') }
   }
 
+  const deleteRequest = async (req) => {
+    if (!window.confirm(`حذف طلب #${req.id} نهائياً؟\nهذا الإجراء ما يكدر يتراجع عنه.`)) return
+    try {
+      const res = await fetch(`${API_URL}/purchases/${req.id}`, { method: 'DELETE', headers })
+      const data = await res.json()
+      if (res.ok) { show('✅ ' + (data.message || 'تم الحذف')); loadRequests() }
+      else show('❌ ' + (data.message || 'فشل الحذف'))
+    } catch { show('❌ خطأ في الاتصال') }
+  }
+
   return (
     <div dir="rtl">
       <h2 className="text-2xl font-bold mb-6 text-ios-text tracking-tight">🛒 طلبات الشراء</h2>
@@ -232,6 +242,12 @@ export default function Purchases({ user }) {
                   className="px-3 py-1.5 rounded-xl bg-ios-fill text-ios-text text-xs font-bold active:opacity-70">
                   🖨️ طباعة
                 </button>
+                {user?.role === 'admin' && req.status !== 'pending' && (
+                  <button onClick={() => deleteRequest(req)}
+                    className="px-3 py-1.5 rounded-xl bg-ios-red/10 text-ios-red text-xs font-bold active:opacity-70">
+                    🗑️ حذف
+                  </button>
+                )}
               </div>
               <div className="text-sm text-ios-text">
                 {req.items.map(it => (
