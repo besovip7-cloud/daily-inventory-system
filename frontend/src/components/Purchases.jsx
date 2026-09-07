@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { visibleBranches, isBranchLocked } from '../utils/branchScope'
+import { printReport } from '../utils/export'
+import { fetchSettings, getCachedSettings } from '../utils/settings'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -24,6 +26,9 @@ export default function Purchases({ user }) {
   const [requests, setRequests] = useState([])
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [settings, setSettings] = useState(getCachedSettings())
+
+  useEffect(() => { fetchSettings().then(setSettings) }, [])
 
   useEffect(() => {
     fetch(`${API_URL}/branches`, { headers })
@@ -94,6 +99,29 @@ export default function Purchases({ user }) {
   const show = (m) => {
     setMessage(m)
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const printRequest = (req) => {
+    printReport({
+      title: `طلب شراء #${req.id}`,
+      subtitle: [
+        `الفرع: ${req.branch_name}`,
+        `التاريخ: ${new Date(req.created_at).toLocaleString('ar')}`,
+        `طلب بواسطة: ${req.created_by_name || '—'}`,
+        `الحالة: ${statusLabels[req.status] || req.status}`,
+        req.notes ? `ملاحظات: ${req.notes}` : null,
+        req.status === 'received' && req.confirmed_by_name ? `استلمها: ${req.confirmed_by_name}` : null
+      ].filter(Boolean).join(' • '),
+      columns: [
+        { key: 'n', label: '#' },
+        { key: 'item_name', label: 'المادة' },
+        { key: 'quantity', label: 'الكمية' },
+        { key: 'unit', label: 'الوحدة' },
+      ],
+      rows: req.items.map((it, i) => ({ n: i + 1, ...it })),
+      totals: [{ label: 'عدد المواد', value: String(req.items.length) }],
+      company: { name: settings.company_name, logo: settings.company_logo },
+    })
   }
 
   const confirm = async (req) => {
@@ -200,6 +228,10 @@ export default function Purchases({ user }) {
                 <span className="text-xs text-ios-label">
                   {new Date(req.created_at).toLocaleString('ar')} • {req.branch_name} • {req.created_by_name || '—'}
                 </span>
+                <button onClick={() => printRequest(req)}
+                  className="px-3 py-1.5 rounded-xl bg-ios-fill text-ios-text text-xs font-bold active:opacity-70">
+                  🖨️ طباعة
+                </button>
               </div>
               <div className="text-sm text-ios-text">
                 {req.items.map(it => (
