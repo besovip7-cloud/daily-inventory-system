@@ -225,51 +225,78 @@ export default function Purchases({ user }) {
       {requests.length === 0 ? (
         <p className="text-center text-ios-label py-8">لا توجد طلبات شراء</p>
       ) : (
-        <div className="space-y-3">
-          {requests.map(req => (
-            <div key={req.id} className="card-ios p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-ios-text">طلب #{req.id}</span>
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${statusStyles[req.status]}`}>
-                    {statusLabels[req.status]}
-                  </span>
-                </div>
-                <span className="text-xs text-ios-label">
-                  {new Date(req.created_at).toLocaleString('ar')} • {req.branch_name} • {req.created_by_name || '—'}
-                </span>
-                <button onClick={() => printRequest(req)}
-                  className="px-3 py-1.5 rounded-xl bg-ios-fill text-ios-text text-xs font-bold active:opacity-70">
-                  🖨️ طباعة
-                </button>
-                {user?.role === 'admin' && req.status !== 'pending' && (
-                  <button onClick={() => deleteRequest(req)}
-                    className="px-3 py-1.5 rounded-xl bg-ios-red/10 text-ios-red text-xs font-bold active:opacity-70">
-                    🗑️ حذف
-                  </button>
-                )}
-              </div>
-              <div className="text-sm text-ios-text">
-                {req.items.map(it => (
-                  <span key={it.id} className="inline-block bg-ios-fill rounded-lg px-2 py-1 m-0.5">
-                    {it.item_name} <b className="text-ios-blue">{it.quantity}</b> {it.unit || ''}
-                  </span>
+        <div className="card-ios overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-right min-w-[900px]">
+              <thead className="bg-[#F2F2F7]">
+                <tr>
+                  <th className="p-3 font-bold text-ios-label text-xs whitespace-nowrap">#</th>
+                  <th className="p-3 font-bold text-ios-label text-xs whitespace-nowrap">الحالة</th>
+                  <th className="p-3 font-bold text-ios-label text-xs whitespace-nowrap">الفرع</th>
+                  <th className="p-3 font-bold text-ios-label text-xs whitespace-nowrap">المواد المطلوبة</th>
+                  <th className="p-3 font-bold text-ios-label text-xs whitespace-nowrap">ملاحظات</th>
+                  <th className="p-3 font-bold text-ios-label text-xs whitespace-nowrap">التاريخ / الطالب</th>
+                  <th className="p-3 font-bold text-ios-label text-xs whitespace-nowrap">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {requests.map(req => (
+                  <tr key={req.id} className="border-t border-ios-sep align-top">
+                    <td className="p-3 font-bold text-ios-text whitespace-nowrap">طلب #{req.id}</td>
+                    <td className="p-3 whitespace-nowrap">
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${statusStyles[req.status]}`}>
+                        {statusLabels[req.status]}
+                      </span>
+                      {req.status === 'received' && req.confirmed_by_name && (
+                        <div className="text-[10px] text-ios-green mt-1 font-semibold">✓ {req.confirmed_by_name}</div>
+                      )}
+                    </td>
+                    <td className="p-3 text-ios-label whitespace-nowrap">{req.branch_name}</td>
+                    <td className="p-3">
+                      <div className="flex flex-wrap gap-1 max-w-md">
+                        {req.items.map(it => (
+                          <span key={it.id} className="inline-block bg-ios-fill rounded-lg px-2 py-0.5 text-xs whitespace-nowrap">
+                            {it.item_name} <b className="text-ios-blue">{it.quantity}</b> {it.unit || ''}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="p-3 text-xs text-ios-label max-w-[140px]">{req.notes || '—'}</td>
+                    <td className="p-3 text-xs text-ios-label whitespace-nowrap">
+                      {new Date(req.created_at).toLocaleString('ar')}
+                      <div>{req.created_by_name || '—'}</div>
+                    </td>
+                    <td className="p-3">
+                      <div className="flex flex-wrap gap-1.5 whitespace-nowrap">
+                        {req.status === 'pending' && (
+                          <>
+                            <button onClick={() => confirm(req)}
+                              className="px-3 py-1.5 rounded-xl bg-ios-green/15 text-[#1F7A33] text-xs font-bold active:opacity-70">
+                              ✅ تأكيد
+                            </button>
+                            <button onClick={() => cancel(req)}
+                              className="px-3 py-1.5 rounded-xl bg-ios-red/10 text-ios-red text-xs font-bold active:opacity-70">
+                              إلغاء
+                            </button>
+                          </>
+                        )}
+                        <button onClick={() => printRequest(req)}
+                          className="px-3 py-1.5 rounded-xl bg-ios-fill text-ios-text text-xs font-bold active:opacity-70">
+                          🖨️ طباعة
+                        </button>
+                        {user?.role === 'admin' && req.status !== 'pending' && (
+                          <button onClick={() => deleteRequest(req)}
+                            className="px-3 py-1.5 rounded-xl bg-ios-red/10 text-ios-red text-xs font-bold active:opacity-70">
+                            🗑️
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
                 ))}
-              </div>
-              {req.notes && <p className="text-xs text-ios-label mt-1">📝 {req.notes}</p>}
-              {req.status === 'received' && req.confirmed_by_name && (
-                <p className="text-xs text-ios-green mt-1 font-semibold">✓ استلمها: {req.confirmed_by_name} — {req.confirmed_at ? new Date(req.confirmed_at).toLocaleString('ar') : ''}</p>
-              )}
-              {req.status === 'pending' && (
-                <div className="flex gap-2 mt-3">
-                  <button onClick={() => confirm(req)}
-                    className="btn-ios text-xs px-4 py-2">✅ تأكيد الاستلام</button>
-                  <button onClick={() => cancel(req)}
-                    className="btn-ios-danger text-xs px-4 py-2">إلغاء الطلب</button>
-                </div>
-              )}
-            </div>
-          ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
