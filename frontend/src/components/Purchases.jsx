@@ -283,24 +283,24 @@ export default function Purchases({ user }) {
               {cart.length > 0 && (
                 <div className="card-ios overflow-hidden mt-3">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-right min-w-[480px]">
-                      <thead className="bg-[#F2F2F7]">
+                    <table className="table-ios min-w-[480px]">
+                      <thead>
                         <tr>
-                          <th className="p-3 font-bold text-ios-label text-xs w-10">#</th>
-                          <th className="p-3 font-bold text-ios-label text-xs">المادة</th>
-                          <th className="p-3 font-bold text-ios-label text-xs w-32">الكمية</th>
-                          <th className="p-3 font-bold text-ios-label text-xs w-20">الوحدة</th>
-                          <th className="p-3 font-bold text-ios-label text-xs w-12"></th>
+                          <th className="w-10">#</th>
+                          <th>المادة</th>
+                          <th className="w-32">الكمية</th>
+                          <th className="w-20">الوحدة</th>
+                          <th className="w-12"></th>
                         </tr>
                       </thead>
                       <tbody>
                         {cart.map((c, i) => (
-                          <tr key={c.inventory_item_id} className="border-t border-ios-sep align-middle">
-                            <td className="p-2 text-ios-label text-sm font-bold">{i + 1}</td>
-                            <td className="p-2 font-semibold text-ios-text">{c.name}</td>
-                            <td className="p-2 text-center font-bold text-ios-blue">{fmtQty(c.quantity)}</td>
-                            <td className="p-2 text-xs text-ios-label whitespace-nowrap">{c.unit || '—'}</td>
-                            <td className="p-2 text-center">
+                          <tr key={c.inventory_item_id}>
+                            <td className="text-ios-label text-sm font-bold">{i + 1}</td>
+                            <td className="font-semibold text-ios-text">{c.name}</td>
+                            <td className="text-center font-bold text-ios-blue">{fmtQty(c.quantity)}</td>
+                            <td className="text-xs text-ios-label whitespace-nowrap">{c.unit || '—'}</td>
+                            <td className="text-center">
                               <button type="button" onClick={() => removeFromCart(c.inventory_item_id)}
                                 className="text-ios-red font-bold px-2 active:opacity-60">✕</button>
                             </td>
@@ -335,23 +335,23 @@ export default function Purchases({ user }) {
       ) : (
         <div className="card-ios overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-right min-w-[900px]">
-              <thead className="bg-[#F2F2F7]">
+            <table className="table-ios min-w-[900px]">
+              <thead>
                 <tr>
-                  <th className="p-3 font-bold text-ios-label text-xs whitespace-nowrap">#</th>
-                  <th className="p-3 font-bold text-ios-label text-xs whitespace-nowrap">الحالة</th>
-                  <th className="p-3 font-bold text-ios-label text-xs whitespace-nowrap">الفرع</th>
-                  <th className="p-3 font-bold text-ios-label text-xs whitespace-nowrap">المواد المطلوبة</th>
-                  <th className="p-3 font-bold text-ios-label text-xs whitespace-nowrap">ملاحظات</th>
-                  <th className="p-3 font-bold text-ios-label text-xs whitespace-nowrap">التاريخ / الطالب</th>
-                  <th className="p-3 font-bold text-ios-label text-xs whitespace-nowrap">الإجراءات</th>
+                  <th>#</th>
+                  <th>الحالة</th>
+                  <th>الفرع</th>
+                  <th>المواد المطلوبة</th>
+                  <th>ملاحظات</th>
+                  <th>التاريخ / الطالب</th>
+                  <th>الإجراءات</th>
                 </tr>
               </thead>
               <tbody>
                 {requests.map(req => (
-                  <tr key={req.id} className="border-t border-ios-sep align-top">
-                    <td className="p-3 font-bold text-ios-text whitespace-nowrap">طلب #{req.id}</td>
-                    <td className="p-3 whitespace-nowrap">
+                  <tr key={req.id} className="align-top">
+                    <td className="font-bold text-ios-text whitespace-nowrap">طلب #{req.id}</td>
+                    <td className="whitespace-nowrap">
                       <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${statusStyles[req.status]}`}>
                         {statusLabels[req.status]}
                       </span>
@@ -359,8 +359,8 @@ export default function Purchases({ user }) {
                         <div className="text-[10px] text-ios-green mt-1 font-semibold">✓ {req.confirmed_by_name}</div>
                       )}
                     </td>
-                    <td className="p-3 text-ios-label whitespace-nowrap">{req.branch_name}</td>
-                    <td className="p-3">
+                    <td className="text-ios-label whitespace-nowrap">{req.branch_name}</td>
+                    <td>
                       <div className="space-y-1">
                         {req.items.map(it => (
                           <div key={it.id} className="flex items-center justify-between gap-2 bg-ios-fill rounded-lg px-2 py-1 text-xs whitespace-nowrap">
@@ -370,12 +370,12 @@ export default function Purchases({ user }) {
                         ))}
                       </div>
                     </td>
-                    <td className="p-3 text-xs text-ios-label max-w-[140px]">{req.notes || '—'}</td>
-                    <td className="p-3 text-xs text-ios-label whitespace-nowrap">
+                    <td className="text-xs text-ios-label max-w-[140px]">{req.notes || '—'}</td>
+                    <td className="text-xs text-ios-label whitespace-nowrap">
                       {new Date(req.created_at).toLocaleString('ar')}
                       <div>{req.created_by_name || '—'}</div>
                     </td>
-                    <td className="p-3">
+                    <td>
                       <div className="flex flex-wrap gap-1.5 whitespace-nowrap">
                         {req.status === 'pending' && (
                           <>

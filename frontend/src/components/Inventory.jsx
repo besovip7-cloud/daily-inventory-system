@@ -368,30 +368,30 @@ export default function Inventory({ user }) {
             <p className="text-ios-label text-center py-4">لا توجد مواد — أضف أول مادة من النموذج أعلاه</p>
           ) : (
             <div className="bg-white rounded-2xl overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-[#F2F2F7]">
+              <table className="table-ios">
+                <thead>
                   <tr>
-                    <th className="p-3 text-right font-semibold text-ios-label text-xs">المادة</th>
-                    <th className="p-3 text-center font-semibold text-ios-label text-xs">الفئة</th>
-                    <th className="p-3 text-center font-semibold text-ios-label text-xs">الوحدة</th>
-                    <th className="p-3 text-center font-semibold text-ios-label text-xs">الحد الأدنى</th>
-                    <th className="p-3 text-center font-semibold text-ios-label text-xs">الكمية</th>
-                    <th className="p-3 text-center font-semibold text-ios-label text-xs">إجراءات</th>
+                    <th>المادة</th>
+                    <th>الفئة</th>
+                    <th>الوحدة</th>
+                    <th>الحد الأدنى</th>
+                    <th>الكمية</th>
+                    <th>إجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredItems.map(item => {
                     const status = getStatus(item)
                     return (
-                      <tr key={item.id} className="border-b border-ios-sep last:border-b-0">
-                        <td className="p-3 font-semibold text-ios-text">{item.name}</td>
-                        <td className="p-3 text-center text-ios-label">{categories.find(c => c.value === item.category)?.label || item.category}</td>
-                        <td className="p-3 text-center text-ios-label">{item.unit || '—'}</td>
-                        <td className="p-3 text-center text-ios-label">{item.min_quantity}</td>
-                        <td className="p-3 text-center">
+                      <tr key={item.id}>
+                        <td className="font-semibold text-ios-text">{item.name}</td>
+                        <td className="text-center text-ios-label">{categories.find(c => c.value === item.category)?.label || item.category}</td>
+                        <td className="text-center text-ios-label">{item.unit || '—'}</td>
+                        <td className="text-center text-ios-label">{item.min_quantity}</td>
+                        <td className="text-center">
                           <span className={`badge-ios ${status.class}`}>{item.current_quantity}</span>
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="text-center">
                           <div className="flex gap-1 justify-center">
                             <button onClick={() => startItemEdit(item)}
                               className="btn-ios-ghost text-xs px-2">✏️ تعديل</button>
@@ -426,24 +426,24 @@ export default function Inventory({ user }) {
           </div>
 
           <div className="section-title"><h3 className="mb-4">📋 ملخص الجرد المرسل</h3></div>
-          <table className="w-full text-sm">
-            <thead className="bg-[#F2F2F7]">
+          <table className="table-ios">
+            <thead>
               <tr>
-                <th className="p-3 text-right font-semibold text-ios-label text-xs">المادة</th>
-                <th className="p-3 text-center font-semibold text-ios-label text-xs">بداية</th>
-                <th className="p-3 text-center font-semibold text-ios-label text-xs">وارد</th>
-                <th className="p-3 text-center font-semibold text-ios-label text-xs">منصرف</th>
-                <th className="p-3 text-center font-semibold text-ios-label text-xs">نهاية</th>
+                <th>المادة</th>
+                <th>بداية</th>
+                <th>وارد</th>
+                <th>منصرف</th>
+                <th>نهاية</th>
               </tr>
             </thead>
             <tbody>
               {todayRecords.map((rec, idx) => (
-                <tr key={idx} className="border-b border-ios-sep last:border-b-0">
-                  <td className="p-3 font-semibold text-ios-text">{rec.item_name || items.find(i => i.id === rec.item_id)?.name || '—'}</td>
-                  <td className="p-3 text-center">{rec.opening_qty}</td>
-                  <td className="p-3 text-center text-ios-green">+{rec.received_qty}</td>
-                  <td className="p-3 text-center text-ios-red">-{rec.consumed_qty}</td>
-                  <td className="p-3 text-center font-bold">{rec.closing_qty}</td>
+                <tr key={idx}>
+                  <td className="font-semibold text-ios-text">{rec.item_name || items.find(i => i.id === rec.item_id)?.name || '—'}</td>
+                  <td className="text-center">{rec.opening_qty}</td>
+                  <td className="text-center text-ios-green">+{rec.received_qty}</td>
+                  <td className="text-center text-ios-red">-{rec.consumed_qty}</td>
+                  <td className="text-center font-bold">{rec.closing_qty}</td>
                 </tr>
               ))}
             </tbody>
@@ -479,17 +479,17 @@ export default function Inventory({ user }) {
           </div>
 
           <div className="card-ios overflow-hidden mb-6">
-            <table className="w-full text-sm">
-              <thead className="bg-[#F2F2F7]">
+            <table className="table-ios">
+              <thead>
                 <tr>
-                  <th className="p-4 text-right font-semibold text-ios-label text-xs">المادة</th>
-                  <th className="p-4 text-center font-semibold text-ios-label text-xs">الوحدة</th>
-                  <th className="p-4 text-center font-semibold text-ios-label text-xs">الحد الأدنى</th>
-                  <th className="p-4 text-center font-semibold text-ios-label text-xs">الحالة</th>
-                  <th className="p-4 text-center font-semibold text-ios-label text-xs">بداية اليوم</th>
-                  <th className="p-4 text-center font-semibold text-ios-label text-xs">وارد</th>
-                  <th className="p-4 text-center font-semibold text-ios-label text-xs">منصرف</th>
-                  <th className="p-4 text-center font-semibold text-ios-label text-xs">نهاية اليوم</th>
+                  <th>المادة</th>
+                  <th>الوحدة</th>
+                  <th>الحد الأدنى</th>
+                  <th>الحالة</th>
+                  <th>بداية اليوم</th>
+                  <th>وارد</th>
+                  <th>منصرف</th>
+                  <th>نهاية اليوم</th>
                 </tr>
               </thead>
               <tbody>
@@ -497,29 +497,29 @@ export default function Inventory({ user }) {
                   const status = getStatus(item)
                   const rec = records[item.id] || {}
                   return (
-                    <tr key={item.id} className="border-b border-ios-sep last:border-b-0 hover:bg-ios-bg">
-                      <td className="p-4 font-semibold text-ios-text">{item.name}</td>
-                      <td className="p-4 text-center text-ios-label">{item.unit}</td>
-                      <td className="p-4 text-center text-ios-label">{item.min_quantity}</td>
-                      <td className="p-4 text-center">
+                    <tr key={item.id}>
+                      <td className="font-semibold text-ios-text">{item.name}</td>
+                      <td className="text-center text-ios-label">{item.unit}</td>
+                      <td className="text-center text-ios-label">{item.min_quantity}</td>
+                      <td className="text-center">
                         <span className={`badge-ios ${status.class}`}>{status.text}</span>
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="text-center">
                         <input type="number" value={rec.opening_qty || 0}
                           onChange={e => handleChange(item.id, 'opening_qty', e.target.value)}
                           className="w-20 py-2 rounded-xl bg-[#F2F2F7] text-center focus:ring-2 focus:ring-ios-blue focus:outline-none" />
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="text-center">
                         <input type="number" value={rec.received_qty || 0}
                           onChange={e => handleChange(item.id, 'received_qty', e.target.value)}
                           className="w-20 py-2 rounded-xl bg-[#F2F2F7] text-center focus:ring-2 focus:ring-ios-blue focus:outline-none" />
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="text-center">
                         <input type="number" value={rec.consumed_qty || 0}
                           onChange={e => handleChange(item.id, 'consumed_qty', e.target.value)}
                           className="w-20 py-2 rounded-xl bg-[#F2F2F7] text-center focus:ring-2 focus:ring-ios-blue focus:outline-none" />
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="text-center">
                         <input type="number" value={rec.closing_qty || 0}
                           onChange={e => handleChange(item.id, 'closing_qty', e.target.value)}
                           className="w-20 py-2 rounded-xl bg-[#F2F2F7] text-center font-bold focus:ring-2 focus:ring-ios-blue focus:outline-none" />

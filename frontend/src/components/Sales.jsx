@@ -150,13 +150,13 @@ export default function Sales({ user }) {
       </div>
 
       <div className="card-ios overflow-hidden mb-6">
-        <table className="w-full text-sm">
-          <thead className="bg-[#F2F2F7]">
+        <table className="table-ios">
+          <thead>
             <tr>
-              <th className="p-4 text-right font-semibold text-ios-label text-xs">الصنف</th>
-              <th className="p-4 text-center font-semibold text-ios-label text-xs">السعر</th>
-              <th className="p-4 text-center font-semibold text-ios-label text-xs">الكمية المباعة</th>
-              <th className="p-4 text-center font-semibold text-ios-label text-xs">الإجمالي</th>
+              <th>الصنف</th>
+              <th>السعر</th>
+              <th>الكمية المباعة</th>
+              <th>الإجمالي</th>
             </tr>
           </thead>
           <tbody>
@@ -164,10 +164,10 @@ export default function Sales({ user }) {
               const sale = sales[item.id] || { quantity_sold: 0, unit_price: item.price }
               const total = sale.quantity_sold * sale.unit_price
               return (
-                <tr key={item.id} className="border-b border-ios-sep last:border-b-0 hover:bg-ios-bg">
-                  <td className="p-4 font-semibold text-ios-text">{item.name}</td>
-                  <td className="p-4 text-center text-ios-label">{item.price} دينار</td>
-                  <td className="p-4 text-center">
+                <tr key={item.id}>
+                  <td className="font-semibold text-ios-text">{item.name}</td>
+                  <td className="text-center text-ios-label">{item.price} دينار</td>
+                  <td className="text-center">
                     <div className="flex items-center justify-center gap-2">
                       <button
                         onClick={() => handleChange(item.id, (sale.quantity_sold || 0) - 1)}
@@ -185,7 +185,7 @@ export default function Sales({ user }) {
                       >+</button>
                     </div>
                   </td>
-                  <td className="p-4 text-center font-bold text-ios-blue">{total} دينار
+                  <td className="text-center font-bold text-ios-blue">{total} دينار
                   </td>
                 </tr>
               )

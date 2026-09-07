@@ -312,23 +312,23 @@ function UsersTab({ showMsg, headers }) {
       ) : (
         <div className="card-ios overflow-hidden">
           <div className="overflow-x-auto">
-          <table className="w-full text-right min-w-[860px]">
-            <thead className="bg-[#F2F2F7]">
+          <table className="table-ios min-w-[860px]">
+            <thead>
               <tr>
-                <th className="p-4 font-bold text-ios-label text-xs whitespace-nowrap">الاسم</th>
-                <th className="p-4 font-bold text-ios-label text-xs whitespace-nowrap">البريد الإلكتروني</th>
-                <th className="p-4 font-bold text-ios-label text-xs whitespace-nowrap">الصلاحية</th>
-                <th className="p-4 font-bold text-ios-label text-xs whitespace-nowrap">الفرع</th>
-                <th className="p-4 font-bold text-ios-label text-xs whitespace-nowrap">الحالة</th>
-                <th className="p-4 font-bold text-ios-label text-xs whitespace-nowrap">الإجراءات</th>
+                <th>الاسم</th>
+                <th>البريد الإلكتروني</th>
+                <th>الصلاحية</th>
+                <th>الفرع</th>
+                <th>الحالة</th>
+                <th>الإجراءات</th>
               </tr>
             </thead>
             <tbody>
               {users.map(user => (
-                <tr key={user.id} className="border-t border-ios-sep align-top">
-                  <td className="p-4 font-semibold text-ios-text whitespace-nowrap">{user.name}</td>
-                  <td className="p-4 text-ios-label" style={{ direction: 'ltr', textAlign: 'right' }}>{user.email}</td>
-                  <td className="p-4 whitespace-nowrap">
+                <tr key={user.id} className="align-top">
+                  <td className="font-semibold text-ios-text whitespace-nowrap">{user.name}</td>
+                  <td className="text-ios-label" style={{ direction: 'ltr', textAlign: 'right' }}>{user.email}</td>
+                  <td className="whitespace-nowrap">
                     <span className={`badge-ios ${
                       user.custom_role_name ? 'bg-ios-purple/15 text-ios-purple' :
                       user.role === 'admin' ? 'bg-ios-purple/15 text-ios-purple' :
@@ -339,13 +339,13 @@ function UsersTab({ showMsg, headers }) {
                       {user.custom_role_name ? `🎭 ${user.custom_role_name}` : (roleLabels[user.role] || user.role)}
                     </span>
                   </td>
-                  <td className="p-4 text-ios-label whitespace-nowrap">{user.branch_name || '—'}</td>
-                  <td className="p-4 whitespace-nowrap">
+                  <td className="text-ios-label whitespace-nowrap">{user.branch_name || '—'}</td>
+                  <td className="whitespace-nowrap">
                     {user.is_active
                       ? <span className="text-ios-green font-bold">✅ نشط</span>
                       : <span className="text-ios-red font-bold">⛔ معطل</span>}
                   </td>
-                  <td className="p-4">
+                  <td>
                     <div className="flex gap-2 items-center whitespace-nowrap">
                       <button onClick={() => toggleActive(user)}
                         className={`px-2 py-1 rounded-lg font-bold text-xs active:opacity-70 ${
@@ -731,38 +731,38 @@ function ItemsTab({ showMsg, headers, user }) {
       )}
 
       <div className="card-ios overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-[#F2F2F7]">
+        <table className="table-ios">
+          <thead>
             <tr>
               {isAdmin && (
-                <th className="p-3 w-10 text-center">
+                <th className="w-10">
                   <input type="checkbox" checked={items.length > 0 && selected.length === items.length}
                     onChange={toggleSelectAll} className="w-4 h-4 accent-ios-blue cursor-pointer" />
                 </th>
               )}
-              <th className="p-3 text-right font-semibold text-ios-label text-xs">المادة</th>
-              <th className="p-3 text-center font-semibold text-ios-label text-xs">الفئة</th>
-              <th className="p-3 text-center font-semibold text-ios-label text-xs">الوحدة</th>
-              <th className="p-3 text-center font-semibold text-ios-label text-xs">الحد الأدنى</th>
-              <th className="p-3 text-center font-semibold text-ios-label text-xs">الكمية</th>
-              <th className="p-3 text-center font-semibold text-ios-label text-xs">إجراءات</th>
+              <th>المادة</th>
+              <th>الفئة</th>
+              <th>الوحدة</th>
+              <th>الحد الأدنى</th>
+              <th>الكمية</th>
+              <th>إجراءات</th>
             </tr>
           </thead>
           <tbody>
             {items.map(item => (
-              <tr key={item.id} className="border-t border-ios-sep last:border-b-0">
+              <tr key={item.id}>
                 {isAdmin && (
-                  <td className="p-3 text-center">
+                  <td className="text-center">
                     <input type="checkbox" checked={selected.includes(item.id)}
                       onChange={() => toggleSelect(item.id)} className="w-4 h-4 accent-ios-blue cursor-pointer" />
                   </td>
                 )}
-                <td className="p-3 font-semibold text-ios-text">{item.name}</td>
-                <td className="p-3 text-center text-ios-label">{itemCategories.find(c => c.value === item.category)?.label || item.category}</td>
-                <td className="p-3 text-center text-ios-label">{item.unit || '—'}</td>
-                <td className="p-3 text-center text-ios-label">{item.min_quantity}</td>
-                <td className="p-3 text-center font-bold">{item.current_quantity}</td>
-                <td className="p-3 text-center">
+                <td className="font-semibold text-ios-text">{item.name}</td>
+                <td className="text-center text-ios-label">{itemCategories.find(c => c.value === item.category)?.label || item.category}</td>
+                <td className="text-center text-ios-label">{item.unit || '—'}</td>
+                <td className="text-center text-ios-label">{item.min_quantity}</td>
+                <td className="text-center font-bold">{item.current_quantity}</td>
+                <td className="text-center">
                   <div className="flex gap-1 justify-center">
                     <button onClick={() => startEdit(item)}
                       className="text-ios-blue font-bold text-xs px-2 active:opacity-70">✏️ تعديل</button>
@@ -773,7 +773,7 @@ function ItemsTab({ showMsg, headers, user }) {
               </tr>
             ))}
             {items.length === 0 && (
-              <tr><td colSpan={isAdmin ? 7 : 6} className="p-6 text-center text-ios-label">لا توجد مواد في هذا الفرع</td></tr>
+              <tr><td colSpan={isAdmin ? 7 : 6} className="text-center text-ios-label">لا توجد مواد في هذا الفرع</td></tr>
             )}
           </tbody>
         </table>
@@ -917,36 +917,36 @@ function MenuTab({ showMsg, headers, user }) {
       )}
 
       <div className="card-ios overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-[#F2F2F7]">
+        <table className="table-ios">
+          <thead>
             <tr>
               {isAdmin && (
-                <th className="p-3 w-10 text-center">
+                <th className="w-10">
                   <input type="checkbox" checked={filteredMenu.length > 0 && selected.length === filteredMenu.length}
                     onChange={toggleSelectAll} className="w-4 h-4 accent-ios-blue cursor-pointer" />
                 </th>
               )}
-              <th className="p-3 text-right font-semibold text-ios-label text-xs">اسم الصنف</th>
-              <th className="p-3 text-right font-semibold text-ios-label text-xs">المجموعة</th>
-              <th className="p-3 text-center font-semibold text-ios-label text-xs">السعر (د.ع)</th>
-              <th className="p-3 text-center font-semibold text-ios-label text-xs">التكلفة</th>
-              <th className="p-3 text-center font-semibold text-ios-label text-xs">إجراءات</th>
+              <th>اسم الصنف</th>
+              <th className="text-right">المجموعة</th>
+              <th>السعر (د.ع)</th>
+              <th>التكلفة</th>
+              <th>إجراءات</th>
             </tr>
           </thead>
           <tbody>
             {filteredMenu.map(item => (
-              <tr key={item.id} className="border-t border-ios-sep last:border-b-0">
+              <tr key={item.id}>
                 {isAdmin && (
-                  <td className="p-3 text-center">
+                  <td className="text-center">
                     <input type="checkbox" checked={selected.includes(item.id)}
                       onChange={() => toggleSelect(item.id)} className="w-4 h-4 accent-ios-blue cursor-pointer" />
                   </td>
                 )}
-                <td className="p-3 font-semibold text-ios-text">{item.name}</td>
-                <td className="p-3 text-ios-label">{menuCategories.find(c => c.value === item.category)?.label || item.category}</td>
-                <td className="p-3 text-center font-bold text-ios-blue">{item.price}</td>
-                <td className="p-3 text-center text-ios-label">{item.cost || '—'}</td>
-                <td className="p-3 text-center whitespace-nowrap">
+                <td className="font-semibold text-ios-text">{item.name}</td>
+                <td className="text-ios-label">{menuCategories.find(c => c.value === item.category)?.label || item.category}</td>
+                <td className="text-center font-bold text-ios-blue">{item.price}</td>
+                <td className="text-center text-ios-label">{item.cost || '—'}</td>
+                <td className="text-center whitespace-nowrap">
                   <button onClick={() => startEdit(item)}
                     className="text-ios-blue font-bold text-xs px-2 active:opacity-70">✏️ تعديل</button>
                   <button onClick={() => handleDelete(item)}
@@ -955,7 +955,7 @@ function MenuTab({ showMsg, headers, user }) {
               </tr>
             ))}
             {filteredMenu.length === 0 && (
-              <tr><td colSpan={isAdmin ? 6 : 5} className="p-6 text-center text-ios-label">
+              <tr><td colSpan={isAdmin ? 6 : 5} className="text-center text-ios-label">
                 {menuSearch ? 'لا توجد نتائج مطابقة للبحث' : 'لا توجد أصناف مبيعات'}
               </td></tr>
             )}
@@ -1143,19 +1143,19 @@ function RecipesTab({ showMsg, headers }) {
             <p className="text-ios-label text-center py-10">لا توجد مكونات بعد — أضفها من تبويب "⚙️ إدارة المكونات"</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[640px]">
-                <thead className="bg-[#F2F2F7]">
+              <table className="table-ios min-w-[640px]">
+                <thead>
                   <tr>
-                    <th className="p-3 text-right font-semibold text-ios-label text-xs min-w-[120px]">صنف المبيعات</th>
+                    <th className="min-w-[120px]">صنف المبيعات</th>
                     {Array.from({ length: maxComponents }, (_, i) => (
-                      <th key={i} className="p-3 text-center font-semibold text-ios-label text-xs">مكون {i + 1}</th>
+                      <th key={i}>مكون {i + 1}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {matrixRows.map(row => (
-                    <tr key={row.menu} className="border-t border-ios-sep last:border-b-0 align-top">
-                      <td className="p-3 font-bold text-ios-text">{row.menu}</td>
+                    <tr key={row.menu} className="align-top">
+                      <td className="font-bold text-ios-text">{row.menu}</td>
                       {Array.from({ length: maxComponents }, (_, i) => {
                         const c = row.components[i]
                         return (
@@ -1223,27 +1223,27 @@ function RecipesTab({ showMsg, headers }) {
       </div>
 
       <div className="card-ios overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-[#F2F2F7]">
+        <table className="table-ios">
+          <thead>
             <tr>
-              <th className="p-3 text-right font-semibold text-ios-label text-xs">مادة الجرد</th>
-              <th className="p-3 text-center font-semibold text-ios-label text-xs">الكمية لكل صنف</th>
-              <th className="p-3 text-center font-semibold text-ios-label text-xs">إجراء</th>
+              <th>مادة الجرد</th>
+              <th>الكمية لكل صنف</th>
+              <th>إجراء</th>
             </tr>
           </thead>
           <tbody>
             {recipes.map(r => (
-              <tr key={r.id} className="border-t border-ios-sep last:border-b-0">
-                <td className="p-3 font-semibold text-ios-text">{r.inventory_name} <span className="text-ios-label text-xs">({r.unit || 'بدون وحدة'})</span></td>
-                <td className="p-3 text-center font-bold text-ios-blue">{r.quantity}</td>
-                <td className="p-3 text-center">
+              <tr key={r.id}>
+                <td className="font-semibold text-ios-text">{r.inventory_name} <span className="text-ios-label text-xs">({r.unit || 'بدون وحدة'})</span></td>
+                <td className="text-center font-bold text-ios-blue">{r.quantity}</td>
+                <td className="text-center">
                   <button onClick={() => handleDelete(r)}
                     className="text-ios-red font-bold text-xs px-2 active:opacity-70">🗑️ حذف</button>
                 </td>
               </tr>
             ))}
             {recipes.length === 0 && (
-              <tr><td colSpan="3" className="p-6 text-center text-ios-label">
+              <tr><td colSpan="3" className="text-center text-ios-label">
                 لا توجد مكونات لهذا الصنف — أضفها من النموذج أعلاه
               </td></tr>
             )}
@@ -1474,25 +1474,25 @@ function RolesTab({ showMsg, headers }) {
       ) : (
         <div className="card-ios overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-right min-w-[640px]">
-              <thead className="bg-[#F2F2F7]">
+            <table className="table-ios min-w-[640px]">
+              <thead>
                 <tr>
-                  <th className="p-4 font-bold text-ios-label text-xs whitespace-nowrap">الدور</th>
-                  <th className="p-4 font-bold text-ios-label text-xs whitespace-nowrap">المستخدمون</th>
-                  <th className="p-4 font-bold text-ios-label text-xs">الصلاحيات</th>
-                  <th className="p-4 font-bold text-ios-label text-xs whitespace-nowrap">الإجراءات</th>
+                  <th>الدور</th>
+                  <th>المستخدمون</th>
+                  <th>الصلاحيات</th>
+                  <th>الإجراءات</th>
                 </tr>
               </thead>
               <tbody>
                 {roles.map(role => (
-                  <tr key={role.id} className="border-t border-ios-sep align-top">
-                    <td className="p-4 whitespace-nowrap">
+                  <tr key={role.id} className="align-top">
+                    <td className="whitespace-nowrap">
                       <span className="badge-ios bg-ios-purple/15 text-ios-purple">🎭 {role.name}</span>
                     </td>
-                    <td className="p-4 whitespace-nowrap font-semibold text-ios-text">
+                    <td className="whitespace-nowrap font-semibold text-ios-text">
                       {role.users_count > 0 ? `${role.users_count} 👤` : '—'}
                     </td>
-                    <td className="p-4">
+                    <td>
                       <div className="flex flex-wrap gap-1">
                         {(role.permissions || []).map(p => {
                           const c = catalog.find(x => x.key === p)
@@ -1504,7 +1504,7 @@ function RolesTab({ showMsg, headers }) {
                         })}
                       </div>
                     </td>
-                    <td className="p-4">
+                    <td>
                       <div className="flex gap-2 whitespace-nowrap">
                         <button onClick={() => startEdit(role)}
                           className="px-3 py-1.5 rounded-xl bg-ios-blue/10 text-ios-blue text-xs font-bold active:opacity-70">

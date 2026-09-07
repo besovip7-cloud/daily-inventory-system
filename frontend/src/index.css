@@ -88,6 +88,26 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* ======= جدول iOS موحد ======= */
+  .table-ios {
+    @apply w-full text-sm;
+  }
+  .table-ios thead th {
+    @apply bg-[#F2F2F7] p-3 text-center font-semibold text-ios-label text-xs whitespace-nowrap;
+  }
+  .table-ios thead th:first-child {
+    @apply text-right;
+  }
+  .table-ios tbody td {
+    @apply p-3 border-b border-ios-sep;
+  }
+  .table-ios tbody tr:last-child td {
+    @apply border-b-0;
+  }
+  .table-ios tbody tr {
+    @apply transition-colors hover:bg-ios-bg;
+  }
 }
 
 /* ======= منطقة الطباعة ======= */
@@ -244,4 +264,13 @@ main table {
 .dark nav.bg-white\/80,
 .dark nav.bg-white\/90 {
   background-color: rgba(28, 28, 30, 0.85);
+}
+
+/* جدول iOS موحد — وضع ليلي */
+.dark .table-ios thead th {
+  background-color: #2c2c2e;
+  color: #98989f;
+}
+.dark .table-ios tbody tr:hover {
+  background-color: #2c2c2e;
 }
