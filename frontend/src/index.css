@@ -58,6 +58,36 @@
   .badge-ios {
     @apply text-xs font-bold rounded-full px-2 py-0.5;
   }
+
+  /* عنوان قسم موحد لكل الصفحات */
+  .section-title {
+    @apply flex items-center justify-between mb-3;
+  }
+  .section-title h3 {
+    @apply text-lg font-bold text-ios-text flex items-center gap-2;
+  }
+
+  /* عنوان مجموعة بالقائمة الجانبية */
+  .nav-group-title {
+    @apply text-[11px] font-bold text-ios-label px-3 mb-1.5 mt-4 first:mt-0;
+  }
+
+  /* عنصر القائمة الجانبية النشط */
+  .nav-item {
+    @apply flex items-center justify-between px-4 py-3 text-sm font-semibold text-ios-text transition active:opacity-60;
+  }
+  .nav-item-active {
+    @apply bg-ios-blue/10 text-ios-blue font-bold;
+  }
+
+  /* شريط سفلي بدون شريط تمرير */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 /* ======= منطقة الطباعة ======= */

@@ -47,6 +47,15 @@ function KpiCard({ icon, label, value, tone = 'blue', number }) {
   )
 }
 
+function SectionTitle({ icon, title, extra }) {
+  return (
+    <div className="section-title">
+      <h3>{icon} {title}</h3>
+      {extra}
+    </div>
+  )
+}
+
 export default function Dashboard({ apiUrl, user }) {
   const [branches, setBranches] = useState([])
   const [stats, setStats] = useState({})
@@ -119,9 +128,12 @@ export default function Dashboard({ apiUrl, user }) {
   return (
     <div className="space-y-6">
       {/* الترحيب */}
-      <div>
-        <h2 className="text-2xl font-bold text-ios-text tracking-tight">{greeting}، {user?.name} 👋</h2>
-        <p className="text-ios-label mt-1">{dateStr}</p>
+      <div className="flex items-end justify-between flex-wrap gap-2">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-bold text-ios-text tracking-tight">{greeting}، {user?.name} 👋</h2>
+          <p className="text-ios-label mt-1">{dateStr}</p>
+        </div>
+        {user?.role === 'admin' && <span className="badge-ios bg-ios-blue/10 text-ios-blue px-3 py-1">👑 مدير النظام</span>}
       </div>
 
       {/* مؤشرات اليوم */}
@@ -136,7 +148,7 @@ export default function Dashboard({ apiUrl, user }) {
         <>
           {/* مقارنة الفروع — آخر 7 أيام */}
           <div className="card-ios p-5">
-            <h3 className="font-bold text-ios-text mb-4">📊 مبيعات الفروع — آخر 7 أيام</h3>
+            <SectionTitle icon="📊" title="مبيعات الفروع — آخر 7 أيام" />
             {comparison.length > 0 ? (
               <div className="h-56" dir="ltr">
                 <ResponsiveContainer width="100%" height="100%">
@@ -215,7 +227,7 @@ export default function Dashboard({ apiUrl, user }) {
 
           {/* اتجاه المبيعات — آخر 7 أيام */}
           <div className="card-ios p-5">
-            <h3 className="font-bold text-ios-text mb-4">📈 مبيعاتك — آخر 7 أيام</h3>
+            <SectionTitle icon="📈" title="مبيعاتك — آخر 7 أيام" />
             {trend.length > 0 ? (
               <div className="h-56" dir="ltr">
                 <ResponsiveContainer width="100%" height="100%">
@@ -236,7 +248,7 @@ export default function Dashboard({ apiUrl, user }) {
           {/* أحدث التنبيهات */}
           {myStats.alerts?.length > 0 && (
             <div className="card-ios overflow-hidden">
-              <div className="px-5 py-4 border-b border-ios-sep font-bold text-ios-text">🔔 أحدث التنبيهات</div>
+              <div className="px-5 py-4 border-b border-ios-sep section-title !mb-0"><h3>🔔 أحدث التنبيهات</h3></div>
               {myStats.alerts.map(a => (
                 <div key={a.id} className="list-row">
                   <div className="min-w-0">
