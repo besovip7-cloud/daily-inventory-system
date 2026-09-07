@@ -13,6 +13,7 @@ const alertsRoutes = require('./routes/alerts');
 const reportsRoutes = require('./routes/reports');
 const settingsRoutes = require('./routes/settings');
 const purchaseRoutes = require('./routes/purchases');
+const rolesRoutes = require('./routes/roles');
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use('/api/alerts', alertsRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/purchases', purchaseRoutes);
+app.use('/api/roles', rolesRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString(), version: '1.0.0' });

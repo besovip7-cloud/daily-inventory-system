@@ -200,6 +200,19 @@ const createTables = async () => {
       )
     `);
 
+    // Custom Roles (أدوار وصلاحيات مخصصة)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS custom_roles (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(50) UNIQUE NOT NULL,
+        permissions JSONB NOT NULL DEFAULT '[]',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // ربط المستخدم بدور مخصص (اختياري — يتجاوز الدور المدمج)
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_role_id INTEGER REFERENCES custom_roles(id) ON DELETE SET NULL`);
+
     // Insert default branches فقط إذا الجدول فاضي (قاعدة جديدة) — حتى لا تتكرر بالقواعد الحية
     const branchCount = await pool.query('SELECT COUNT(*) FROM branches');
     if (parseInt(branchCount.rows[0].count) === 0) {

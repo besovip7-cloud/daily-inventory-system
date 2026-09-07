@@ -1,17 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const branchController = require('../controllers/branchController');
-const { auth, adminOnly, branchAccess, blockAccountant } = require('../middleware/auth');
+const { auth, branchAccess } = require('../middleware/auth');
+const { requirePerm } = require('../utils/permissions');
 
-// Branch list stays readable for all roles (needed by reports)
+// قائمة الفروع تبقى متاحة للجميع (لازمة لكل الصفحات)
 router.get('/', auth, branchController.getAll);
 
-router.use(auth, blockAccountant);
+router.use(auth);
 
-router.get('/:id', auth, branchController.getById);
-router.get('/:id/dashboard', auth, branchAccess, branchController.getDashboard);
-router.post('/', auth, adminOnly, branchController.createBranch);
-router.put('/:id', auth, adminOnly, branchController.updateBranch);
-router.delete('/:id', auth, adminOnly, branchController.deleteBranch);
+router.get('/:id', requirePerm('branches.view'), branchController.getById);
+router.get('/:id/dashboard', requirePerm('dashboard.view'), branchAccess, branchController.getDashboard);
+router.post('/', requirePerm('catalog.manage'), branchController.createBranch);
+router.put('/:id', requirePerm('catalog.manage'), branchController.updateBranch);
+router.delete('/:id', requirePerm('catalog.manage'), branchController.deleteBranch);
 
 module.exports = router;

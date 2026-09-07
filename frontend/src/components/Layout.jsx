@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import AlertBell from './AlertBell'
 import { fetchSettings, getCachedSettings } from '../utils/settings'
+import { hasPerm, isAdmin } from '../utils/permissions'
 
 export default function Layout({ user }) {
   const [settings, setSettings] = useState(getCachedSettings())
@@ -25,19 +26,21 @@ export default function Layout({ user }) {
   }
 
   const allNavItems = [
-    { path: '/', label: '📊 لوحة التحكم', roles: ['admin', 'manager', 'staff'] },
-    { path: '/inventory', label: '📦 جرد المخزون', roles: ['admin', 'manager', 'staff'] },
-    { path: '/branches', label: '🏪 إدارة الفروع', roles: ['admin', 'manager', 'staff'] },
-    { path: '/sales', label: '💰 المبيعات', roles: ['admin', 'manager', 'staff', 'accountant'] },
-    { path: '/purchases', label: '🛒 طلبات الشراء', roles: ['admin', 'manager', 'staff'] },
-    { path: '/alerts', label: '🔔 التنبيهات', roles: ['admin', 'manager', 'staff'] },
-    { path: '/reports', label: '📈 التقارير', roles: ['admin', 'accountant'] },
-    { path: '/admin', label: '👑 الإدارة', roles: ['admin'] },
-    { path: '/manage', label: '🛠️ الإدارة العامة', roles: ['admin'] },
+    { path: '/', label: '📊 لوحة التحكم', perm: 'dashboard.view' },
+    { path: '/inventory', label: '📦 جرد المخزون', perm: 'inventory.view' },
+    { path: '/branches', label: '🏪 إدارة الفروع', perm: 'branches.view' },
+    { path: '/sales', label: '💰 المبيعات', perm: 'sales.view' },
+    { path: '/purchases', label: '🛒 طلبات الشراء', perm: 'purchases.view' },
+    { path: '/alerts', label: '🔔 التنبيهات', perm: 'alerts.view' },
+    { path: '/reports', label: '📈 التقارير', perm: 'reports.view' },
+    { path: '/admin', label: '👑 الإدارة', adminOnly: true },
+    { path: '/manage', label: '🛠️ الإدارة العامة', adminOnly: true },
   ]
 
-  const navItems = allNavItems.filter(item => item.roles.includes(user?.role))
-  const showBell = user?.role === 'admin' || user?.role === 'manager'
+  const navItems = allNavItems.filter(item =>
+    item.adminOnly ? isAdmin(user) : hasPerm(user, item.perm)
+  )
+  const showBell = isAdmin(user) || user?.role === 'manager'
 
   return (
     <div className="min-h-screen bg-ios-bg" dir="rtl">

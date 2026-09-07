@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { hasPerm } from '../utils/permissions'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -35,11 +36,30 @@ const toItemUnit = (qty, fromUnit, itemUnit) => {
   return qty * group[fromUnit] / group[itemUnit]
 }
 
-export default function Management() {
+export default function Management({ user }) {
   const [activeTab, setActiveTab] = useState('users')
   const [message, setMessage] = useState('')
   const token = localStorage.getItem('token')
   const headers = { Authorization: `Bearer ${token}` }
+
+  const canUsers = hasPerm(user, 'users.manage')
+  const canCatalog = hasPerm(user, 'catalog.manage')
+  const canSettings = hasPerm(user, 'settings.manage')
+
+  const tabs = [
+    canUsers && { key: 'users', label: '👥 المستخدمون' },
+    canUsers && { key: 'roles', label: '🎭 الأدوار والصلاحيات' },
+    canCatalog && { key: 'branches', label: '🏪 الفروع' },
+    canCatalog && { key: 'items', label: '📦 مواد الجرد' },
+    canCatalog && { key: 'menu', label: '🍽️ أصناف المبيعات' },
+    canCatalog && { key: 'recipes', label: '🧪 المكونات' },
+    canSettings && { key: 'settings', label: '⚙️ الإعدادات' },
+  ].filter(Boolean)
+
+  // أول تبويب متاح افتراضياً
+  useEffect(() => {
+    if (tabs.length > 0 && !tabs.some(t => t.key === activeTab)) setActiveTab(tabs[0].key)
+  }, [])
 
   const showMsg = (m) => {
     setMessage(m)
@@ -56,39 +76,22 @@ export default function Management() {
         </div>
       )}
 
-      <div className="segmented mb-6">
-        <button onClick={() => setActiveTab('users')}
-          className={`segmented-item ${activeTab === 'users' ? 'segmented-item-active' : ''}`}>
-          👥 المستخدمون
-        </button>
-        <button onClick={() => setActiveTab('branches')}
-          className={`segmented-item ${activeTab === 'branches' ? 'segmented-item-active' : ''}`}>
-          🏪 الفروع
-        </button>
-        <button onClick={() => setActiveTab('items')}
-          className={`segmented-item ${activeTab === 'items' ? 'segmented-item-active' : ''}`}>
-          📦 مواد الجرد
-        </button>
-        <button onClick={() => setActiveTab('menu')}
-          className={`segmented-item ${activeTab === 'menu' ? 'segmented-item-active' : ''}`}>
-          🍽️ أصناف المبيعات
-        </button>
-        <button onClick={() => setActiveTab('recipes')}
-          className={`segmented-item ${activeTab === 'recipes' ? 'segmented-item-active' : ''}`}>
-          🧪 المكونات
-        </button>
-        <button onClick={() => setActiveTab('settings')}
-          className={`segmented-item ${activeTab === 'settings' ? 'segmented-item-active' : ''}`}>
-          ⚙️ الإعدادات
-        </button>
+      <div className="segmented mb-6 flex-wrap">
+        {tabs.map(t => (
+          <button key={t.key} onClick={() => setActiveTab(t.key)}
+            className={`segmented-item ${activeTab === t.key ? 'segmented-item-active' : ''}`}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {activeTab === 'users' && <UsersTab showMsg={showMsg} headers={headers} />}
-      {activeTab === 'branches' && <BranchesTab showMsg={showMsg} headers={headers} />}
-      {activeTab === 'items' && <ItemsTab showMsg={showMsg} headers={headers} />}
-      {activeTab === 'menu' && <MenuTab showMsg={showMsg} headers={headers} />}
-      {activeTab === 'recipes' && <RecipesTab showMsg={showMsg} headers={headers} />}
-      {activeTab === 'settings' && <SettingsTab showMsg={showMsg} headers={headers} />}
+      {activeTab === 'users' && canUsers && <UsersTab showMsg={showMsg} headers={headers} />}
+      {activeTab === 'roles' && canUsers && <RolesTab showMsg={showMsg} headers={headers} />}
+      {activeTab === 'branches' && canCatalog && <BranchesTab showMsg={showMsg} headers={headers} />}
+      {activeTab === 'items' && canCatalog && <ItemsTab showMsg={showMsg} headers={headers} />}
+      {activeTab === 'menu' && canCatalog && <MenuTab showMsg={showMsg} headers={headers} />}
+      {activeTab === 'recipes' && canCatalog && <RecipesTab showMsg={showMsg} headers={headers} />}
+      {activeTab === 'settings' && canSettings && <SettingsTab showMsg={showMsg} headers={headers} />}
     </div>
   )
 }
@@ -97,15 +100,17 @@ export default function Management() {
 function UsersTab({ showMsg, headers }) {
   const [users, setUsers] = useState([])
   const [branches, setBranches] = useState([])
+  const [customRoles, setCustomRoles] = useState([])
   const [loading, setLoading] = useState(false)
-  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'manager', branch_id: '' })
+  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'manager', branch_id: '', custom_role_id: '' })
   const [resetPwFor, setResetPwFor] = useState(null)
   const [newPassword, setNewPassword] = useState('')
-  const [editingUser, setEditingUser] = useState(null) // { id, name, email, role, branch_id }
+  const [editingUser, setEditingUser] = useState(null) // { id, name, email, role, branch_id, custom_role_id }
 
   useEffect(() => {
     loadUsers()
     fetch(`${API_URL}/branches`, { headers }).then(r => r.json()).then(d => setBranches(d || []))
+    fetch(`${API_URL}/roles`, { headers }).then(r => r.json()).then(d => setCustomRoles(d || []))
   }, [])
 
   const loadUsers = () => {
@@ -125,13 +130,14 @@ function UsersTab({ showMsg, headers }) {
         body: JSON.stringify({
           name: newUser.name, email: newUser.email, password: newUser.password,
           role: newUser.role,
-          branch_id: newUser.role === 'admin' ? null : (newUser.branch_id || null)
+          branch_id: newUser.role === 'admin' ? null : (newUser.branch_id || null),
+          custom_role_id: newUser.custom_role_id || null
         })
       })
       const data = await res.json()
       if (res.ok) {
         showMsg('✅ تم إضافة المستخدم بنجاح!')
-        setNewUser({ name: '', email: '', password: '', role: 'manager', branch_id: '' })
+        setNewUser({ name: '', email: '', password: '', role: 'manager', branch_id: '', custom_role_id: '' })
         loadUsers()
       } else {
         showMsg('❌ فشل: ' + (data.message || ''))
@@ -149,7 +155,8 @@ function UsersTab({ showMsg, headers }) {
           name: editingUser.name,
           email: editingUser.email,
           role: editingUser.role,
-          branch_id: editingUser.role === 'admin' ? null : (editingUser.branch_id || null)
+          branch_id: editingUser.role === 'admin' ? null : (editingUser.branch_id || null),
+          custom_role_id: editingUser.custom_role_id || null
         })
       })
       const data = await res.json()
@@ -209,7 +216,7 @@ function UsersTab({ showMsg, headers }) {
     <div>
       <div className="card-ios p-6 mb-6">
         <h3 className="text-lg font-bold mb-4 text-ios-text">➕ إضافة مستخدم جديد</h3>
-        <form onSubmit={addUser} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <form onSubmit={addUser} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           <input type="text" placeholder="الاسم" required value={newUser.name}
             onChange={e => setNewUser({...newUser, name: e.target.value})}
             className="input-ios" />
@@ -227,6 +234,12 @@ function UsersTab({ showMsg, headers }) {
             <option value="accountant">محاسب</option>
             <option value="admin">مدير النظام</option>
           </select>
+          <select value={newUser.custom_role_id}
+            onChange={e => setNewUser({...newUser, custom_role_id: e.target.value})}
+            className="input-ios" title="دور مخصص يتجاوز الصلاحيات المدمجة">
+            <option value="">🎭 بدون دور مخصص</option>
+            {customRoles.map(r => <option key={r.id} value={r.id}>🎭 {r.name}</option>)}
+          </select>
           {newUser.role !== 'admin' ? (
             <select required value={newUser.branch_id}
               onChange={e => setNewUser({...newUser, branch_id: e.target.value})}
@@ -241,17 +254,18 @@ function UsersTab({ showMsg, headers }) {
           )}
           {newUser.role !== 'admin' && (
             <button type="submit"
-              className="btn-ios md:col-span-2 lg:col-span-5">
+              className="btn-ios md:col-span-2 lg:col-span-6">
               إضافة المستخدم
             </button>
           )}
         </form>
+        <p className="text-xs text-ios-label mt-2">الدور المخصص (🎭) يتجاوز صلاحيات الدور المدمج — اتركه "بدون دور مخصص" لاستخدام الصلاحيات الافتراضية.</p>
       </div>
 
       {editingUser && (
         <div className="card-ios p-6 mb-6 border-2 border-ios-blue">
           <h3 className="text-lg font-bold mb-4 text-ios-text">✏️ تعديل المستخدم: {editingUser.name}</h3>
-          <form onSubmit={saveEdit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <form onSubmit={saveEdit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             <input type="text" placeholder="الاسم" required value={editingUser.name}
               onChange={e => setEditingUser({...editingUser, name: e.target.value})}
               className="input-ios" />
@@ -265,6 +279,12 @@ function UsersTab({ showMsg, headers }) {
               <option value="staff">موظف</option>
               <option value="accountant">محاسب</option>
               <option value="admin">مدير النظام</option>
+            </select>
+            <select value={editingUser.custom_role_id || ''}
+              onChange={e => setEditingUser({...editingUser, custom_role_id: e.target.value})}
+              className="input-ios">
+              <option value="">🎭 بدون دور مخصص</option>
+              {customRoles.map(r => <option key={r.id} value={r.id}>🎭 {r.name}</option>)}
             </select>
             {editingUser.role !== 'admin' ? (
               <select required value={editingUser.branch_id || ''}
@@ -308,12 +328,13 @@ function UsersTab({ showMsg, headers }) {
                   <td className="p-4 text-ios-label" style={{ direction: 'ltr', textAlign: 'right' }}>{user.email}</td>
                   <td className="p-4 whitespace-nowrap">
                     <span className={`badge-ios ${
+                      user.custom_role_name ? 'bg-ios-purple/15 text-ios-purple' :
                       user.role === 'admin' ? 'bg-ios-purple/15 text-ios-purple' :
                       user.role === 'manager' ? 'bg-ios-blue/10 text-ios-blue' :
                       user.role === 'accountant' ? 'bg-ios-orange/15 text-ios-orange' :
                       'bg-ios-fill text-ios-text'
                     }`}>
-                      {roleLabels[user.role] || user.role}
+                      {user.custom_role_name ? `🎭 ${user.custom_role_name}` : (roleLabels[user.role] || user.role)}
                     </span>
                   </td>
                   <td className="p-4 text-ios-label whitespace-nowrap">{user.branch_name || '—'}</td>
@@ -1197,6 +1218,185 @@ function SettingsTab({ showMsg, headers }) {
       </div>
       <p className="text-ios-label text-sm mt-3 max-w-lg">
         💡 الاسم والشعار يظهرون بصفحة الدخول والقائمة العلوية وكل تقرير مطبوع.
+      </p>
+    </div>
+  )
+}
+
+/* ================= 🎭 الأدوار والصلاحيات ================= */
+function RolesTab({ showMsg, headers }) {
+  const [roles, setRoles] = useState([])
+  const [catalog, setCatalog] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [editingRole, setEditingRole] = useState(null) // null = وضع إضافة
+  const [name, setName] = useState('')
+  const [perms, setPerms] = useState([])
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    loadRoles()
+    fetch(`${API_URL}/roles/permissions`, { headers }).then(r => r.json()).then(d => setCatalog(d || []))
+  }, [])
+
+  const loadRoles = () => {
+    setLoading(true)
+    fetch(`${API_URL}/roles`, { headers })
+      .then(r => r.json())
+      .then(d => { setRoles(d || []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }
+
+  const togglePerm = (key) => {
+    setPerms(prev => prev.includes(key) ? prev.filter(p => p !== key) : [...prev, key])
+  }
+
+  const startEdit = (role) => {
+    setEditingRole(role)
+    setName(role.name)
+    setPerms(role.permissions || [])
+  }
+
+  const startAdd = () => {
+    setEditingRole(null)
+    setName('')
+    setPerms([])
+  }
+
+  const save = async (e) => {
+    e.preventDefault()
+    if (!name.trim()) { showMsg('❌ أدخل اسم الدور'); return }
+    if (perms.length === 0) { showMsg('❌ اختر صلاحية واحدة على الأقل'); return }
+    setSaving(true)
+    try {
+      const url = editingRole ? `${API_URL}/roles/${editingRole.id}` : `${API_URL}/roles`
+      const res = await fetch(url, {
+        method: editingRole ? 'PUT' : 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), permissions: perms })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        showMsg(editingRole ? '✅ تم تعديل الدور بنجاح' : `✅ تم إنشاء دور "${name.trim()}"`)
+        startAdd()
+        loadRoles()
+      } else {
+        showMsg('❌ فشل: ' + (data.message || ''))
+      }
+    } catch { showMsg('❌ خطأ في الاتصال') }
+    setSaving(false)
+  }
+
+  const deleteRole = async (role) => {
+    const msg = role.users_count > 0
+      ? `الدور "${role.name}" مربوط بـ ${role.users_count} مستخدم. حذفه سيرجعهم لأدوارهم المدمجة. متابعة؟`
+      : `حذف الدور "${role.name}"؟`
+    if (!window.confirm(msg)) return
+    try {
+      const res = await fetch(`${API_URL}/roles/${role.id}`, { method: 'DELETE', headers })
+      const data = await res.json()
+      if (res.ok) {
+        showMsg(`✅ تم حذف الدور "${role.name}"`)
+        if (editingRole?.id === role.id) startAdd()
+        loadRoles()
+      } else showMsg('❌ ' + (data.message || 'فشل الحذف'))
+    } catch { showMsg('❌ خطأ في الاتصال') }
+  }
+
+  return (
+    <div>
+      <div className="card-ios p-6 mb-6">
+        <h3 className="text-lg font-bold mb-1 text-ios-text">
+          {editingRole ? `✏️ تعديل الدور: ${editingRole.name}` : '➕ إنشاء دور جديد'}
+        </h3>
+        <p className="text-xs text-ios-label mb-4">
+          أنشئ دوراً بأي اسم وحدد صلاحياته بالتفصيل، ثم اربطه بمستخدم من تبويب "المستخدمون".
+          الدور المخصص يتجاوز صلاحيات الدور المدمج (مدير فرع / موظف / محاسب).
+        </p>
+        <form onSubmit={save}>
+          <input type="text" placeholder="اسم الدور — مثال: مشرف جرد، موظف استلام..." value={name}
+            onChange={e => setName(e.target.value)}
+            className="input-ios mb-4" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-4">
+            {catalog.map(p => (
+              <label key={p.key}
+                className={`flex items-center gap-2 p-3 rounded-xl cursor-pointer border-2 transition-colors ${
+                  perms.includes(p.key) ? 'border-ios-blue bg-ios-blue/5' : 'border-ios-sep bg-ios-fill/50'
+                }`}>
+                <input type="checkbox" checked={perms.includes(p.key)} onChange={() => togglePerm(p.key)}
+                  className="w-4 h-4 accent-ios-blue" />
+                <span className="text-sm font-semibold text-ios-text">{p.label}</span>
+              </label>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button type="submit" disabled={saving} className="btn-ios flex-1 disabled:opacity-60">
+              {saving ? 'جاري الحفظ...' : editingRole ? '💾 حفظ التعديلات' : '➕ إنشاء الدور'}
+            </button>
+            {editingRole && (
+              <button type="button" onClick={startAdd} className="btn-ios-secondary">إلغاء</button>
+            )}
+          </div>
+        </form>
+      </div>
+
+      {loading ? (
+        <div className="text-center p-10 text-ios-label">جاري التحميل...</div>
+      ) : roles.length === 0 ? (
+        <div className="card-ios p-8 text-center text-ios-label">لا توجد أدوار مخصصة بعد — أنشئ أول دور من الأعلى</div>
+      ) : (
+        <div className="card-ios overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-right min-w-[640px]">
+              <thead className="bg-[#F2F2F7]">
+                <tr>
+                  <th className="p-4 font-bold text-ios-label text-xs whitespace-nowrap">الدور</th>
+                  <th className="p-4 font-bold text-ios-label text-xs whitespace-nowrap">المستخدمون</th>
+                  <th className="p-4 font-bold text-ios-label text-xs">الصلاحيات</th>
+                  <th className="p-4 font-bold text-ios-label text-xs whitespace-nowrap">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {roles.map(role => (
+                  <tr key={role.id} className="border-t border-ios-sep align-top">
+                    <td className="p-4 whitespace-nowrap">
+                      <span className="badge-ios bg-ios-purple/15 text-ios-purple">🎭 {role.name}</span>
+                    </td>
+                    <td className="p-4 whitespace-nowrap font-semibold text-ios-text">
+                      {role.users_count > 0 ? `${role.users_count} 👤` : '—'}
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-wrap gap-1">
+                        {(role.permissions || []).map(p => {
+                          const c = catalog.find(x => x.key === p)
+                          return (
+                            <span key={p} className="badge-ios bg-ios-blue/10 text-ios-blue">
+                              {c ? c.label : p}
+                            </span>
+                          )
+                        })}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex gap-2 whitespace-nowrap">
+                        <button onClick={() => startEdit(role)}
+                          className="px-3 py-1.5 rounded-xl bg-ios-blue/10 text-ios-blue text-xs font-bold active:opacity-70">
+                          ✏️ تعديل
+                        </button>
+                        <button onClick={() => deleteRole(role)}
+                          className="px-3 py-1.5 rounded-xl bg-ios-red/10 text-ios-red text-xs font-bold active:opacity-70">
+                          🗑️ حذف
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      <p className="text-ios-label text-sm mt-3">
+        💡 تغيير صلاحيات دور ينطبق على مستخدميه من جلسة الدخول التالية (عند تسجيل الدخول مجدداً).
       </p>
     </div>
   )

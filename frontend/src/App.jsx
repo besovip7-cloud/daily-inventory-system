@@ -12,6 +12,7 @@ import Reports from './components/Reports'
 import Management from './components/Management'
 import Profile from './components/Profile'
 import Purchases from './components/Purchases'
+import { hasPerm, isAdmin } from './utils/permissions'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 function App() {
@@ -52,11 +53,14 @@ function App() {
           <Route path="branches" element={<Branches user={user} />} />
           <Route path="sales" element={<Sales user={user} />} />
           <Route path="alerts" element={<Alerts user={user} />} />    
-          <Route path="admin" element={<AdminPanel />} />
-          <Route path="manage" element={user?.role === 'admin' ? <Management /> : <Navigate to="/" />} />
-          <Route path="reports" element={['admin', 'accountant'].includes(user?.role) ? <Reports user={user} /> : <Navigate to="/" />} />
+          <Route path="admin" element={isAdmin(user) ? <AdminPanel /> : <Navigate to="/" />} />
+          <Route path="manage" element={
+            ['users.manage', 'catalog.manage', 'settings.manage'].some(p => hasPerm(user, p))
+              ? <Management user={user} /> : <Navigate to="/" />
+          } />
+          <Route path="reports" element={hasPerm(user, 'reports.view') ? <Reports user={user} /> : <Navigate to="/" />} />
           <Route path="profile" element={<Profile user={user} setUser={setUser} />} />
-          <Route path="purchases" element={<Purchases user={user} />} />
+          <Route path="purchases" element={hasPerm(user, 'purchases.view') ? <Purchases user={user} /> : <Navigate to="/" />} />
         </Route>
       </Routes>
     </HashRouter>

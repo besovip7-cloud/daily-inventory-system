@@ -1,13 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const purchaseController = require('../controllers/purchaseController');
-const { auth, branchAccess, blockAccountant } = require('../middleware/auth');
+const { auth, branchAccess } = require('../middleware/auth');
+const { requirePerm } = require('../utils/permissions');
 
-router.use(auth, blockAccountant);
+router.use(auth);
 
-router.get('/', purchaseController.getRequests);
-router.post('/', branchAccess, purchaseController.createRequest);
-router.put('/:id/confirm', purchaseController.confirmRequest);
-router.put('/:id/cancel', purchaseController.cancelRequest);
+router.get('/', requirePerm('purchases.view'), purchaseController.getRequests);
+router.post('/', requirePerm('purchases.create'), branchAccess, purchaseController.createRequest);
+router.put('/:id/confirm', requirePerm('purchases.confirm'), purchaseController.confirmRequest);
+router.put('/:id/cancel', requirePerm('purchases.create'), purchaseController.cancelRequest);
 
 module.exports = router;

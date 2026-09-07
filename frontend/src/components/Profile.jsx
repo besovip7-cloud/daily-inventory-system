@@ -115,7 +115,7 @@ export default function Profile({ user, setUser }) {
             <div className="text-xl font-extrabold text-ios-text">{profile?.name}</div>
             <div className="text-ios-label text-sm">{profile?.email}</div>
             <span className="inline-block mt-1 text-xs font-bold bg-ios-blue/10 text-ios-blue px-2.5 py-1 rounded-full">
-              {roleLabels[profile?.role] || profile?.role}
+              {profile?.custom_role_name ? `🎭 ${profile.custom_role_name}` : (roleLabels[profile?.role] || profile?.role)}
             </span>
           </div>
         </div>

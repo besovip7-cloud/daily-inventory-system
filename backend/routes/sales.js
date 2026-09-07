@@ -1,25 +1,26 @@
 const express = require('express');
 const router = express.Router();
 const salesController = require('../controllers/salesController');
-const { auth, branchAccess, blockAccountant, adminOnly } = require('../middleware/auth');
+const { auth, branchAccess, adminOnly } = require('../middleware/auth');
+const { requirePerm } = require('../utils/permissions');
 
 router.use(auth);
 
-router.get('/menu', auth, salesController.getMenuItems);
-router.post('/menu', auth, blockAccountant, salesController.createMenuItem);
-router.put('/menu/:id', auth, adminOnly, salesController.updateMenuItem);
-router.delete('/menu/:id', auth, adminOnly, salesController.deleteMenuItem);
+router.get('/menu', requirePerm('sales.view'), salesController.getMenuItems);
+router.post('/menu', requirePerm('catalog.manage'), salesController.createMenuItem);
+router.put('/menu/:id', requirePerm('catalog.manage'), salesController.updateMenuItem);
+router.delete('/menu/:id', requirePerm('catalog.manage'), salesController.deleteMenuItem);
 
-router.get('/recipes', auth, branchAccess, salesController.getRecipes);
-router.post('/recipes', auth, adminOnly, salesController.saveRecipe);
-router.delete('/recipes/:id', auth, adminOnly, salesController.deleteRecipe);
+router.get('/recipes', requirePerm('sales.view'), salesController.getRecipes);
+router.post('/recipes', requirePerm('catalog.manage'), salesController.saveRecipe);
+router.delete('/recipes/:id', requirePerm('catalog.manage'), salesController.deleteRecipe);
 
-router.get('/daily/:branchId', auth, branchAccess, salesController.getDailySales);
-router.post('/daily', auth, branchAccess, salesController.saveDailySales);
-router.put('/daily/:id', auth, adminOnly, salesController.updateDailySale);
-router.delete('/daily/:id', auth, adminOnly, salesController.deleteDailySale);
-router.delete('/daily', auth, adminOnly, salesController.deleteDailySalesBulk);
-router.get('/summary/:branchId', auth, branchAccess, salesController.getSalesSummary);
-router.get('/trend/:branchId', auth, branchAccess, salesController.getSalesTrend);
+router.get('/daily/:branchId', requirePerm('sales.view'), branchAccess, salesController.getDailySales);
+router.post('/daily', requirePerm('sales.create'), branchAccess, salesController.saveDailySales);
+router.put('/daily/:id', adminOnly, salesController.updateDailySale);
+router.delete('/daily/:id', adminOnly, salesController.deleteDailySale);
+router.delete('/daily', adminOnly, salesController.deleteDailySalesBulk);
+router.get('/summary/:branchId', requirePerm('sales.view'), branchAccess, salesController.getSalesSummary);
+router.get('/trend/:branchId', requirePerm('sales.view'), branchAccess, salesController.getSalesTrend);
 
 module.exports = router;
