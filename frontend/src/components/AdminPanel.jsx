@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import PageHeader from './PageHeader'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -133,7 +134,7 @@ export default function AdminPanel() {
 
   return (
     <div dir="rtl">
-      <h2 className="text-2xl font-bold mb-6 text-ios-text tracking-tight">👑 لوحة الإدارة</h2>
+      <PageHeader title="👑 لوحة الإدارة" />
 
       {message && (
         <div className={`p-4 rounded-2xl mb-4 font-bold ${message.includes('✅') ? 'bg-ios-green/15 text-[#1F7A33]' : 'bg-ios-red/10 text-ios-red'}`}>
@@ -144,7 +145,7 @@ export default function AdminPanel() {
       {selectedBranch ? (
         <div>
           <button onClick={() => { setSelectedBranch(null); setMessage('') }} className="mb-4 btn-ios-ghost">‹ رجوع للقائمة</button>
-          <h3 className="text-xl font-bold mb-4 text-ios-text">{selectedBranch.name} - جرد اليوم</h3>
+          <div className="section-title"><h3 className="mb-4">{selectedBranch.name} - جرد اليوم</h3></div>
 
           {inventoryData.length > 0 && (
             <div className="bg-ios-blue/10 p-4 rounded-2xl mb-6">
@@ -207,7 +208,7 @@ export default function AdminPanel() {
         </div>
       ) : (
         <>
-          <h3 className="font-bold text-lg mb-4 text-ios-text">📥 جرد بانتظار المراجعة ({submittedBranches.length})</h3>
+          <div className="section-title"><h3 className="mb-4">📥 جرد بانتظار المراجعة ({submittedBranches.length})</h3></div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {branches.map(branch => {
               const hasInventory = submittedBranches.find(s => s.id === branch.id)

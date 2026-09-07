@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { visibleBranches, isBranchLocked } from '../utils/branchScope'
+import PageHeader from './PageHeader'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -87,14 +88,14 @@ export default function Alerts({ user }) {
 
   return (
     <div dir="rtl">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-ios-text tracking-tight">🔔 التنبيهات</h2>
-        {unresolvedCount > 0 && (
+      <PageHeader
+        title="🔔 التنبيهات"
+        actions={unresolvedCount > 0 && (
           <span className="badge-ios bg-ios-red text-white">
             {unresolvedCount} تنبيه
           </span>
         )}
-      </div>
+      />
 
       {message && (
         <div className="bg-ios-green/15 text-[#1F7A33] p-4 rounded-2xl mb-4 font-bold">

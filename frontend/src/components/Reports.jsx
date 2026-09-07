@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { exportToExcel, printReport } from '../utils/export'
 import { fetchSettings, getCachedSettings } from '../utils/settings'
+import PageHeader from './PageHeader'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -359,7 +360,7 @@ export default function Reports({ user }) {
 
   return (
     <div dir="rtl">
-      <h2 className="text-2xl font-bold mb-6 text-ios-text tracking-tight">📈 التقارير</h2>
+      <PageHeader title="📈 التقارير" />
 
       {error && <div className="bg-ios-red/10 text-ios-red p-4 rounded-2xl mb-4 font-bold">{error}</div>}
 
@@ -388,7 +389,7 @@ export default function Reports({ user }) {
 
       {/* مقارنة الفروع */}
       <div className="card-ios p-6 mb-6">
-        <h3 className="text-lg font-bold mb-4 text-ios-text">🏪 مقارنة الفروع (المبيعات)</h3>
+        <div className="section-title"><h3 className="mb-4">🏪 مقارنة الفروع (المبيعات)</h3></div>
         {comparison.length > 0 ? (
           <>
             <div className="h-64" dir="ltr">

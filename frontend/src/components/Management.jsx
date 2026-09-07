@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { hasPerm } from '../utils/permissions'
 import ItemsImport from './ItemsImport'
+import PageHeader from './PageHeader'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -69,7 +70,7 @@ export default function Management({ user }) {
 
   return (
     <div dir="rtl">
-      <h2 className="text-2xl font-bold mb-6 text-ios-text tracking-tight">🛠️ الإدارة العامة</h2>
+      <PageHeader title="🛠️ الإدارة العامة" />
 
       {message && (
         <div className={`p-4 rounded-2xl mb-4 font-bold ${message.includes('✅') ? 'bg-ios-green/15 text-[#1F7A33]' : 'bg-ios-red/10 text-ios-red'}`}>
@@ -216,7 +217,7 @@ function UsersTab({ showMsg, headers }) {
   return (
     <div>
       <div className="card-ios p-6 mb-6">
-        <h3 className="text-lg font-bold mb-4 text-ios-text">➕ إضافة مستخدم جديد</h3>
+        <div className="section-title"><h3 className="mb-4">➕ إضافة مستخدم جديد</h3></div>
         <form onSubmit={addUser} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           <input type="text" placeholder="الاسم" required value={newUser.name}
             onChange={e => setNewUser({...newUser, name: e.target.value})}
@@ -265,7 +266,7 @@ function UsersTab({ showMsg, headers }) {
 
       {editingUser && (
         <div className="card-ios p-6 mb-6 border-2 border-ios-blue">
-          <h3 className="text-lg font-bold mb-4 text-ios-text">✏️ تعديل المستخدم: {editingUser.name}</h3>
+          <div className="section-title"><h3 className="mb-4">✏️ تعديل المستخدم: {editingUser.name}</h3></div>
           <form onSubmit={saveEdit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             <input type="text" placeholder="الاسم" required value={editingUser.name}
               onChange={e => setEditingUser({...editingUser, name: e.target.value})}
@@ -457,7 +458,7 @@ function BranchesTab({ showMsg, headers }) {
 
       {showAdd && (
         <div className="card-ios p-6 mb-6">
-          <h3 className="text-lg font-bold mb-4 text-ios-text">➕ فرع جديد</h3>
+          <div className="section-title"><h3 className="mb-4">➕ فرع جديد</h3></div>
           <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <input type="text" placeholder="اسم الفرع *" required value={newBranch.name}
               onChange={e => setNewBranch({...newBranch, name: e.target.value})}
@@ -664,7 +665,7 @@ function ItemsTab({ showMsg, headers, user }) {
       )}
 
       <div ref={itemsFormRef} className={`bg-ios-blue/10 rounded-2xl p-6 mb-6 ${editingItem ? 'ring-2 ring-ios-blue' : ''}`}>
-        <h3 className="text-lg font-bold mb-4 text-ios-text">{editingItem ? '✏️ تعديل مادة' : '➕ إضافة مادة جديدة'}</h3>
+        <div className="section-title"><h3 className="mb-4">{editingItem ? '✏️ تعديل مادة' : '➕ إضافة مادة جديدة'}</h3></div>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-3">
           <input type="text" placeholder="اسم المادة *" required value={itemForm.name}
             onChange={e => setItemForm({...itemForm, name: e.target.value})}
@@ -865,7 +866,7 @@ function MenuTab({ showMsg, headers, user }) {
   return (
     <div>
       <div ref={menuFormRef} className={`card-ios p-6 mb-6 ${editingMenu ? 'ring-2 ring-ios-blue' : ''}`}>
-        <h3 className="text-lg font-bold mb-4 text-ios-text">{editingMenu ? '✏️ تعديل صنف' : '➕ إضافة صنف مبيعات'}</h3>
+        <div className="section-title"><h3 className="mb-4">{editingMenu ? '✏️ تعديل صنف' : '➕ إضافة صنف مبيعات'}</h3></div>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <input type="text" placeholder="اسم الصنف *" required value={menuForm.name}
             onChange={e => setMenuForm({...menuForm, name: e.target.value})}
@@ -1181,7 +1182,7 @@ function RecipesTab({ showMsg, headers }) {
       <>
 
       <div className="card-ios p-6 mb-6">
-        <h3 className="text-lg font-bold mb-4 text-ios-text">➕ إضافة مكون</h3>
+        <div className="section-title"><h3 className="mb-4">➕ إضافة مكون</h3></div>
         <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <select required value={newRecipe.inventory_item_id}
             onChange={e => setNewRecipe({...newRecipe, inventory_item_id: e.target.value})}
@@ -1432,9 +1433,9 @@ function RolesTab({ showMsg, headers }) {
   return (
     <div>
       <div className="card-ios p-6 mb-6">
-        <h3 className="text-lg font-bold mb-1 text-ios-text">
+        <div className="section-title"><h3 className="mb-1">
           {editingRole ? `✏️ تعديل الدور: ${editingRole.name}` : '➕ إنشاء دور جديد'}
-        </h3>
+        </h3></div>
         <p className="text-xs text-ios-label mb-4">
           أنشئ دوراً بأي اسم وحدد صلاحياته بالتفصيل، ثم اربطه بمستخدم من تبويب "المستخدمون".
           الدور المخصص يتجاوز صلاحيات الدور المدمج (مدير فرع / موظف / محاسب).

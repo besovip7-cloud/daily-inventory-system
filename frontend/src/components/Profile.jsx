@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { fetchSettings, getCachedSettings } from '../utils/settings'
+import PageHeader from './PageHeader'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -95,7 +96,7 @@ export default function Profile({ user, setUser }) {
 
   return (
     <div dir="rtl" className="max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold mb-6 text-ios-text tracking-tight">👤 الملف الشخصي</h2>
+      <PageHeader title="👤 الملف الشخصي" />
 
       {msg && (
         <div className={`p-4 rounded-2xl mb-4 font-bold anim-pop ${msg.includes('✅') ? 'bg-ios-green/15 text-[#1F7A33]' : 'bg-ios-red/10 text-ios-red'}`}>
@@ -135,7 +136,7 @@ export default function Profile({ user, setUser }) {
 
       {/* تعديل الاسم والصورة */}
       <div className="card-ios p-6 mb-6">
-        <h3 className="font-bold text-ios-text mb-4">✏️ تعديل الاسم والصورة</h3>
+        <div className="section-title"><h3 className="mb-4">✏️ تعديل الاسم والصورة</h3></div>
         <div className="space-y-4">
           <div>
             <label className="label-ios">الاسم</label>
@@ -167,7 +168,7 @@ export default function Profile({ user, setUser }) {
 
       {/* تغيير كلمة المرور */}
       <div className="card-ios p-6">
-        <h3 className="font-bold text-ios-text mb-4">🔒 تغيير كلمة المرور</h3>
+        <div className="section-title"><h3 className="mb-4">🔒 تغيير كلمة المرور</h3></div>
         {pwMsg && (
           <div className={`p-3 rounded-2xl mb-4 text-sm font-bold ${pwMsg.includes('✅') ? 'bg-ios-green/15 text-[#1F7A33]' : 'bg-ios-red/10 text-ios-red'}`}>
             {pwMsg}

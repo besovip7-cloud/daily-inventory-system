@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { visibleBranches, isBranchLocked } from '../utils/branchScope'
 import { printReport } from '../utils/export'
 import { fetchSettings, getCachedSettings } from '../utils/settings'
+import PageHeader from './PageHeader'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -201,7 +202,7 @@ export default function Purchases({ user }) {
 
   return (
     <div dir="rtl">
-      <h2 className="text-2xl font-bold mb-6 text-ios-text tracking-tight">🛒 طلبات الشراء</h2>
+      <PageHeader title="🛒 طلبات الشراء" />
 
       {message && (
         <div className={`p-4 rounded-2xl mb-4 font-bold anim-pop ${message.includes('✅') ? 'bg-ios-green/15 text-[#1F7A33]' : 'bg-ios-red/10 text-ios-red'}`}>
@@ -221,7 +222,7 @@ export default function Purchases({ user }) {
               🔥 طلب معمل
             </button>
           </div>
-          <h3 className="text-lg font-bold mb-4 text-ios-text">📝 {source === 'store' ? 'طلب شراء مخزن' : 'طلب شراء معمل'} جديد</h3>
+          <div className="section-title"><h3 className="mb-4">📝 {source === 'store' ? 'طلب شراء مخزن' : 'طلب شراء معمل'} جديد</h3></div>
           <form onSubmit={submit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -326,9 +327,9 @@ export default function Purchases({ user }) {
         </div>
       )}
 
-      <h3 className="font-bold text-ios-text mb-3">
-        📋 طلبات {source === 'store' ? '🏬 المخزن' : '🔥 المعمل'} ({requests.length})
-      </h3>
+      <div className="section-title">
+        <h3>📋 طلبات {source === 'store' ? '🏬 المخزن' : '🔥 المعمل'} ({requests.length})</h3>
+      </div>
       {requests.length === 0 ? (
         <p className="text-center text-ios-label py-8">لا توجد طلبات شراء</p>
       ) : (

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { visibleBranches } from '../utils/branchScope'
+import PageHeader from './PageHeader'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -15,7 +16,7 @@ export default function Branches({ user }) {
 
   return (
     <div dir="rtl">
-      <h2 className="text-2xl font-bold mb-6 text-ios-text tracking-tight">🏪 الفروع</h2>
+      <PageHeader title="🏪 الفروع" />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {branches.map(branch => (

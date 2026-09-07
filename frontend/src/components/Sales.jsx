@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { visibleBranches, isBranchLocked } from '../utils/branchScope'
 import SalesImport from './SalesImport'
+import PageHeader from './PageHeader'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -89,7 +90,7 @@ export default function Sales({ user }) {
 
   return (
     <div dir="rtl">
-      <h2 className="text-2xl font-bold mb-6 text-ios-text tracking-tight">💰 جرد المبيعات اليومية</h2>
+      <PageHeader title="💰 جرد المبيعات اليومية" />
 
       {message && (
         <div className={`p-4 rounded-2xl mb-4 font-bold ${message.includes('✅') ? 'bg-ios-green/15 text-[#1F7A33]' : 'bg-ios-red/10 text-ios-red'}`}>

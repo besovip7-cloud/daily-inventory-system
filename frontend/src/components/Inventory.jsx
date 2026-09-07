@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { visibleBranches, isBranchLocked } from '../utils/branchScope'
+import PageHeader from './PageHeader'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -259,15 +260,15 @@ export default function Inventory({ user }) {
 
   return (
     <div dir="rtl">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-ios-text tracking-tight">📦 جرد المخزون اليومي</h2>
-        {canManage && selectedBranch && (
+      <PageHeader
+        title="📦 جرد المخزون اليومي"
+        actions={canManage && selectedBranch && (
           <button onClick={() => { setShowManage(!showManage); setEditingItem(null); setItemForm(emptyItemForm) }}
             className="btn-ios-secondary">
             🧾 {showManage ? 'إخفاء إدارة المواد' : 'إدارة المواد'}
           </button>
         )}
-      </div>
+      />
 
       {message && (
         <div className={`p-4 rounded-2xl mb-4 font-bold ${message.includes('✅') ? 'bg-ios-green/15 text-[#1F7A33]' : 'bg-ios-red/10 text-ios-red'}`}>
@@ -307,9 +308,7 @@ export default function Inventory({ user }) {
       {/* ===== لوحة إدارة المواد ===== */}
       {showManage && canManage && selectedBranch && (
         <div ref={manageFormRef} className={`bg-ios-blue/10 rounded-2xl p-6 mb-6 ${editingItem ? 'ring-2 ring-ios-blue' : ''}`}>
-          <h3 className="text-lg font-bold mb-4 text-ios-text">
-            {editingItem ? '✏️ تعديل مادة' : '➕ إضافة مادة جديدة'}
-          </h3>
+          <div className="section-title"><h3 className="mb-4">{editingItem ? '✏️ تعديل مادة' : '➕ إضافة مادة جديدة'}</h3></div>
           <form onSubmit={handleItemSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-3 mb-6">
             <input type="text" placeholder="اسم المادة *" required
               value={itemForm.name}
@@ -426,7 +425,7 @@ export default function Inventory({ user }) {
             <p className="text-sm text-ios-label mt-1">التاريخ: {today}</p>
           </div>
 
-          <h4 className="font-bold text-lg mb-4 text-ios-text border-b border-ios-sep pb-2">📋 ملخص الجرد المرسل</h4>
+          <div className="section-title"><h3 className="mb-4">📋 ملخص الجرد المرسل</h3></div>
           <table className="w-full text-sm">
             <thead className="bg-[#F2F2F7]">
               <tr>
