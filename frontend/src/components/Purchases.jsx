@@ -286,11 +286,12 @@ export default function Purchases({ user }) {
                     </td>
                     <td className="p-3 text-ios-label whitespace-nowrap">{req.branch_name}</td>
                     <td className="p-3">
-                      <div className="flex flex-wrap gap-1 max-w-md">
+                      <div className="space-y-1">
                         {req.items.map(it => (
-                          <span key={it.id} className="inline-block bg-ios-fill rounded-lg px-2 py-0.5 text-xs whitespace-nowrap">
-                            {it.item_name} <b className="text-ios-blue">{fmtQty(it.quantity)}</b> {it.unit || ''}
-                          </span>
+                          <div key={it.id} className="flex items-center justify-between gap-2 bg-ios-fill rounded-lg px-2 py-1 text-xs whitespace-nowrap">
+                            <span className="font-semibold text-ios-text">{it.item_name}</span>
+                            <span className="text-ios-blue font-bold">{fmtQty(it.quantity)} {it.unit || ''}</span>
+                          </div>
                         ))}
                       </div>
                     </td>
