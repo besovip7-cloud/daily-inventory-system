@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { hasPerm } from '../utils/permissions'
+import ItemsImport from './ItemsImport'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -524,6 +525,7 @@ function ItemsTab({ showMsg, headers, user }) {
   const [editingItem, setEditingItem] = useState(null)
   const [addToAll, setAddToAll] = useState(false)
   const [selected, setSelected] = useState([])
+  const [showImport, setShowImport] = useState(false)
   const isAdmin = user?.role === 'admin'
 
   useEffect(() => {
@@ -634,12 +636,30 @@ function ItemsTab({ showMsg, headers, user }) {
   return (
     <div>
       <div className="card-ios p-4 mb-6">
-        <label className="label-ios">الفرع</label>
-        <select value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)}
-          className="input-ios md:w-80">
-          {branches.map(b => <option key={b.id} value={b.id.toString()}>{b.name}</option>)}
-        </select>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[200px]">
+            <label className="label-ios">الفرع</label>
+            <select value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)}
+              className="input-ios md:w-80">
+              {branches.map(b => <option key={b.id} value={b.id.toString()}>{b.name}</option>)}
+            </select>
+          </div>
+          <button type="button" onClick={() => setShowImport(v => !v)}
+            className="btn-ios-secondary px-4 py-2.5 text-sm">
+            {showImport ? '✖ إغلاق الاستيراد' : '📥 استيراد من Excel'}
+          </button>
+        </div>
       </div>
+
+      {showImport && (
+        <ItemsImport
+          headers={headers}
+          branches={branches}
+          selectedBranch={selectedBranch}
+          existingItems={items}
+          onDone={() => { loadItems(); setShowImport(false) }}
+        />
+      )}
 
       <div className="bg-ios-blue/10 rounded-2xl p-6 mb-6">
         <h3 className="text-lg font-bold mb-4 text-ios-text">{editingItem ? '✏️ تعديل مادة' : '➕ إضافة مادة جديدة'}</h3>
