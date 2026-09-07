@@ -247,14 +247,16 @@ export default function Purchases({ user }) {
                   <div className="relative">
                     <input type="text" value={search}
                       onChange={e => { setSearch(e.target.value); setSuggestClosed(false) }}
+                      onBlur={() => setTimeout(() => setSuggestClosed(true), 150)}
+                      onFocus={() => setSuggestClosed(false)}
                       placeholder="🔍 اكتب اسم المادة..."
                       className="input-ios w-full" />
                     {suggestions.length > 0 && (
-                      <div className="absolute z-20 top-full right-0 left-0 mt-1 card-ios overflow-hidden max-h-60 overflow-y-auto shadow-lg">
+                      <div className="absolute z-30 top-full right-0 left-0 mt-1 bg-white dark:bg-[#1c1c1e] rounded-2xl border border-ios-sep shadow-lg overflow-hidden max-h-60 overflow-y-auto">
                         {suggestions.map(item => (
-                          <button key={item.id} type="button" onClick={() => pickSuggestion(item)}
-                            className={`w-full text-right px-3 py-2.5 text-sm font-semibold border-b border-ios-sep last:border-0 active:bg-ios-fill ${
-                              parseInt(pickItem) === item.id ? 'bg-ios-blue/10 text-ios-blue' : 'text-ios-text'
+                          <button key={item.id} type="button" onMouseDown={(e) => { e.preventDefault(); pickSuggestion(item) }}
+                            className={`w-full text-right px-3 py-2.5 text-sm font-semibold border-b border-ios-sep last:border-0 ${
+                              parseInt(pickItem) === item.id ? 'bg-ios-blue/10 text-ios-blue' : 'text-ios-text hover:bg-ios-fill'
                             }`}>
                             {item.name} <span className="text-xs text-ios-label font-normal">{item.unit ? `(${item.unit})` : ''}</span>
                           </button>
