@@ -1096,6 +1096,14 @@ function RecipesTab({ showMsg, headers }) {
   const matrixRows = menuItems.map(m => ({ menu: m.name, components: byMenuId[m.id] || [] }))
   const maxComponents = Math.max(0, ...matrixRows.map(r => r.components.length))
 
+  // عرض تلقائي: الأجزاء الصغيرة تظهر بالغرام/مليلتر بدل الكسور
+  const fmtQty = (qty, unit) => {
+    const q = parseFloat(qty) || 0
+    if (unit === 'كغم' && q > 0 && q < 1) return `${Math.round(q * 1000)} غرام`
+    if (unit === 'لتر' && q > 0 && q < 1) return `${Math.round(q * 1000)} مليلتر`
+    return `${q} ${unit || ''}`
+  }
+
   return (
     <div>
       <div className="bg-ios-blue/10 rounded-2xl p-4 mb-6 text-sm text-ios-blue">
@@ -1163,7 +1171,7 @@ function RecipesTab({ showMsg, headers }) {
                             {c ? (
                               <>
                                 <div className="font-semibold text-ios-text">{c.inventory_name}</div>
-                                <div className="text-ios-blue font-bold text-xs">{c.quantity} {c.unit || ''}</div>
+                                <div className="text-ios-blue font-bold text-xs">{fmtQty(c.quantity, c.unit)}</div>
                               </>
                             ) : (
                               <span className="text-ios-sep">—</span>
@@ -1235,7 +1243,7 @@ function RecipesTab({ showMsg, headers }) {
             {recipes.map(r => (
               <tr key={r.id}>
                 <td className="font-semibold text-ios-text">{r.inventory_name} <span className="text-ios-label text-xs">({r.unit || 'بدون وحدة'})</span></td>
-                <td className="text-center font-bold text-ios-blue">{r.quantity}</td>
+                <td className="text-center font-bold text-ios-blue">{fmtQty(r.quantity, r.unit)}</td>
                 <td className="text-center">
                   <button onClick={() => handleDelete(r)}
                     className="text-ios-red font-bold text-xs px-2 active:opacity-70">🗑️ حذف</button>
