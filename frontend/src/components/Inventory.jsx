@@ -1,14 +1,14 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { visibleBranches, isBranchLocked } from '../utils/branchScope'
 import PageHeader from './PageHeader'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 const categories = [
-  { value: 'raw', label: 'مواد خام' },
-  { value: 'packaging', label: 'تغليف' },
-  { value: 'beverages', label: 'مشروبات' },
-  { value: 'cleaning', label: 'مواد تنظيف' }
+  { value: 'raw', label: '🥩 مواد خام' },
+  { value: 'packaging', label: '📦 تغليف' },
+  { value: 'beverages', label: '🥤 مشروبات' },
+  { value: 'cleaning', label: '🧽 تنظيف' }
 ]
 
 const emptyItemForm = { name: '', category: 'raw', unit: '', min_quantity: '', current_quantity: '', cost_per_unit: '' }
@@ -23,6 +23,7 @@ export default function Inventory({ user }) {
   const [items, setItems] = useState([])
   const [todayRecords, setTodayRecords] = useState(null)
   const [records, setRecords] = useState({})
+  const [closingManual, setClosingManual] = useState({}) // مادة النهاية معدّلة يدوياً
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -33,12 +34,11 @@ export default function Inventory({ user }) {
   const [itemForm, setItemForm] = useState(emptyItemForm)
   const [editingItem, setEditingItem] = useState(null)
   const [addToAll, setAddToAll] = useState(false)
-  const [search, setSearch] = useState('')
 
-  // فلترة المواد بالبحث
-  const filteredItems = search.trim()
-    ? items.filter(i => i.name.toLowerCase().includes(search.trim().toLowerCase()))
-    : items
+  // فلاتر سريعة
+  const [search, setSearch] = useState('')
+  const [catFilter, setCatFilter] = useState('all')
+  const [modifiedOnly, setModifiedOnly] = useState(false)
 
   const token = localStorage.getItem('token')
 
@@ -76,6 +76,7 @@ export default function Inventory({ user }) {
     setLoading(true)
     setTodayRecords(null)
     setRecords({})
+    setClosingManual({})
     setMessage('')
 
     loadItems()
@@ -104,7 +105,8 @@ export default function Inventory({ user }) {
     setRecords(prev => {
       const init = {}
       items.forEach(item => {
-        init[item.id] = prev[item.id] || {
+        const prevRec = prev[item.id]
+        init[item.id] = prevRec || {
           item_id: item.id,
           opening_qty: item.current_quantity || 0,
           received_qty: 0,
@@ -117,12 +119,57 @@ export default function Inventory({ user }) {
     })
   }, [items, todayRecords])
 
+  // الاحتساب التلقائي: النهاية = بداية + وارد - منصرف
+  const autoClosing = rec => (parseFloat(rec.opening_qty) || 0) + (parseFloat(rec.received_qty) || 0) - (parseFloat(rec.consumed_qty) || 0)
+
   const handleChange = (itemId, field, value) => {
-    setRecords(prev => ({
-      ...prev,
-      [itemId]: { ...prev[itemId], [field]: parseFloat(value) || 0 }
-    }))
+    const num = parseFloat(value) || 0
+    setRecords(prev => {
+      const updated = { ...prev[itemId], [field]: num }
+      // إذا النهاية مو معدّلة يدوياً، احسبها تلقائياً
+      if (field !== 'closing_qty' && !closingManual[itemId]) {
+        updated.closing_qty = autoClosing(updated)
+      }
+      return { ...prev, [itemId]: updated }
+    })
+    if (field === 'closing_qty') {
+      setClosingManual(prev => ({ ...prev, [itemId]: true }))
+    }
   }
+
+  // رجوع للاحتساب التلقائي لمادة معينة
+  const resetClosing = (itemId) => {
+    setClosingManual(prev => ({ ...prev, [itemId]: false }))
+    setRecords(prev => ({ ...prev, [itemId]: { ...prev[itemId], closing_qty: autoClosing(prev[itemId]) } }))
+  }
+
+  // هل المادة معدّلة؟
+  const isModified = (item) => {
+    const rec = records[item.id]
+    if (!rec) return false
+    if (closingManual[item.id]) return true
+    if ((parseFloat(rec.received_qty) || 0) !== 0) return true
+    if ((parseFloat(rec.consumed_qty) || 0) !== 0) return true
+    if ((parseFloat(rec.opening_qty) || 0) !== (parseFloat(item.current_quantity) || 0)) return true
+    return false
+  }
+
+  const modifiedCount = items.filter(isModified).length
+
+  // فلترة المواد
+  const filteredItems = useMemo(() => {
+    return items.filter(i => {
+      if (catFilter !== 'all' && i.category !== catFilter) return false
+      if (search.trim() && !i.name.toLowerCase().includes(search.trim().toLowerCase())) return false
+      if (modifiedOnly && !isModified(i)) return false
+      return true
+    })
+  }, [items, records, closingManual, search, catFilter, modifiedOnly])
+
+  const presentCategories = useMemo(
+    () => [...new Set(items.map(i => i.category).filter(Boolean))],
+    [items]
+  )
 
   const handleSave = async () => {
     setSaving(true)
@@ -144,7 +191,7 @@ export default function Inventory({ user }) {
       const data = await res.json()
 
       if (res.ok) {
-        setMessage('✅ تم إرسال الجرد للإدارة بنجاح!')
+        setMessage(`✅ تم إرسال جرد ${items.length} مادة للإدارة بنجاح!`)
         setTodayRecords(Object.values(records).map(r => ({
           ...r,
           item_name: items.find(i => i.id === r.item_id)?.name,
@@ -258,6 +305,13 @@ export default function Inventory({ user }) {
     return { text: 'متوفر ✅', class: 'bg-ios-green/15 text-ios-green' }
   }
 
+  // خانة إدخال رقمية مشتركة
+  const NumField = ({ itemId, field, rec, w = 'w-20', bold = false }) => (
+    <input type="number" step="0.001" value={rec[field] ?? 0}
+      onChange={e => handleChange(itemId, field, e.target.value)}
+      className={`${w} py-2 rounded-xl bg-[#F2F2F7] text-center focus:ring-2 focus:ring-ios-blue focus:outline-none ${bold ? 'font-bold' : ''}`} />
+  )
+
   return (
     <div dir="rtl">
       <PageHeader
@@ -277,7 +331,7 @@ export default function Inventory({ user }) {
       )}
 
       {/* ✅ اختيار الفرع — مقفل لمدير/موظف الفرع على فرعه */}
-      <div className="card-ios p-4 mb-6">
+      <div className="card-ios p-4 mb-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[200px]">
             <label className="label-ios">اختر الفرع</label>
@@ -470,112 +524,167 @@ export default function Inventory({ user }) {
       ) : (
         // نموذج إدخال الجرد
         <>
-          <div className="bg-ios-yellow/20 p-4 rounded-2xl mb-6 flex items-center gap-3">
-            <span className="text-2xl">⚠️</span>
-            <div>
-              <p className="text-[#B25000] font-bold">تذكير: أدخل الكميات بدقة</p>
-              <p className="text-[#B25000]/80 text-sm">بعد الضغط على "حفظ وإرسال" لا يمكن التعديل إلا من قبل الإدارة</p>
+          <div className="bg-ios-blue/10 p-4 rounded-2xl mb-4 flex items-center gap-3">
+            <span className="text-2xl">💡</span>
+            <div className="text-sm">
+              <p className="text-ios-blue font-bold">النهاية تُحسب تلقائياً: بداية + وارد − منصرف</p>
+              <p className="text-ios-blue/80">عدّل خانة "نهاية" يدوياً فقط إذا الفعلي مختلف — وبعدها يثبت رقمك</p>
             </div>
           </div>
 
-          <div className="hidden md:block card-ios overflow-hidden mb-6">
-            <table className="table-ios">
-              <thead>
-                <tr>
-                  <th>المادة</th>
-                  <th>الوحدة</th>
-                  <th>الحد الأدنى</th>
-                  <th>الحالة</th>
-                  <th>بداية اليوم</th>
-                  <th>وارد</th>
-                  <th>منصرف</th>
-                  <th>نهاية اليوم</th>
-                </tr>
-              </thead>
-              <tbody>
+          {/* فلاتر سريعة */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button onClick={() => setCatFilter('all')}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${catFilter === 'all' ? 'bg-ios-blue text-white' : 'bg-ios-fill text-ios-text active:opacity-70'}`}>
+              الكل ({items.length})
+            </button>
+            {presentCategories.map(c => (
+              <button key={c} onClick={() => setCatFilter(catFilter === c ? 'all' : c)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${catFilter === c ? 'bg-ios-blue text-white' : 'bg-ios-fill text-ios-text active:opacity-70'}`}>
+                {categories.find(x => x.value === c)?.label || c}
+              </button>
+            ))}
+            <button onClick={() => setModifiedOnly(!modifiedOnly)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all mr-auto ${modifiedOnly ? 'bg-ios-green text-white' : 'bg-ios-green/15 text-[#1F7A33] active:opacity-70'}`}>
+              ✓ المعدّل فقط ({modifiedCount})
+            </button>
+          </div>
+
+          {filteredItems.length === 0 ? (
+            <p className="text-ios-label text-center py-10">لا توجد مواد مطابقة</p>
+          ) : (
+            <>
+              {/* جدول سطح المكتب */}
+              <div className="hidden md:block card-ios overflow-hidden mb-4">
+                <table className="table-ios">
+                  <thead>
+                    <tr>
+                      <th>المادة</th>
+                      <th>الوحدة</th>
+                      <th>الحالة</th>
+                      <th>بداية اليوم</th>
+                      <th>وارد</th>
+                      <th>منصرف</th>
+                      <th>نهاية اليوم</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredItems.map(item => {
+                      const status = getStatus(item)
+                      const rec = records[item.id] || {}
+                      const manual = !!closingManual[item.id]
+                      return (
+                        <tr key={item.id} className={isModified(item) ? 'bg-ios-green/5' : ''}>
+                          <td className="font-semibold text-ios-text">
+                            {item.name}
+                            {isModified(item) && <span className="text-ios-green text-xs"> ✓</span>}
+                          </td>
+                          <td className="text-center text-ios-label">{item.unit}</td>
+                          <td className="text-center">
+                            <span className={`badge-ios ${status.class}`}>{status.text}</span>
+                          </td>
+                          <td className="text-center"><NumField itemId={item.id} field="opening_qty" rec={rec} /></td>
+                          <td className="text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button onClick={() => handleChange(item.id, 'received_qty', (parseFloat(rec.received_qty) || 0) + 1)}
+                                className="w-7 h-7 rounded-lg bg-ios-green/15 text-ios-green font-bold text-sm active:scale-95 transition-transform">+1</button>
+                              <NumField itemId={item.id} field="received_qty" rec={rec} w="w-16" />
+                            </div>
+                          </td>
+                          <td className="text-center"><NumField itemId={item.id} field="consumed_qty" rec={rec} /></td>
+                          <td className="text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <input type="number" step="0.001" value={rec.closing_qty ?? 0}
+                                onChange={e => handleChange(item.id, 'closing_qty', e.target.value)}
+                                className={`w-20 py-2 rounded-xl text-center font-bold focus:ring-2 focus:ring-ios-blue focus:outline-none ${manual ? 'bg-ios-yellow/25 ring-1 ring-ios-orange' : 'bg-[#F2F2F7]'}`} />
+                              {manual && (
+                                <button onClick={() => resetClosing(item.id)} title="رجوع للاحتساب التلقائي"
+                                  className="w-7 h-7 rounded-lg bg-ios-fill text-ios-label text-sm active:scale-95 transition-transform">↺</button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* كروت الموبايل */}
+              <div className="md:hidden space-y-3 mb-4">
                 {filteredItems.map(item => {
                   const status = getStatus(item)
                   const rec = records[item.id] || {}
+                  const manual = !!closingManual[item.id]
+                  const modified = isModified(item)
                   return (
-                    <tr key={item.id}>
-                      <td className="font-semibold text-ios-text">{item.name}</td>
-                      <td className="text-center text-ios-label">{item.unit}</td>
-                      <td className="text-center text-ios-label">{item.min_quantity}</td>
-                      <td className="text-center">
+                    <div key={item.id} className={`card-ios p-4 space-y-3 ${modified ? 'ring-1 ring-ios-green' : ''}`}>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-ios-text">{item.name} <span className="text-ios-label text-xs">({item.unit})</span></span>
                         <span className={`badge-ios ${status.class}`}>{status.text}</span>
-                      </td>
-                      <td className="text-center">
-                        <input type="number" value={rec.opening_qty || 0}
-                          onChange={e => handleChange(item.id, 'opening_qty', e.target.value)}
-                          className="w-20 py-2 rounded-xl bg-[#F2F2F7] text-center focus:ring-2 focus:ring-ios-blue focus:outline-none" />
-                      </td>
-                      <td className="text-center">
-                        <input type="number" value={rec.received_qty || 0}
-                          onChange={e => handleChange(item.id, 'received_qty', e.target.value)}
-                          className="w-20 py-2 rounded-xl bg-[#F2F2F7] text-center focus:ring-2 focus:ring-ios-blue focus:outline-none" />
-                      </td>
-                      <td className="text-center">
-                        <input type="number" value={rec.consumed_qty || 0}
-                          onChange={e => handleChange(item.id, 'consumed_qty', e.target.value)}
-                          className="w-20 py-2 rounded-xl bg-[#F2F2F7] text-center focus:ring-2 focus:ring-ios-blue focus:outline-none" />
-                      </td>
-                      <td className="text-center">
-                        <input type="number" value={rec.closing_qty || 0}
-                          onChange={e => handleChange(item.id, 'closing_qty', e.target.value)}
-                          className="w-20 py-2 rounded-xl bg-[#F2F2F7] text-center font-bold focus:ring-2 focus:ring-ios-blue focus:outline-none" />
-                      </td>
-                    </tr>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="label-ios">بداية اليوم</label>
+                          <input type="number" step="0.001" value={rec.opening_qty ?? 0}
+                            onChange={e => handleChange(item.id, 'opening_qty', e.target.value)}
+                            className="input-ios py-2 text-center" />
+                        </div>
+                        <div>
+                          <label className="label-ios">وارد</label>
+                          <div className="flex gap-1">
+                            <input type="number" step="0.001" value={rec.received_qty ?? 0}
+                              onChange={e => handleChange(item.id, 'received_qty', e.target.value)}
+                              className="input-ios py-2 text-center flex-1" />
+                            <button onClick={() => handleChange(item.id, 'received_qty', (parseFloat(rec.received_qty) || 0) + 1)}
+                              className="w-10 rounded-xl bg-ios-green text-white font-bold active:scale-95 transition-transform">+1</button>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="label-ios">منصرف</label>
+                          <input type="number" step="0.001" value={rec.consumed_qty ?? 0}
+                            onChange={e => handleChange(item.id, 'consumed_qty', e.target.value)}
+                            className="input-ios py-2 text-center" />
+                        </div>
+                        <div>
+                          <label className="label-ios">
+                            نهاية اليوم {manual ? <span className="text-ios-orange">(يدوي)</span> : <span className="text-ios-blue">(تلقائي)</span>}
+                          </label>
+                          <div className="flex gap-1">
+                            <input type="number" step="0.001" value={rec.closing_qty ?? 0}
+                              onChange={e => handleChange(item.id, 'closing_qty', e.target.value)}
+                              className={`input-ios py-2 text-center font-bold flex-1 ${manual ? '!bg-ios-yellow/25' : ''}`} />
+                            {manual && (
+                              <button onClick={() => resetClosing(item.id)} title="تلقائي"
+                                className="w-10 rounded-xl bg-ios-fill text-ios-label active:scale-95 transition-transform">↺</button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   )
                 })}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </>
+          )}
 
-          <div className="md:hidden space-y-3 mb-6">
-            {filteredItems.map(item => {
-              const status = getStatus(item)
-              const rec = records[item.id] || {}
-              return (
-                <div key={item.id} className="card-ios p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-ios-text">{item.name}</span>
-                    <span className={`badge-ios ${status.class}`}>{status.text}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="label-ios">بداية اليوم</label>
-                      <input type="number" value={rec.opening_qty || 0}
-                        onChange={e => handleChange(item.id, 'opening_qty', e.target.value)}
-                        className="input-ios py-2 text-center" />
-                    </div>
-                    <div>
-                      <label className="label-ios">وارد</label>
-                      <input type="number" value={rec.received_qty || 0}
-                        onChange={e => handleChange(item.id, 'received_qty', e.target.value)}
-                        className="input-ios py-2 text-center" />
-                    </div>
-                    <div>
-                      <label className="label-ios">منصرف</label>
-                      <input type="number" value={rec.consumed_qty || 0}
-                        onChange={e => handleChange(item.id, 'consumed_qty', e.target.value)}
-                        className="input-ios py-2 text-center" />
-                    </div>
-                    <div>
-                      <label className="label-ios">نهاية اليوم</label>
-                      <input type="number" value={rec.closing_qty || 0}
-                        onChange={e => handleChange(item.id, 'closing_qty', e.target.value)}
-                        className="input-ios py-2 text-center font-bold" />
-                    </div>
-                  </div>
+          {/* شريط الحفظ الثابت */}
+          <div className="sticky bottom-3 z-10">
+            <div className="card-ios p-4 shadow-xl border border-ios-sep">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="text-sm">
+                  <span className="font-bold text-ios-text">{modifiedCount}</span>
+                  <span className="text-ios-label"> مادة معدّلة من </span>
+                  <span className="font-bold text-ios-text">{items.length}</span>
+                  {modifiedCount === 0 && <span className="text-ios-label"> — المواد بدون تغيير ترسل بقيمها الحالية</span>}
                 </div>
-              )
-            })}
+                <button onClick={handleSave} disabled={saving}
+                  className="btn-ios text-base px-8 disabled:opacity-40 flex-1 sm:flex-none">
+                  {saving ? 'جاري الإرسال...' : '📤 حفظ وإرسال للإدارة'}
+                </button>
+              </div>
+            </div>
           </div>
-
-          <button onClick={handleSave} disabled={saving}
-            className="btn-ios w-full md:w-auto text-base disabled:opacity-40">
-            {saving ? 'جاري الإرسال...' : '📤 حفظ وإرسال للإدارة'}
-          </button>
         </>
       )}
     </div>
