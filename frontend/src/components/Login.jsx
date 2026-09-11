@@ -43,21 +43,22 @@ export default function Login({ setUser, apiUrl }) {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden"
       dir="rtl"
-      style={{ background: 'linear-gradient(160deg, #0A84FF 0%, #5E5CE6 60%, #BF5AF2 100%)' }}>
-      {/* دوائر زخرفية */}
-      <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-white/10 blur-2xl" />
-      <div className="absolute -bottom-32 -left-24 w-96 h-96 rounded-full bg-white/10 blur-2xl" />
+      style={{ background: 'linear-gradient(160deg, #181614 0%, #241B12 55%, #3A2410 100%)' }}>
+      {/* توهجات برتقالية زخرفية — هوية صاج الريف */}
+      <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-brand/20 blur-3xl" />
+      <div className="absolute -bottom-32 -left-24 w-96 h-96 rounded-full bg-brand-deep/20 blur-3xl" />
+      <div className="absolute top-1/2 left-1/4 w-64 h-64 rounded-full bg-brand-gold/10 blur-3xl" />
 
       <div className="relative w-full max-w-md anim-pop">
         {/* الشعار */}
         <div className="text-center mb-6">
-          <div className="w-24 h-24 mx-auto rounded-3xl bg-white shadow-lg mb-4 overflow-hidden flex items-center justify-center">
+          <div className="w-24 h-24 mx-auto rounded-3xl bg-white shadow-lg shadow-brand/20 mb-4 overflow-hidden flex items-center justify-center">
             {settings.company_logo
               ? <img src={settings.company_logo} alt="logo" className="w-full h-full object-contain" />
-              : <span className="text-5xl">📦</span>}
+              : <img src="/icon-192.png" alt="logo" className="w-full h-full object-contain" />}
           </div>
           <h1 className="text-3xl font-extrabold text-white tracking-tight drop-shadow-sm">{settings.company_name}</h1>
-          <p className="text-white/80 mt-1 text-sm">نظام الجرد اليومي — تسجيل الدخول لحسابك</p>
+          <p className="text-white/70 mt-1 text-sm">نظام الجرد اليومي — تسجيل الدخول لحسابك</p>
         </div>
 
         {/* البطاقة */}

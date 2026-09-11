@@ -519,7 +519,7 @@ export default function Reports({ user }) {
                   <XAxis dataKey="branch_name" />
                   <YAxis />
                   <Tooltip />
-                  <Bar dataKey="total_revenue" name="الإيرادات" fill="#007AFF" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="total_revenue" name="الإيرادات" fill="#FF9500" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

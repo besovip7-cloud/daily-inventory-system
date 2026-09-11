@@ -8,12 +8,12 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Tahoma', 'Arial', 'sans-serif'],
+        sans: ['Cairo', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Tahoma', 'Arial', 'sans-serif'],
         cairo: ['Cairo', 'sans-serif'],
       },
       colors: {
         ios: {
-          blue: '#007AFF',
+          blue: '#FF9500', // البرتقالي الذهبي — هوية صاج الريف (لون تفاعلي أساسي)
           green: '#34C759',
           red: '#FF3B30',
           orange: '#FF9500',
@@ -25,6 +25,12 @@ export default {
           label: '#8E8E93',
           text: '#1C1C1E',
           fill: '#E5E5EA',
+        },
+        brand: {
+          dark: '#181614',
+          gold: '#FFB800',
+          DEFAULT: '#FF9500',
+          deep: '#FF6A00',
         },
         primary: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' },
         success: { 50: '#f0fdf4', 100: '#dcfce7', 500: '#22c55e', 600: '#16a34a' },
