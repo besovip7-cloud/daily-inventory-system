@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { hasPerm } from '../utils/permissions'
+import { exportToExcel, printReport } from '../utils/export'
 import ItemsImport from './ItemsImport'
 import PageHeader from './PageHeader'
 
@@ -1119,6 +1120,36 @@ function RecipesTab({ showMsg, headers }) {
     return `${q} ${unit || ''}`
   }
 
+  // تصدير/طباعة جدول المكونات (10 أعمدة)
+  const matrixColumns = [
+    { key: 'menu', label: 'صنف المبيعات' },
+    ...Array.from({ length: maxComponents }, (_, i) => ({ key: 'c' + i, label: `مكون ${i + 1}` }))
+  ]
+  const matrixExportRows = matrixRows.map(row => {
+    const obj = { menu: row.menu }
+    Array.from({ length: maxComponents }, (_, i) => {
+      const c = row.components[i]
+      obj['c' + i] = c ? `${c.inventory_name} — ${fmtQty(c.quantity, c.unit)}` : ''
+    })
+    return obj
+  })
+  const branchName = branches.find(b => b.id.toString() === selectedBranch)?.name || ''
+  const matrixSubtitle = `الفرع: ${branchName} — بتاريخ ${new Date().toLocaleDateString('ar-IQ')}`
+
+  const exportMatrixExcel = () => exportToExcel({
+    filename: `مكونات الأصناف - ${branchName}`,
+    sheetName: 'المكونات',
+    columns: matrixColumns,
+    rows: matrixExportRows
+  })
+
+  const printMatrix = () => printReport({
+    title: 'جدول مكونات الأصناف',
+    subtitle: matrixSubtitle,
+    columns: matrixColumns,
+    rows: matrixExportRows
+  })
+
   return (
     <div>
       <div className="bg-ios-blue/10 rounded-2xl p-4 mb-6 text-sm text-ios-blue">
@@ -1158,9 +1189,15 @@ function RecipesTab({ showMsg, headers }) {
 
       {view === 'matrix' ? (
         <div className="card-ios overflow-hidden">
-          <div className="px-4 py-3 border-b border-ios-sep bg-[#F9F9FB]">
-            <span className="font-bold text-ios-text text-sm">📋 مكونات كل صنف مبيعات</span>
-            <span className="text-ios-label text-xs mr-2">({branches.find(b => b.id.toString() === selectedBranch)?.name || ''})</span>
+          <div className="px-4 py-3 border-b border-ios-sep bg-[#F9F9FB] flex flex-wrap items-center justify-between gap-2">
+            <span className="font-bold text-ios-text text-sm">📋 مكونات كل صنف مبيعات
+              <span className="text-ios-label text-xs mr-2">({branches.find(b => b.id.toString() === selectedBranch)?.name || ''})</span>
+            </span>
+            <div className="flex gap-2">
+              <button onClick={printMatrix} className="btn-ios-secondary text-xs !px-3 !py-1.5">🖨️ طباعة</button>
+              <button onClick={printMatrix} className="btn-ios-secondary text-xs !px-3 !py-1.5">📄 PDF</button>
+              <button onClick={exportMatrixExcel} className="btn-ios-secondary text-xs !px-3 !py-1.5">📊 Excel</button>
+            </div>
           </div>
           {allRecipes.length === 0 ? (
             <p className="text-ios-label text-center py-10">لا توجد مكونات بعد — أضفها من تبويب "⚙️ إدارة المكونات"</p>
