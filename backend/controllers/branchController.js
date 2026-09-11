@@ -56,10 +56,23 @@ exports.getDashboard = async (req, res) => {
       [id]
     );
 
+    // تكلفة مواد مبيعات اليوم (حسب الوصفات) — للربح الحقيقي
+    const profitResult = await pool.query(
+      `SELECT COALESCE(SUM(ds.quantity_sold * r.quantity * ii.cost_per_unit), 0) AS cost
+       FROM daily_sales ds
+       JOIN menu_recipes r ON r.menu_item_id = ds.item_id AND r.branch_id = ds.branch_id
+       JOIN inventory_items ii ON ii.id = r.inventory_item_id
+       WHERE ds.branch_id = $1 AND ds.record_date = $2`,
+      [id, today]
+    );
+    const todayCost = parseFloat(profitResult.rows[0].cost) || 0;
+
     res.json({
       totalItems: parseInt(itemsResult.rows[0].count),
       lowStockItems: parseInt(lowResult.rows[0].count),
       todaySales: parseFloat(salesResult.rows[0].total),
+      todayCost,
+      todayProfit: parseFloat(salesResult.rows[0].total) - todayCost,
       inventoryDone: parseInt(invResult.rows[0].count) > 0,
       alerts: alertsResult.rows
     });

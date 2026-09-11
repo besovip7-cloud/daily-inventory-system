@@ -119,6 +119,7 @@ export default function Dashboard({ apiUrl, user }) {
   if (error) return <div className="text-center p-10 text-ios-red font-semibold">{error}</div>
 
   const totalSales = branches.reduce((s, b) => s + (stats[b.id]?.todaySales || 0), 0)
+  const totalProfit = branches.reduce((s, b) => s + (stats[b.id]?.todayProfit || 0), 0)
   const submitted = branches.filter(b => stats[b.id]?.inventoryDone).length
   const openAlerts = branches.reduce((s, b) => s + (stats[b.id]?.alerts?.length || 0), 0)
   const lowStock = branches.reduce((s, b) => s + (stats[b.id]?.lowStockItems || 0), 0)
@@ -137,8 +138,9 @@ export default function Dashboard({ apiUrl, user }) {
       </div>
 
       {/* مؤشرات اليوم */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 anim-stagger">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 anim-stagger">
         <KpiCard icon="💰" label={myBranch ? 'مبيعات فرعك اليوم' : 'مبيعات كل الفروع اليوم'} number={totalSales} tone="green" />
+        <KpiCard icon="📈" label={myBranch ? 'ربح فرعك اليوم' : 'ربح كل الفروع اليوم'} number={totalProfit} tone={totalProfit >= 0 ? 'green' : 'red'} />
         <KpiCard icon="📦" label="الجرد المسلَّم اليوم" value={`${submitted}/${branches.length}`} tone={submitted === branches.length ? 'green' : 'orange'} />
         <KpiCard icon="🔔" label="تنبيهات مفتوحة" value={openAlerts} tone={openAlerts > 0 ? 'red' : 'blue'} />
         <KpiCard icon="⚠️" label="مواد منخفضة" value={lowStock} tone={lowStock > 0 ? 'orange' : 'blue'} />
@@ -187,8 +189,8 @@ export default function Dashboard({ apiUrl, user }) {
                       <div className="text-[10px] text-ios-label">مبيعات اليوم</div>
                     </div>
                     <div className="bg-ios-bg rounded-xl p-2">
-                      <div className="font-bold text-ios-text">{s.totalItems ?? '—'}</div>
-                      <div className="text-[10px] text-ios-label">مادة</div>
+                      <div className={`font-bold ${(s.todayProfit || 0) >= 0 ? 'text-ios-green' : 'text-ios-red'}`}>{fmtMoney(s.todayProfit)}</div>
+                      <div className="text-[10px] text-ios-label">ربح اليوم</div>
                     </div>
                     <div className="bg-ios-bg rounded-xl p-2">
                       <div className={`font-bold ${s.lowStockItems > 0 ? 'text-ios-orange' : 'text-ios-text'}`}>{s.lowStockItems ?? '—'}</div>
@@ -213,13 +215,17 @@ export default function Dashboard({ apiUrl, user }) {
                 {myStats.inventoryDone ? '✓ سلّمت جرد اليوم' : '✗ انتظر — سلّم جرد اليوم'}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="bg-ios-green/10 rounded-2xl p-4 text-center">
-                <div className="text-2xl font-bold text-[#1F7A33]">{fmtMoney(myStats.todaySales)} د.ع</div>
+                <div className="text-lg md:text-2xl font-bold text-[#1F7A33]">{fmtMoney(myStats.todaySales)}</div>
                 <div className="text-xs text-ios-label mt-1">مبيعات اليوم</div>
               </div>
+              <div className={`rounded-2xl p-4 text-center ${(myStats.todayProfit || 0) >= 0 ? 'bg-ios-green/10' : 'bg-ios-red/10'}`}>
+                <div className={`text-lg md:text-2xl font-bold ${(myStats.todayProfit || 0) >= 0 ? 'text-[#1F7A33]' : 'text-ios-red'}`}>{fmtMoney(myStats.todayProfit)}</div>
+                <div className="text-xs text-ios-label mt-1">ربح اليوم</div>
+              </div>
               <div className={`rounded-2xl p-4 text-center ${myStats.lowStockItems > 0 ? 'bg-ios-orange/10' : 'bg-ios-blue/10'}`}>
-                <div className={`text-2xl font-bold ${myStats.lowStockItems > 0 ? 'text-ios-orange' : 'text-ios-blue'}`}>{myStats.lowStockItems}</div>
+                <div className={`text-lg md:text-2xl font-bold ${myStats.lowStockItems > 0 ? 'text-ios-orange' : 'text-ios-blue'}`}>{myStats.lowStockItems}</div>
                 <div className="text-xs text-ios-label mt-1">مواد منخفضة من {myStats.totalItems}</div>
               </div>
             </div>
