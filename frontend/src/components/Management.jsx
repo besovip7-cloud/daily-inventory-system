@@ -978,6 +978,7 @@ function RecipesTab({ showMsg, headers }) {
   const [selectedMenu, setSelectedMenu] = useState('')
   const [recipes, setRecipes] = useState([])
   const [newRecipe, setNewRecipe] = useState({ inventory_item_id: '', quantity: '', unit: 'غرام' })
+  const [editingRecipe, setEditingRecipe] = useState(null) // {id, inventory_item_id, quantity, unit}
   const [addToAll, setAddToAll] = useState(false)
   const [view, setView] = useState('matrix')
   const [allRecipes, setAllRecipes] = useState([])
@@ -1079,6 +1080,20 @@ function RecipesTab({ showMsg, headers }) {
     } catch { showMsg('❌ خطأ في الاتصال') }
   }
 
+  const handleEditSave = async (recipe) => {
+    const invItem = invItems.find(i => i.id === recipe.inventory_item_id)
+    const finalQty = toItemUnit(parseFloat(editingRecipe.quantity), editingRecipe.unit, invItem?.unit)
+    if (!finalQty || finalQty <= 0) { showMsg('❌ الكمية غير صحيحة'); return }
+    const { ok, message } = await postRecipe(selectedBranch, recipe.inventory_item_id, finalQty)
+    if (ok) {
+      const converted = finalQty !== parseFloat(editingRecipe.quantity)
+      showMsg(`✅ تم تعديل الكمية!${converted ? ` (تم التحويل: ${editingRecipe.quantity} ${editingRecipe.unit} = ${finalQty} ${invItem?.unit})` : ''}`)
+      setEditingRecipe(null)
+      loadRecipes()
+      loadAllRecipes()
+    } else showMsg('❌ فشل التعديل: ' + (message || ''))
+  }
+
   const handleDelete = async (recipe) => {
     if (!window.confirm(`حذف مكون "${recipe.inventory_name}" من هذا الصنف؟`)) return
     try {
@@ -1093,7 +1108,7 @@ function RecipesTab({ showMsg, headers }) {
     if (!byMenuId[r.menu_item_id]) byMenuId[r.menu_item_id] = []
     byMenuId[r.menu_item_id].push(r)
   })
-  const matrixRows = menuItems.map(m => ({ menu: m.name, components: byMenuId[m.id] || [] }))
+  const matrixRows = menuItems.map(m => ({ id: m.id, menu: m.name, components: byMenuId[m.id] || [] }))
   const maxComponents = 10 // ثابت: 10 أعمدة مكونات مثل جدول التكاليف
 
   // عرض تلقائي: الأجزاء الصغيرة تظهر بالغرام/مليلتر بدل الكسور
@@ -1158,6 +1173,7 @@ function RecipesTab({ showMsg, headers }) {
                     {Array.from({ length: maxComponents }, (_, i) => (
                       <th key={i}>مكون {i + 1}</th>
                     ))}
+                    <th>إجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1179,6 +1195,10 @@ function RecipesTab({ showMsg, headers }) {
                           </td>
                         )
                       })}
+                      <td className="text-center whitespace-nowrap">
+                        <button onClick={() => { setSelectedMenu(row.id.toString()); setView('manage'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                          className="text-ios-blue font-bold text-xs px-2 active:opacity-70">✏️ تعديل / ➕ إضافة</button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1243,10 +1263,36 @@ function RecipesTab({ showMsg, headers }) {
             {recipes.map(r => (
               <tr key={r.id}>
                 <td className="font-semibold text-ios-text">{r.inventory_name} <span className="text-ios-label text-xs">({r.unit || 'بدون وحدة'})</span></td>
-                <td className="text-center font-bold text-ios-blue">{fmtQty(r.quantity, r.unit)}</td>
-                <td className="text-center">
-                  <button onClick={() => handleDelete(r)}
-                    className="text-ios-red font-bold text-xs px-2 active:opacity-70">🗑️ حذف</button>
+                <td className="text-center font-bold text-ios-blue">
+                  {editingRecipe?.id === r.id ? (
+                    <span className="flex items-center justify-center gap-1">
+                      <input type="number" min="0.001" step="0.001" value={editingRecipe.quantity}
+                        onChange={e => setEditingRecipe({ ...editingRecipe, quantity: e.target.value })}
+                        className="input-ios py-1.5 w-24 text-center" autoFocus />
+                      <select value={editingRecipe.unit}
+                        onChange={e => setEditingRecipe({ ...editingRecipe, unit: e.target.value })}
+                        className="input-ios py-1.5 w-24">
+                        {['غرام', 'كغم', 'لتر', 'مليلتر', 'قطعة'].map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </span>
+                  ) : fmtQty(r.quantity, r.unit)}
+                </td>
+                <td className="text-center whitespace-nowrap">
+                  {editingRecipe?.id === r.id ? (
+                    <>
+                      <button onClick={() => handleEditSave(r)}
+                        className="text-[#1F7A33] font-bold text-xs px-2 active:opacity-70">💾 حفظ</button>
+                      <button onClick={() => setEditingRecipe(null)}
+                        className="text-ios-label font-bold text-xs px-2 active:opacity-70">إلغاء</button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => setEditingRecipe({ id: r.id, inventory_item_id: r.inventory_item_id, quantity: r.quantity, unit: r.unit || 'كغم' })}
+                        className="text-ios-blue font-bold text-xs px-2 active:opacity-70">✏️ تعديل</button>
+                      <button onClick={() => handleDelete(r)}
+                        className="text-ios-red font-bold text-xs px-2 active:opacity-70">🗑️ حذف</button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
