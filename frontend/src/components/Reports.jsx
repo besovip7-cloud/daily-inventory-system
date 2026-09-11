@@ -27,6 +27,9 @@ export default function Reports({ user }) {
   const [movements, setMovements] = useState([])
   const [variance, setVariance] = useState([])
   const [varianceDate, setVarianceDate] = useState(fmtDate(today))
+  const [purchases, setPurchases] = useState([])
+  const [costRows, setCostRows] = useState([])
+  const [costGrandTotal, setCostGrandTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [settings, setSettings] = useState(getCachedSettings())
@@ -87,6 +90,59 @@ export default function Reports({ user }) {
       } else if (activeTab === 'movements') {
         const res = await fetch(`${API_URL}/reports/movements/${selectedBranch}?from=${from}&to=${to}`, { headers: authHeaders })
         setMovements(await res.json() || [])
+      } else if (activeTab === 'purchases') {
+        const res = await fetch(`${API_URL}/purchases`, { headers: authHeaders })
+        const all = await res.json() || []
+        // فلترة حسب الفرع والفترة (الإندبوينت يرجع آخر 200 لكل الفروع للأدمن)
+        setPurchases(all.filter(p =>
+          String(p.branch_id) === String(selectedBranch) &&
+          p.created_at && fmtDate(new Date(p.created_at)) >= from && fmtDate(new Date(p.created_at)) <= to
+        ))
+      } else if (activeTab === 'costs') {
+        const [recRes, invRes, menuRes] = await Promise.all([
+          fetch(`${API_URL}/sales/recipes?branch_id=${selectedBranch}`, { headers: authHeaders }),
+          fetch(`${API_URL}/inventory/items/${selectedBranch}`, { headers: authHeaders }),
+          fetch(`${API_URL}/sales/menu`, { headers: authHeaders }),
+        ])
+        const recipes = await recRes.json() || []
+        const invItems = await invRes.json() || []
+        const menuItems = await menuRes.json() || []
+        const costById = {}
+        invItems.forEach(i => { costById[i.id] = parseFloat(i.cost_per_unit) || 0 })
+        const priceById = {}
+        menuItems.forEach(m => { priceById[m.id] = parseFloat(m.price) || 0 })
+
+        // تجميع الوصفات حسب صنف البيع مع حساب التكاليف
+        const byMenu = {}
+        recipes.forEach(r => {
+          (byMenu[r.menu_item_id] = byMenu[r.menu_item_id] || []).push(r)
+        })
+        const rows = []
+        let grand = 0
+        Object.values(byMenu)
+          .sort((a, b) => a[0].menu_name.localeCompare(b[0].menu_name, 'ar'))
+          .forEach(group => {
+            const menuName = group[0].menu_name
+            const itemTotal = group.reduce((s, r) => s + (parseFloat(r.quantity) || 0) * (costById[r.inventory_item_id] || 0), 0)
+            grand += itemTotal
+            group.forEach((r, i) => {
+              const qty = parseFloat(r.quantity) || 0
+              const unitCost = costById[r.inventory_item_id] || 0
+              rows.push({
+                menu_name: i === 0 ? menuName : '',
+                component: r.inventory_name,
+                qty: qty,
+                unit: r.unit || '',
+                unit_cost: unitCost.toFixed(2),
+                line_cost: (qty * unitCost).toFixed(2),
+                item_total: i === 0 ? itemTotal.toFixed(2) : '',
+                price: i === 0 ? (priceById[group[0].menu_item_id] || 0).toFixed(0) : '',
+                profit: i === 0 ? ((priceById[group[0].menu_item_id] || 0) - itemTotal).toFixed(2) : '',
+              })
+            })
+          })
+        setCostRows(rows)
+        setCostGrandTotal(grand)
       }
     } catch (e) {
       setError('فشل تحميل التقرير')
@@ -124,6 +180,7 @@ export default function Reports({ user }) {
     payment_cash: g.payment_cash.toFixed(2),
   }))
   const lowStockLabels = { out_of_stock: 'نفذ', critical: 'حرج', low: 'منخفض' }
+  const purchaseStatusLabels = { pending: '⏳ معلق', received: '✅ مستلم', cancelled: '❌ ملغي' }
 
   const branchName = branches.find(b => String(b.id) === selectedBranch)?.name || ''
 
@@ -225,6 +282,43 @@ export default function Reports({ user }) {
       rows: variance.map(r => ({ ...r, recipe_deductions: parseFloat(r.recipe_deductions).toFixed(3) })),
       totals: [],
     },
+    purchases: {
+      title: 'تقرير طلبات الشراء',
+      filename: `طلبات-شراء_${branchName}_${from}_${to}`,
+      columns: [
+        { key: 'created_at', label: 'التاريخ' },
+        { key: 'items', label: 'المواد' },
+        { key: 'status', label: 'الحالة' },
+        { key: 'notes', label: 'ملاحظات' },
+        { key: 'created_by_name', label: 'طلب بواسطة' },
+      ],
+      rows: purchases.map(p => ({
+        ...p,
+        created_at: fmtDate(new Date(p.created_at)),
+        items: (p.items || []).map(i => `${i.item_name} (${i.quantity} ${i.unit || ''})`).join('، '),
+        status: purchaseStatusLabels[p.status] || p.status,
+        notes: p.notes || '—',
+        created_by_name: p.created_by_name || '—',
+      })),
+      totals: [{ label: 'عدد الطلبات', value: purchases.length }],
+    },
+    costs: {
+      title: 'تقرير تكاليف مواد الأصناف',
+      filename: `تكاليف-المواد_${branchName}`,
+      columns: [
+        { key: 'menu_name', label: 'صنف البيع' },
+        { key: 'component', label: 'المكوّن' },
+        { key: 'qty', label: 'الكمية' },
+        { key: 'unit', label: 'الوحدة' },
+        { key: 'unit_cost', label: 'تكلفة الوحدة (د.ع)' },
+        { key: 'line_cost', label: 'تكلفة المكوّن (د.ع)' },
+        { key: 'item_total', label: 'تكلفة الصنف (د.ع)' },
+        { key: 'price', label: 'سعر البيع (د.ع)' },
+        { key: 'profit', label: 'هامش الربح (د.ع)' },
+      ],
+      rows: costRows,
+      totals: [{ label: 'إجمالي تكلفة جميع الأصناف', value: `${costGrandTotal.toFixed(2)} د.ع` }],
+    },
   })
 
   const activeConfig = reportConfig()[activeTab]
@@ -261,7 +355,7 @@ export default function Reports({ user }) {
     if (!effectiveConfig || effectiveConfig.rows.length === 0) return
     const subtitle = activeTab === 'variance'
       ? `الفرع: ${branchName} • بتاريخ ${varianceDate}`
-      : activeTab === 'lowstock'
+      : activeTab === 'lowstock' || activeTab === 'costs'
         ? `الفرع: ${branchName}`
         : `الفرع: ${branchName} • من ${from} إلى ${to}`
     printReport({
@@ -439,6 +533,14 @@ export default function Reports({ user }) {
         <button onClick={() => setActiveTab('variance')}
           className={`segmented-item ${activeTab === 'variance' ? 'segmented-item-active' : ''}`}>
           ⚖️ الفروقات
+        </button>
+        <button onClick={() => setActiveTab('purchases')}
+          className={`segmented-item ${activeTab === 'purchases' ? 'segmented-item-active' : ''}`}>
+          🛒 طلبات الشراء
+        </button>
+        <button onClick={() => setActiveTab('costs')}
+          className={`segmented-item ${activeTab === 'costs' ? 'segmented-item-active' : ''}`}>
+          🧾 تكاليف المواد
         </button>
       </div>
 
@@ -729,6 +831,98 @@ export default function Reports({ user }) {
               </table>
             )}
           </>
+        ) : activeTab === 'purchases' ? (
+          purchases.length === 0 ? (
+            <p className="text-ios-label text-center py-10">لا توجد طلبات شراء بهذه الفترة</p>
+          ) : (
+            <table className="table-ios">
+              <thead>
+                <tr>
+                  <th>التاريخ</th>
+                  <th>المواد</th>
+                  <th>الحالة</th>
+                  <th>ملاحظات</th>
+                  <th>طلب بواسطة</th>
+                </tr>
+              </thead>
+              <tbody>
+                {purchases.map((p, i) => (
+                  <tr key={i}>
+                    <td className="text-ios-label whitespace-nowrap">{fmtDate(new Date(p.created_at))}</td>
+                    <td className="font-semibold text-ios-text">
+                      {(p.items || []).map((it, j) => (
+                        <div key={j} className="text-sm">{it.item_name} <span className="text-ios-blue font-bold">({it.quantity} {it.unit || ''})</span></div>
+                      ))}
+                    </td>
+                    <td>
+                      <span className={`badge-ios ${
+                        p.status === 'received' ? 'bg-ios-green/15 text-ios-green' :
+                        p.status === 'cancelled' ? 'bg-ios-fill text-ios-label' :
+                        'bg-ios-orange/15 text-[#B25000]'
+                      }`}>
+                        {purchaseStatusLabels[p.status] || p.status}
+                      </span>
+                      {p.status === 'received' && p.confirmed_by_name && (
+                        <div className="text-[10px] text-ios-green mt-1 font-semibold">✓ {p.confirmed_by_name}</div>
+                      )}
+                    </td>
+                    <td className="text-ios-label text-sm">{p.notes || '—'}</td>
+                    <td className="text-ios-label text-sm">{p.created_by_name || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )
+        ) : activeTab === 'costs' ? (
+          costRows.length === 0 ? (
+            <p className="text-ios-label text-center py-10">لا توجد مكونات لهذا الفرع — أضفها من الإدارة ← المكونات</p>
+          ) : (
+            <>
+              <div className="p-4 bg-ios-blue/10 font-bold text-ios-blue">
+                إجمالي تكلفة مواد جميع الأصناف: {costGrandTotal.toFixed(2)} د.ع
+              </div>
+              <div className="overflow-x-auto">
+                <table className="table-ios min-w-[720px]">
+                  <thead>
+                    <tr>
+                      <th>صنف البيع</th>
+                      <th>المكوّن</th>
+                      <th>الكمية</th>
+                      <th>الوحدة</th>
+                      <th>تكلفة الوحدة</th>
+                      <th>تكلفة المكوّن</th>
+                      <th>تكلفة الصنف</th>
+                      <th>سعر البيع</th>
+                      <th>هامش الربح</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {costRows.map((r, i) => {
+                      const profit = parseFloat(r.profit)
+                      return (
+                        <tr key={i} className={r.menu_name ? 'border-t-2 border-ios-sep' : ''}>
+                          <td className="font-bold text-ios-text">{r.menu_name || ''}</td>
+                          <td className="font-semibold text-ios-text">{r.component}</td>
+                          <td>{r.qty}</td>
+                          <td className="text-ios-label">{r.unit}</td>
+                          <td>{r.unit_cost}</td>
+                          <td className="font-semibold">{r.line_cost}</td>
+                          <td className="font-bold text-ios-blue">{r.item_total || ''}</td>
+                          <td className="font-bold">{r.price || ''}</td>
+                          <td className={`font-bold ${r.profit === '' ? '' : profit >= 0 ? 'text-ios-green' : 'text-ios-red'}`}>{r.profit || ''}</td>
+                        </tr>
+                      )
+                    })}
+                    <tr className="border-t-2 border-ios-sep bg-[#F2F2F7] font-bold">
+                      <td colSpan="6">الإجمالي</td>
+                      <td className="text-ios-blue">{costGrandTotal.toFixed(2)} د.ع</td>
+                      <td colSpan="2"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )
         ) : lowStock.length === 0 ? (
             <p className="text-ios-green text-center py-10 font-bold">✅ كل الأصناف فوق الحد الأدنى</p>
           ) : (
