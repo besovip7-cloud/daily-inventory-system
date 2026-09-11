@@ -329,15 +329,13 @@ export default function Reports({ user }) {
       columns: [
         { key: 'menu_name', label: 'صنف البيع' },
         { key: 'component', label: 'المكوّن' },
-        { key: 'qty', label: 'الكمية' },
-        { key: 'unit', label: 'الوحدة' },
-        { key: 'unit_cost', label: 'تكلفة الوحدة (د.ع)' },
+        { key: 'qty_text', label: 'الكمية' },
         { key: 'line_cost', label: 'تكلفة المكوّن (د.ع)' },
         { key: 'item_total', label: 'تكلفة الصنف (د.ع)' },
         { key: 'price', label: 'سعر البيع (د.ع)' },
         { key: 'profit', label: 'هامش الربح (د.ع)' },
       ],
-      rows: costRows,
+      rows: costRows.map(r => ({ ...r, qty_text: `${r.qty} ${r.unit}`.trim() })),
       totals: [{ label: 'إجمالي تكلفة جميع الأصناف', value: `${costGrandTotal.toFixed(2)} د.ع` }],
     },
   })
@@ -902,50 +900,50 @@ export default function Reports({ user }) {
               <div className="p-4 bg-ios-blue/10 font-bold text-ios-blue">
                 إجمالي تكلفة مواد جميع الأصناف: {costGrandTotal.toFixed(2)} د.ع
               </div>
-              {/* عرض عمودي: كل صنف كرت لحاله */}
-              <div className="p-4 space-y-4">
-                {costGroups.map(g => {
-                  const profit = parseFloat(g.profit)
-                  return (
-                    <div key={g.menu_item_id} className="card-ios overflow-hidden">
-                      <div className="px-4 py-3 bg-[#F9F9FB] border-b border-ios-sep">
-                        <div className="font-bold text-ios-text">{g.menu_name}</div>
-                        <div className="flex flex-wrap gap-2 mt-2 text-xs font-bold">
-                          <span className="bg-ios-blue/10 text-ios-blue px-2.5 py-1 rounded-full">🧾 التكلفة: {g.item_total} د.ع</span>
-                          <span className="bg-ios-fill text-ios-text px-2.5 py-1 rounded-full">💰 البيع: {g.price} د.ع</span>
-                          <span className={`px-2.5 py-1 rounded-full ${profit >= 0 ? 'bg-ios-green/15 text-ios-green' : 'bg-ios-red/15 text-ios-red'}`}>
-                            {profit >= 0 ? '📈' : '📉'} الربح: {g.profit} د.ع
-                          </span>
-                        </div>
-                      </div>
-                      <table className="table-ios">
-                        <thead>
-                          <tr>
-                            <th>المكوّن</th>
-                            <th>الكمية</th>
-                            <th>تكلفة الوحدة</th>
-                            <th>التكلفة</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {g.components.map((c, i) => (
-                            <tr key={i}>
-                              <td className="font-semibold text-ios-text">{c.component}</td>
-                              <td>{c.qty} <span className="text-ios-label text-xs">{c.unit}</span></td>
-                              <td>{c.unit_cost}</td>
-                              <td className="font-semibold">{c.line_cost}</td>
-                            </tr>
-                          ))}
-                          <tr className="border-t-2 border-ios-sep bg-[#F2F2F7] font-bold">
-                            <td colSpan="3">تكلفة الصنف</td>
-                            <td className="text-ios-blue">{g.item_total} د.ع</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  )
-                })}
-              </div>
+              <table className="table-ios">
+                <thead>
+                  <tr>
+                    <th>صنف البيع</th>
+                    <th>المكوّن</th>
+                    <th>الكمية</th>
+                    <th>تكلفة المكوّن</th>
+                    <th>تكلفة الصنف</th>
+                    <th>سعر البيع</th>
+                    <th>هامش الربح</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {costGroups.map(g => {
+                    const profit = parseFloat(g.profit)
+                    return [
+                      ...g.components.map((c, i) => (
+                        <tr key={g.menu_item_id + '-' + i} className={i === 0 ? 'border-t-2 border-ios-sep' : ''}>
+                          <td className="font-bold text-ios-text align-top">{i === 0 ? g.menu_name : ''}</td>
+                          <td className="font-semibold text-ios-text">{c.component}</td>
+                          <td>{c.qty} <span className="text-ios-label text-xs">{c.unit}</span></td>
+                          <td className="font-semibold">{c.line_cost}</td>
+                          <td className="font-bold text-ios-blue align-top">{i === 0 ? g.item_total : ''}</td>
+                          <td className="font-bold align-top">{i === 0 ? g.price : ''}</td>
+                          <td className={`font-bold align-top ${i === 0 ? (profit >= 0 ? 'text-ios-green' : 'text-ios-red') : ''}`}>{i === 0 ? g.profit : ''}</td>
+                        </tr>
+                      )),
+                      <tr key={g.menu_item_id + '-total'} className="bg-[#F2F2F7] font-bold">
+                        <td></td>
+                        <td className="text-ios-label" colSpan="2">مجموع {g.menu_name}</td>
+                        <td></td>
+                        <td className="text-ios-blue">{g.item_total} د.ع</td>
+                        <td>{g.price} د.ع</td>
+                        <td className={profit >= 0 ? 'text-ios-green' : 'text-ios-red'}>{g.profit} د.ع</td>
+                      </tr>
+                    ]
+                  })}
+                  <tr className="border-t-2 border-ios-sep bg-[#E8E8ED] font-bold">
+                    <td colSpan="4">الإجمالي الكلي لجميع الأصناف</td>
+                    <td className="text-ios-blue">{costGrandTotal.toFixed(2)} د.ع</td>
+                    <td colSpan="2"></td>
+                  </tr>
+                </tbody>
+              </table>
             </>
           )
         ) : lowStock.length === 0 ? (
