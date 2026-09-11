@@ -1094,7 +1094,7 @@ function RecipesTab({ showMsg, headers }) {
     byMenuId[r.menu_item_id].push(r)
   })
   const matrixRows = menuItems.map(m => ({ menu: m.name, components: byMenuId[m.id] || [] }))
-  const maxComponents = Math.max(0, ...matrixRows.map(r => r.components.length))
+  const maxComponents = 10 // ثابت: 10 أعمدة مكونات مثل جدول التكاليف
 
   // عرض تلقائي: الأجزاء الصغيرة تظهر بالغرام/مليلتر بدل الكسور
   const fmtQty = (qty, unit) => {
@@ -1147,7 +1147,7 @@ function RecipesTab({ showMsg, headers }) {
             <span className="font-bold text-ios-text text-sm">📋 مكونات كل صنف مبيعات</span>
             <span className="text-ios-label text-xs mr-2">({branches.find(b => b.id.toString() === selectedBranch)?.name || ''})</span>
           </div>
-          {maxComponents === 0 ? (
+          {allRecipes.length === 0 ? (
             <p className="text-ios-label text-center py-10">لا توجد مكونات بعد — أضفها من تبويب "⚙️ إدارة المكونات"</p>
           ) : (
             <div className="overflow-x-auto">
