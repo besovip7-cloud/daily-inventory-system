@@ -274,3 +274,43 @@ main table {
 .dark .table-ios tbody tr:hover {
   background-color: #2c2c2e;
 }
+
+/* ======= الثيم الذهبي الداكن (هوية صاج الريف) =======
+   يُطبق مع كلاس dark معاً: html.dark.theme-gold */
+.theme-gold body {
+  background: #120e0a;
+  color: #f5efe6;
+}
+.theme-gold .bg-ios-bg { background-color: #17120c; }
+.theme-gold .bg-white { background-color: #1e1710; }
+.theme-gold .bg-\[\#F2F2F7\] { background-color: #2a2118; }
+.theme-gold .bg-\[\#E5E5EA\] { background-color: #2a2118; }
+.theme-gold .bg-\[\#F9F9FB\] { background-color: #1e1710; }
+.theme-gold .bg-\[\#E8E8ED\] { background-color: #2a2118; }
+.theme-gold .bg-ios-fill { background-color: #2a2118; }
+.theme-gold .text-ios-text { color: #f5efe6; }
+.theme-gold .text-ios-label { color: #a89e8c; }
+.theme-gold .border-ios-sep { border-color: #3a2e1e; }
+.theme-gold .card-ios {
+  background: #1e1710;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+.theme-gold .input-ios {
+  background: #2a2118;
+  color: #f5efe6;
+}
+.theme-gold .segmented-item-active {
+  background: #3d3020;
+  box-shadow: none;
+}
+.theme-gold nav.bg-white\/80,
+.theme-gold nav.bg-white\/90 {
+  background-color: rgba(23, 18, 12, 0.88);
+}
+.theme-gold .table-ios thead th {
+  background-color: #2a2118;
+  color: #a89e8c;
+}
+.theme-gold .table-ios tbody tr:hover {
+  background-color: #2a2118;
+}

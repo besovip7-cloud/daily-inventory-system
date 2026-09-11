@@ -16,13 +16,24 @@ export default function Layout({ user }) {
   }
 
   const location = useLocation()
-  const [dark, setDark] = useState(document.documentElement.classList.contains('dark'))
+  // الثيمات بالدور: فاتح ← داكن ← ذهبي
+  const THEMES = ['light', 'dark', 'gold']
+  const THEME_META = {
+    light: { icon: '🌞', label: 'الوضع الفاتح' },
+    dark: { icon: '🌙', label: 'الوضع الداكن' },
+    gold: { icon: '🌟', label: 'الداكن الذهبي' },
+  }
+  const currentTheme = document.documentElement.classList.contains('theme-gold') ? 'gold'
+    : document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+  const [theme, setTheme] = useState(currentTheme)
 
-  const toggleDark = () => {
-    const next = !dark
-    setDark(next)
-    document.documentElement.classList.toggle('dark', next)
-    localStorage.setItem('theme', next ? 'dark' : 'light')
+  const cycleTheme = () => {
+    const next = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]
+    setTheme(next)
+    const el = document.documentElement
+    el.classList.toggle('dark', next !== 'light')
+    el.classList.toggle('theme-gold', next === 'gold')
+    localStorage.setItem('theme', next)
   }
 
   const allNavItems = [
@@ -56,9 +67,9 @@ export default function Layout({ user }) {
             <span className="hidden sm:inline">{settings.company_name}</span>
           </h1>
           <div className="flex gap-3 items-center">
-            <button onClick={toggleDark} title={dark ? 'الوضع النهاري' : 'الوضع الليلي'}
+            <button onClick={cycleTheme} title={THEME_META[theme].label}
               className="w-9 h-9 rounded-full bg-ios-fill flex items-center justify-center text-lg active:scale-90 transition">
-              {dark ? '☀️' : '🌙'}
+              {THEME_META[theme].icon}
             </button>
             {showBell && <AlertBell />}
             <Link to="/profile" className="flex items-center gap-2 active:opacity-60">
