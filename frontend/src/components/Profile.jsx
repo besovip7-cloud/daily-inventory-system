@@ -14,6 +14,7 @@ export default function Profile({ user, setUser }) {
   const [settings, setSettings] = useState(getCachedSettings())
   const [name, setName] = useState(user?.name || '')
   const [avatar, setAvatar] = useState(user?.avatar || '')
+  const [phone, setPhone] = useState(user?.phone || '')
   const [msg, setMsg] = useState('')
   const [savingProfile, setSavingProfile] = useState(false)
 
@@ -26,7 +27,7 @@ export default function Profile({ user, setUser }) {
     // جلب أحدث البيانات (متضمنة اسم الفرع)
     fetch(`${API_URL}/auth/me`, { headers })
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.user) { setProfile(d.user); setName(d.user.name); setAvatar(d.user.avatar || '') } })
+      .then(d => { if (d?.user) { setProfile(d.user); setName(d.user.name); setAvatar(d.user.avatar || ''); setPhone(d.user.phone || '') } })
       .catch(() => {})
   }, [])
 
@@ -52,12 +53,12 @@ export default function Profile({ user, setUser }) {
       const res = await fetch(`${API_URL}/auth/profile`, {
         method: 'PUT',
         headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), avatar })
+        body: JSON.stringify({ name: name.trim(), avatar, phone })
       })
       const data = await res.json()
       if (res.ok) {
         setProfile(p => ({ ...p, ...data.user }))
-        setUser(u => ({ ...u, name: data.user.name, avatar: data.user.avatar }))
+        setUser(u => ({ ...u, name: data.user.name, avatar: data.user.avatar, phone: data.user.phone }))
         show(setMsg, '✅ تم حفظ الملف الشخصي بنجاح!')
       } else {
         show(setMsg, '❌ فشل الحفظ: ' + (data.message || ''))
@@ -141,6 +142,11 @@ export default function Profile({ user, setUser }) {
           <div>
             <label className="label-ios">الاسم</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)} className="input-ios" />
+          </div>
+          <div>
+            <label className="label-ios">رقم واتساب (اختياري — لاستقبال إشعارات المخزون والفروقات)</label>
+            <input type="tel" dir="ltr" value={phone} placeholder="9647700000000"
+              onChange={e => setPhone(e.target.value)} className="input-ios" />
           </div>
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-ios-fill flex items-center justify-center text-2xl font-extrabold text-ios-label overflow-hidden shrink-0">

@@ -105,7 +105,7 @@ function UsersTab({ showMsg, headers }) {
   const [branches, setBranches] = useState([])
   const [customRoles, setCustomRoles] = useState([])
   const [loading, setLoading] = useState(false)
-  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'manager', branch_id: '', custom_role_id: '' })
+  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'manager', branch_id: '', custom_role_id: '', phone: '' })
   const [resetPwFor, setResetPwFor] = useState(null)
   const [newPassword, setNewPassword] = useState('')
   const [editingUser, setEditingUser] = useState(null) // { id, name, email, role, branch_id, custom_role_id }
@@ -134,13 +134,14 @@ function UsersTab({ showMsg, headers }) {
           name: newUser.name, email: newUser.email, password: newUser.password,
           role: newUser.role,
           branch_id: newUser.role === 'admin' ? null : (newUser.branch_id || null),
-          custom_role_id: newUser.custom_role_id || null
+          custom_role_id: newUser.custom_role_id || null,
+          phone: newUser.phone || null
         })
       })
       const data = await res.json()
       if (res.ok) {
         showMsg('✅ تم إضافة المستخدم بنجاح!')
-        setNewUser({ name: '', email: '', password: '', role: 'manager', branch_id: '', custom_role_id: '' })
+        setNewUser({ name: '', email: '', password: '', role: 'manager', branch_id: '', custom_role_id: '', phone: '' })
         loadUsers()
       } else {
         showMsg('❌ فشل: ' + (data.message || ''))
@@ -159,7 +160,8 @@ function UsersTab({ showMsg, headers }) {
           email: editingUser.email,
           role: editingUser.role,
           branch_id: editingUser.role === 'admin' ? null : (editingUser.branch_id || null),
-          custom_role_id: editingUser.custom_role_id || null
+          custom_role_id: editingUser.custom_role_id || null,
+          phone: editingUser.phone || null
         })
       })
       const data = await res.json()
@@ -229,6 +231,9 @@ function UsersTab({ showMsg, headers }) {
           <input type="password" placeholder="كلمة المرور (6+ أحرف)" required minLength={6} value={newUser.password}
             onChange={e => setNewUser({...newUser, password: e.target.value})}
             className="input-ios" />
+          <input type="tel" dir="ltr" placeholder="رقم واتساب (مثال: 9647700000000)" value={newUser.phone}
+            onChange={e => setNewUser({...newUser, phone: e.target.value})}
+            className="input-ios" title="اختياري — لاستقبال إشعارات واتساب (المخزون والفروقات)" />
           <select value={newUser.role}
             onChange={e => setNewUser({...newUser, role: e.target.value})}
             className="input-ios">
@@ -275,6 +280,9 @@ function UsersTab({ showMsg, headers }) {
             <input type="email" placeholder="البريد الإلكتروني" required value={editingUser.email}
               onChange={e => setEditingUser({...editingUser, email: e.target.value})}
               className="input-ios" />
+            <input type="tel" dir="ltr" placeholder="رقم واتساب (اختياري)" value={editingUser.phone || ''}
+              onChange={e => setEditingUser({...editingUser, phone: e.target.value})}
+              className="input-ios" title="لاستقبال إشعارات واتساب" />
             <select value={editingUser.role}
               onChange={e => setEditingUser({...editingUser, role: e.target.value})}
               className="input-ios">
@@ -313,11 +321,12 @@ function UsersTab({ showMsg, headers }) {
       ) : (
         <div className="card-ios overflow-hidden">
           <div className="overflow-x-auto">
-          <table className="table-ios min-w-[860px]">
+          <table className="table-ios min-w-[960px]">
             <thead>
               <tr>
                 <th>الاسم</th>
                 <th>البريد الإلكتروني</th>
+                <th>واتساب</th>
                 <th>الصلاحية</th>
                 <th>الفرع</th>
                 <th>الحالة</th>
@@ -329,6 +338,7 @@ function UsersTab({ showMsg, headers }) {
                 <tr key={user.id} className="align-top">
                   <td className="font-semibold text-ios-text whitespace-nowrap">{user.name}</td>
                   <td className="text-ios-label" style={{ direction: 'ltr', textAlign: 'right' }}>{user.email}</td>
+                  <td className="text-ios-label whitespace-nowrap" style={{ direction: 'ltr', textAlign: 'right' }}>{user.phone || '—'}</td>
                   <td className="whitespace-nowrap">
                     <span className={`badge-ios ${
                       user.custom_role_name ? 'bg-ios-purple/15 text-ios-purple' :

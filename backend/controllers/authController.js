@@ -40,6 +40,7 @@ exports.login = async (req, res) => {
         role: user.role,
         branch_id: user.branch_id,
         avatar: user.avatar,
+        phone: user.phone,
         custom_role_id: user.custom_role_id,
         permissions
       }
@@ -51,14 +52,14 @@ exports.login = async (req, res) => {
 
 exports.createUser = async (req, res) => {
   try {
-    const { name, email, password, role, branch_id, custom_role_id } = req.body;
+    const { name, email, password, role, branch_id, custom_role_id, phone } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const result = await pool.query(
-      `INSERT INTO users (name, email, password, role, branch_id, custom_role_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, name, email, role, branch_id, custom_role_id, is_active, created_at`,
-      [name, email, hashedPassword, role || 'staff', branch_id || null, custom_role_id || null]
+      `INSERT INTO users (name, email, password, role, branch_id, custom_role_id, phone)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, name, email, role, branch_id, custom_role_id, phone, is_active, created_at`,
+      [name, email, hashedPassword, role || 'staff', branch_id || null, custom_role_id || null, phone || null]
     );
 
     res.status(201).json({ user: result.rows[0] });
@@ -76,7 +77,7 @@ exports.createUser = async (req, res) => {
 exports.listUsers = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT u.id, u.name, u.email, u.role, u.branch_id, u.is_active, u.created_at, u.custom_role_id,
+      `SELECT u.id, u.name, u.email, u.role, u.branch_id, u.is_active, u.created_at, u.custom_role_id, u.phone,
               b.name AS branch_name, cr.name AS custom_role_name
        FROM users u
        LEFT JOIN branches b ON b.id = u.branch_id
@@ -97,13 +98,13 @@ exports.updateUser = async (req, res) => {
       return res.status(400).json({ message: 'لا تقدر تعدل حسابك بنفسك' });
     }
 
-    const { name, email, role, branch_id, custom_role_id } = req.body;
+    const { name, email, role, branch_id, custom_role_id, phone } = req.body;
 
     const result = await pool.query(
-      `UPDATE users SET name = $1, email = $2, role = $3, branch_id = $4, custom_role_id = $5
-       WHERE id = $6
-       RETURNING id, name, email, role, branch_id, custom_role_id, is_active`,
-      [name, email, role, role === 'admin' ? null : (branch_id || null), custom_role_id || null, userId]
+      `UPDATE users SET name = $1, email = $2, role = $3, branch_id = $4, custom_role_id = $5, phone = $6
+       WHERE id = $7
+       RETURNING id, name, email, role, branch_id, custom_role_id, phone, is_active`,
+      [name, email, role, role === 'admin' ? null : (branch_id || null), custom_role_id || null, phone || null, userId]
     );
 
     if (result.rows.length === 0) {
@@ -144,7 +145,7 @@ exports.setUserActive = async (req, res) => {
 };
 
 exports.me = async (req, res) => {
-  const { id, name, email, role, branch_id, is_active, avatar, created_at, custom_role_id } = req.user;
+  const { id, name, email, role, branch_id, is_active, avatar, created_at, custom_role_id, phone } = req.user;
   const branch = branch_id
     ? await pool.query('SELECT name FROM branches WHERE id = $1', [branch_id])
     : { rows: [] };
@@ -154,7 +155,7 @@ exports.me = async (req, res) => {
   const permissions = await getEffectivePermissions(req.user);
   res.json({
     user: {
-      id, name, email, role, branch_id, is_active, avatar, created_at, custom_role_id, permissions,
+      id, name, email, role, branch_id, is_active, avatar, created_at, custom_role_id, permissions, phone,
       branch_name: branch.rows[0]?.name || null,
       custom_role_name: customRole.rows[0]?.name || null
     }
@@ -164,7 +165,7 @@ exports.me = async (req, res) => {
 // تعديل البروفايل الشخصي: الاسم والصورة فقط
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, avatar } = req.body;
+    const { name, avatar, phone } = req.body;
 
     if (name !== undefined) {
       const trimmed = String(name).trim();
@@ -183,8 +184,13 @@ exports.updateProfile = async (req, res) => {
       await pool.query('UPDATE users SET avatar = $1 WHERE id = $2', [value || null, req.user.id]);
     }
 
+    if (phone !== undefined) {
+      const value = String(phone || '').replace(/[^\d+]/g, '').slice(0, 20);
+      await pool.query('UPDATE users SET phone = $1 WHERE id = $2', [value || null, req.user.id]);
+    }
+
     const result = await pool.query(
-      'SELECT id, name, email, role, branch_id, avatar, created_at FROM users WHERE id = $1',
+      'SELECT id, name, email, role, branch_id, avatar, phone, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
     res.json({ user: result.rows[0] });
