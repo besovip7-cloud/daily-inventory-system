@@ -932,12 +932,19 @@ export default function Reports({ user }) {
               </div>
               {/* صف واحد لكل صنف: المكونات بأعمدة 1-10 مثل جدول المكونات */}
               <div className="overflow-x-auto">
-                <table className="table-ios min-w-[1000px]">
+                <table className="table-ios min-w-[2100px]">
                   <thead>
                     <tr>
                       <th className="min-w-[130px] sticky right-0 bg-[#F9F9FB]">صنف البيع</th>
                       {Array.from({ length: 10 }, (_, i) => (
-                        <th key={i}>مكون {i + 1}</th>
+                        <th key={i} className="min-w-[170px] align-bottom">
+                          <div className="text-center font-semibold mb-1">مكون {i + 1}</div>
+                          <div className="grid grid-cols-[minmax(60px,1fr)_58px_62px] gap-1 pt-1 border-t border-ios-sep/60 text-[10px] font-bold text-ios-label">
+                            <span>المادة</span>
+                            <span className="text-center">الكمية</span>
+                            <span className="text-center">التكلفة</span>
+                          </div>
+                        </th>
                       ))}
                       <th>تكلفة الصنف</th>
                       <th>سعر البيع</th>
@@ -953,22 +960,22 @@ export default function Reports({ user }) {
                           {Array.from({ length: 10 }, (_, i) => {
                             const c = g.components[i]
                             return (
-                              <td key={i} className="p-3 text-center">
+                              <td key={i} className="p-2">
                                 {c ? (
-                                  <>
-                                    <div className="font-semibold text-ios-text text-xs">{c.component}</div>
-                                    <div className="text-ios-blue font-bold text-[11px]">{c.qty} {c.unit}</div>
-                                    <div className="text-ios-label text-[11px]">{c.line_cost} د.ع</div>
-                                  </>
+                                  <div className="grid grid-cols-[minmax(60px,1fr)_58px_62px] gap-1 items-center text-[11px]">
+                                    <span className="font-semibold text-ios-text">{c.component}</span>
+                                    <span className="td-num text-ios-blue font-bold">{c.qty}<span className="text-ios-label font-normal"> {c.unit}</span></span>
+                                    <span className="td-num text-ios-label">{c.line_cost}</span>
+                                  </div>
                                 ) : (
                                   <span className="text-ios-sep">—</span>
                                 )}
                               </td>
                             )
                           })}
-                          <td className="font-bold text-ios-blue">{g.item_total}</td>
-                          <td className="font-bold">{g.price}</td>
-                          <td className={`font-bold ${profit >= 0 ? 'text-ios-green' : 'text-ios-red'}`}>{g.profit}</td>
+                          <td className="td-num font-bold text-ios-blue">{g.item_total}</td>
+                          <td className="td-num font-bold">{g.price}</td>
+                          <td className={`td-num font-bold ${profit >= 0 ? 'text-ios-green' : 'text-ios-red'}`}>{g.profit}</td>
                         </tr>
                       )
                     })}
