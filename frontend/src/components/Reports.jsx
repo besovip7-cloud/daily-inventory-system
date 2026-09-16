@@ -615,7 +615,8 @@ export default function Reports({ user }) {
                 إجمالي الإيرادات: {salesTotal.toFixed(2)} د.ع
               </div>
               {salesView === 'grouped' ? (
-                <table className="table-ios">
+                <div className="overflow-x-auto">
+                <table className="table-ios min-w-[560px]">
                   <thead>
                     <tr>
                       <th>الصنف</th>
@@ -629,23 +630,25 @@ export default function Reports({ user }) {
                     {groupedSales.map((g, i) => (
                       <tr key={i}>
                         <td className="font-semibold text-ios-text">{g.name}</td>
-                        <td className="font-bold">{g.quantity_sold}</td>
-                        <td className="font-bold text-ios-green">{g.total_revenue} د.ع</td>
-                        <td>{g.payment_card}</td>
-                        <td>{g.payment_cash}</td>
+                        <td className="td-num font-bold">{g.quantity_sold}</td>
+                        <td className="td-num font-bold text-ios-green">{g.total_revenue} د.ع</td>
+                        <td className="td-num">{g.payment_card}</td>
+                        <td className="td-num">{g.payment_cash}</td>
                       </tr>
                     ))}
                     <tr className="border-t-2 border-ios-sep bg-[#F2F2F7] font-bold">
                       <td>الإجمالي</td>
-                      <td>{groupedSales.reduce((s, g) => s + g.quantity_sold, 0)}</td>
-                      <td className="text-ios-green">{salesTotal.toFixed(2)} د.ع</td>
-                      <td>{groupedSales.reduce((s, g) => s + parseFloat(g.payment_card), 0).toFixed(2)}</td>
-                      <td>{groupedSales.reduce((s, g) => s + parseFloat(g.payment_cash), 0).toFixed(2)}</td>
+                      <td className="td-num">{groupedSales.reduce((s, g) => s + g.quantity_sold, 0)}</td>
+                      <td className="td-num text-ios-green">{salesTotal.toFixed(2)} د.ع</td>
+                      <td className="td-num">{groupedSales.reduce((s, g) => s + parseFloat(g.payment_card), 0).toFixed(2)}</td>
+                      <td className="td-num">{groupedSales.reduce((s, g) => s + parseFloat(g.payment_cash), 0).toFixed(2)}</td>
                     </tr>
                   </tbody>
                 </table>
+                </div>
               ) : (
-              <table className="table-ios">
+              <div className="overflow-x-auto">
+              <table className="table-ios min-w-[1000px]">
                 <thead>
                   <tr>
                     <th className="w-10">
@@ -670,14 +673,14 @@ export default function Reports({ user }) {
                           <input type="checkbox" className="w-4 h-4 accent-ios-blue cursor-pointer"
                             checked={!!selected[i]} onChange={() => toggleRowSelect(i)} />
                         </td>
-                        <td className="text-ios-label">{fmtDate(new Date(r.record_date))}</td>
+                        <td className="td-num text-ios-label">{fmtDate(new Date(r.record_date))}</td>
                         <td className="font-semibold text-ios-text">{r.name}</td>
                         <td>
                           <input type="number" min="0" value={editing.values.quantity_sold}
                             onChange={e => handleEditChange('quantity_sold', parseInt(e.target.value) || 0)}
                             className="w-20 py-1.5 rounded-xl bg-white text-center focus:ring-2 focus:ring-ios-blue focus:outline-none" />
                         </td>
-                        <td className="font-bold text-ios-green">{parseFloat(r.total_revenue).toFixed(2)} د.ع</td>
+                        <td className="td-num font-bold text-ios-green">{parseFloat(r.total_revenue).toFixed(2)} د.ع</td>
                         <td>
                           <input type="number" min="0" value={editing.values.payment_card}
                             onChange={e => handleEditChange('payment_card', parseFloat(e.target.value) || 0)}
@@ -688,8 +691,8 @@ export default function Reports({ user }) {
                             onChange={e => handleEditChange('payment_cash', parseFloat(e.target.value) || 0)}
                             className="w-20 py-1.5 rounded-xl bg-white text-center focus:ring-2 focus:ring-ios-blue focus:outline-none" />
                         </td>
-                        <td>
-                          <div className="flex gap-1">
+                        <td className="text-center whitespace-nowrap">
+                          <div className="flex gap-1 justify-center">
                             <button onClick={saveEdit} className="btn-ios text-xs px-3 py-1.5">حفظ</button>
                             <button onClick={() => setEditing(null)} className="btn-ios-secondary text-xs px-3 py-1.5">إلغاء</button>
                           </div>
@@ -701,15 +704,15 @@ export default function Reports({ user }) {
                           <input type="checkbox" className="w-4 h-4 accent-ios-blue cursor-pointer"
                             checked={!!selected[i]} onChange={() => toggleRowSelect(i)} />
                         </td>
-                        <td className="text-ios-label">{fmtDate(new Date(r.record_date))}</td>
+                        <td className="td-num text-ios-label">{fmtDate(new Date(r.record_date))}</td>
                         <td className="font-semibold text-ios-text">{r.name}</td>
-                        <td>{r.quantity_sold}</td>
-                        <td className="font-bold text-ios-green">{parseFloat(r.total_revenue).toFixed(2)} د.ع</td>
-                        <td>{parseFloat(r.payment_card).toFixed(2)}</td>
-                        <td>{parseFloat(r.payment_cash).toFixed(2)}</td>
+                        <td className="td-num">{r.quantity_sold}</td>
+                        <td className="td-num font-bold text-ios-green">{parseFloat(r.total_revenue).toFixed(2)} د.ع</td>
+                        <td className="td-num">{parseFloat(r.payment_card).toFixed(2)}</td>
+                        <td className="td-num">{parseFloat(r.payment_cash).toFixed(2)}</td>
                         {isAdmin && (
-                          <td>
-                            <div className="flex gap-1">
+                          <td className="text-center whitespace-nowrap">
+                            <div className="flex gap-1 justify-center">
                               <button onClick={() => startEdit('sales', r)} className="text-ios-blue font-bold text-sm px-2 active:opacity-70">✏️</button>
                               <button onClick={() => deleteRecord('sales', r)} className="text-ios-red font-bold text-sm px-2 active:opacity-70">🗑️</button>
                             </div>
@@ -720,6 +723,7 @@ export default function Reports({ user }) {
                   ))}
                 </tbody>
               </table>
+              </div>
               )}
             </>
           )
@@ -727,7 +731,8 @@ export default function Reports({ user }) {
           inventory.length === 0 ? (
             <p className="text-ios-label text-center py-10">لا توجد سجلات جرد بهذه الفترة</p>
           ) : (
-            <table className="table-ios">
+            <div className="overflow-x-auto">
+            <table className="table-ios min-w-[900px]">
               <thead>
                 <tr>
                   <th>التاريخ</th>
@@ -743,7 +748,7 @@ export default function Reports({ user }) {
                 {inventory.map((r, i) => (
                   editing && editing.table === 'inventory' && editing.id === r.id ? (
                     <tr key={i} className="bg-ios-blue/10">
-                      <td className="text-ios-label">{fmtDate(new Date(r.record_date))}</td>
+                      <td className="td-num text-ios-label">{fmtDate(new Date(r.record_date))}</td>
                       <td className="font-semibold text-ios-text">{r.name} <span className="text-ios-label text-sm">({r.unit})</span></td>
                       {['opening_qty', 'received_qty', 'consumed_qty', 'closing_qty'].map(field => (
                         <td key={field}>
@@ -752,8 +757,8 @@ export default function Reports({ user }) {
                             className="w-20 py-1.5 rounded-xl bg-white text-center focus:ring-2 focus:ring-ios-blue focus:outline-none" />
                         </td>
                       ))}
-                      <td>
-                        <div className="flex gap-1">
+                      <td className="text-center whitespace-nowrap">
+                        <div className="flex gap-1 justify-center">
                           <button onClick={saveEdit} className="btn-ios text-xs px-3 py-1.5">حفظ</button>
                           <button onClick={() => setEditing(null)} className="btn-ios-secondary text-xs px-3 py-1.5">إلغاء</button>
                         </div>
@@ -761,15 +766,15 @@ export default function Reports({ user }) {
                     </tr>
                   ) : (
                     <tr key={i}>
-                      <td className="text-ios-label">{fmtDate(new Date(r.record_date))}</td>
+                      <td className="td-num text-ios-label">{fmtDate(new Date(r.record_date))}</td>
                       <td className="font-semibold text-ios-text">{r.name} <span className="text-ios-label text-sm">({r.unit})</span></td>
-                      <td>{r.opening_qty}</td>
-                      <td>{r.received_qty}</td>
-                      <td>{r.consumed_qty}</td>
-                      <td className="font-bold">{r.closing_qty}</td>
+                      <td className="td-num">{r.opening_qty}</td>
+                      <td className="td-num">{r.received_qty}</td>
+                      <td className="td-num">{r.consumed_qty}</td>
+                      <td className="td-num font-bold">{r.closing_qty}</td>
                       {isAdmin && (
-                        <td>
-                          <div className="flex gap-1">
+                        <td className="text-center whitespace-nowrap">
+                          <div className="flex gap-1 justify-center">
                             <button onClick={() => startEdit('inventory', r)} className="text-ios-blue font-bold text-sm px-2 active:opacity-70">✏️</button>
                             <button onClick={() => deleteRecord('inventory', r)} className="text-ios-red font-bold text-sm px-2 active:opacity-70">🗑️</button>
                           </div>
@@ -780,40 +785,43 @@ export default function Reports({ user }) {
                 ))}
               </tbody>
             </table>
+            </div>
           )
         ) : activeTab === 'movements' ? (
           movements.length === 0 ? (
             <p className="text-ios-label text-center py-10">لا توجد حركات بهذه الفترة</p>
           ) : (
-            <table className="table-ios">
-              <thead>
-                <tr>
-                  <th>الوقت</th>
-                  <th>المادة</th>
-                  <th>الكمية</th>
-                  <th>قبل</th>
-                  <th>بعد</th>
-                  <th>البيان</th>
-                  <th>المستخدم</th>
-                </tr>
-              </thead>
-              <tbody>
-                {movements.map((m, i) => {
-                  const qty = parseFloat(m.quantity)
-                  return (
-                    <tr key={i}>
-                      <td className="text-ios-label text-sm">{new Date(m.created_at).toLocaleString('ar')}</td>
-                      <td className="font-semibold text-ios-text">{m.item_name} <span className="text-ios-label text-sm">({m.unit})</span></td>
-                      <td className={`font-bold ${qty < 0 ? 'text-ios-red' : 'text-ios-green'}`}>{qty}</td>
-                      <td>{m.balance_before}</td>
-                      <td className="font-bold">{m.balance_after}</td>
-                      <td className="text-ios-label text-sm">{m.reference || '—'}</td>
-                      <td className="text-ios-label text-sm">{m.created_by_name || '—'}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="table-ios min-w-[900px]">
+                <thead>
+                  <tr>
+                    <th>الوقت</th>
+                    <th>المادة</th>
+                    <th>الكمية</th>
+                    <th>قبل</th>
+                    <th>بعد</th>
+                    <th>البيان</th>
+                    <th>المستخدم</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {movements.map((m, i) => {
+                    const qty = parseFloat(m.quantity)
+                    return (
+                      <tr key={i}>
+                        <td className="text-ios-label text-sm whitespace-nowrap">{new Date(m.created_at).toLocaleString('ar')}</td>
+                        <td className="font-semibold text-ios-text">{m.item_name} <span className="text-ios-label text-sm">({m.unit})</span></td>
+                        <td className={`td-num font-bold ${qty < 0 ? 'text-ios-red' : 'text-ios-green'}`}>{qty}</td>
+                        <td className="td-num">{m.balance_before}</td>
+                        <td className="td-num font-bold">{m.balance_after}</td>
+                        <td className="text-ios-label text-sm">{m.reference || '—'}</td>
+                        <td className="text-ios-label text-sm">{m.created_by_name || '—'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           )
         ) : activeTab === 'variance' ? (
           <>
@@ -826,78 +834,82 @@ export default function Reports({ user }) {
             {variance.length === 0 ? (
               <p className="text-ios-label text-center py-10">لا توجد سجلات جرد بهذا اليوم</p>
             ) : (
-              <table className="table-ios">
-                <thead>
-                  <tr>
-                    <th>المادة</th>
-                    <th>افتتاحي</th>
-                    <th>وارد</th>
-                    <th>خصم الوصفات</th>
-                    <th>المتوقع</th>
-                    <th>الفعلي (الختامي)</th>
-                    <th>الفرق</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {variance.map((r, i) => {
-                    const diff = parseFloat(r.variance)
-                    return (
-                      <tr key={i}>
-                        <td className="font-semibold text-ios-text">{r.name} <span className="text-ios-label text-sm">({r.unit})</span></td>
-                        <td>{r.opening_qty}</td>
-                        <td>{r.received_qty}</td>
-                        <td>{parseFloat(r.recipe_deductions).toFixed(3)}</td>
-                        <td>{r.expected}</td>
-                        <td className="font-bold">{r.closing_qty}</td>
-                        <td className={`font-bold ${diff < 0 ? 'text-ios-red' : diff > 0 ? 'text-ios-green' : 'text-ios-label'}`}>{r.variance}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="table-ios min-w-[900px]">
+                  <thead>
+                    <tr>
+                      <th>المادة</th>
+                      <th>افتتاحي</th>
+                      <th>وارد</th>
+                      <th>خصم الوصفات</th>
+                      <th>المتوقع</th>
+                      <th>الفعلي (الختامي)</th>
+                      <th>الفرق</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {variance.map((r, i) => {
+                      const diff = parseFloat(r.variance)
+                      return (
+                        <tr key={i}>
+                          <td className="font-semibold text-ios-text">{r.name} <span className="text-ios-label text-sm">({r.unit})</span></td>
+                          <td className="td-num">{r.opening_qty}</td>
+                          <td className="td-num">{r.received_qty}</td>
+                          <td className="td-num">{parseFloat(r.recipe_deductions).toFixed(3)}</td>
+                          <td className="td-num">{r.expected}</td>
+                          <td className="td-num font-bold">{r.closing_qty}</td>
+                          <td className={`td-num font-bold ${diff < 0 ? 'text-ios-red' : diff > 0 ? 'text-ios-green' : 'text-ios-label'}`}>{r.variance}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </>
         ) : activeTab === 'purchases' ? (
           purchases.length === 0 ? (
             <p className="text-ios-label text-center py-10">لا توجد طلبات شراء بهذه الفترة</p>
           ) : (
-            <table className="table-ios">
-              <thead>
-                <tr>
-                  <th>التاريخ</th>
-                  <th>المواد</th>
-                  <th>الحالة</th>
-                  <th>ملاحظات</th>
-                  <th>طلب بواسطة</th>
-                </tr>
-              </thead>
-              <tbody>
-                {purchases.map((p, i) => (
-                  <tr key={i}>
-                    <td className="text-ios-label whitespace-nowrap">{fmtDate(new Date(p.created_at))}</td>
-                    <td className="font-semibold text-ios-text">
-                      {(p.items || []).map((it, j) => (
-                        <div key={j} className="text-sm">{it.item_name} <span className="text-ios-blue font-bold">({it.quantity} {it.unit || ''})</span></div>
-                      ))}
-                    </td>
-                    <td>
-                      <span className={`badge-ios ${
-                        p.status === 'received' ? 'bg-ios-green/15 text-ios-green' :
-                        p.status === 'cancelled' ? 'bg-ios-fill text-ios-label' :
-                        'bg-ios-orange/15 text-[#B25000]'
-                      }`}>
-                        {purchaseStatusLabels[p.status] || p.status}
-                      </span>
-                      {p.status === 'received' && p.confirmed_by_name && (
-                        <div className="text-[10px] text-ios-green mt-1 font-semibold">✓ {p.confirmed_by_name}</div>
-                      )}
-                    </td>
-                    <td className="text-ios-label text-sm">{p.notes || '—'}</td>
-                    <td className="text-ios-label text-sm">{p.created_by_name || '—'}</td>
+            <div className="overflow-x-auto">
+              <table className="table-ios min-w-[720px]">
+                <thead>
+                  <tr>
+                    <th>التاريخ</th>
+                    <th>المواد</th>
+                    <th>الحالة</th>
+                    <th>ملاحظات</th>
+                    <th>طلب بواسطة</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {purchases.map((p, i) => (
+                    <tr key={i}>
+                      <td className="text-ios-label whitespace-nowrap">{fmtDate(new Date(p.created_at))}</td>
+                      <td className="font-semibold text-ios-text">
+                        {(p.items || []).map((it, j) => (
+                          <div key={j} className="text-sm">{it.item_name} <span className="text-ios-blue font-bold">({it.quantity} {it.unit || ''})</span></div>
+                        ))}
+                      </td>
+                      <td>
+                        <span className={`badge-ios ${
+                          p.status === 'received' ? 'bg-ios-green/15 text-ios-green' :
+                          p.status === 'cancelled' ? 'bg-ios-fill text-ios-label' :
+                          'bg-ios-orange/15 text-[#B25000]'
+                        }`}>
+                          {purchaseStatusLabels[p.status] || p.status}
+                        </span>
+                        {p.status === 'received' && p.confirmed_by_name && (
+                          <div className="text-[10px] text-ios-green mt-1 font-semibold">✓ {p.confirmed_by_name}</div>
+                        )}
+                      </td>
+                      <td className="text-ios-label text-sm">{p.notes || '—'}</td>
+                      <td className="text-ios-label text-sm">{p.created_by_name || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )
         ) : activeTab === 'costs' ? (
           costGroups.length === 0 ? (
@@ -957,34 +969,36 @@ export default function Reports({ user }) {
         ) : lowStock.length === 0 ? (
             <p className="text-ios-green text-center py-10 font-bold">✅ كل الأصناف فوق الحد الأدنى</p>
           ) : (
-            <table className="table-ios">
-              <thead>
-                <tr>
-                  <th>المادة</th>
-                  <th>الكمية الحالية</th>
-                  <th>الحد الأدنى</th>
-                  <th>الحالة</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lowStock.map((r, i) => (
-                  <tr key={i}>
-                    <td className="font-semibold text-ios-text">{r.name} <span className="text-ios-label text-sm">({r.unit})</span></td>
-                    <td className="font-bold">{r.current_quantity}</td>
-                    <td>{r.min_quantity}</td>
-                    <td>
-                      <span className={`badge-ios ${
-                        r.status === 'out_of_stock' ? 'bg-ios-red text-white' :
-                        r.status === 'critical' ? 'bg-ios-red/15 text-ios-red' :
-                        'bg-ios-yellow/25 text-[#B25000]'
-                      }`}>
-                        {lowStockLabels[r.status] || r.status}
-                      </span>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="table-ios min-w-[560px]">
+                <thead>
+                  <tr>
+                    <th>المادة</th>
+                    <th>الكمية الحالية</th>
+                    <th>الحد الأدنى</th>
+                    <th>الحالة</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {lowStock.map((r, i) => (
+                    <tr key={i}>
+                      <td className="font-semibold text-ios-text">{r.name} <span className="text-ios-label text-sm">({r.unit})</span></td>
+                      <td className="td-num font-bold">{r.current_quantity}</td>
+                      <td className="td-num">{r.min_quantity}</td>
+                      <td>
+                        <span className={`badge-ios ${
+                          r.status === 'out_of_stock' ? 'bg-ios-red text-white' :
+                          r.status === 'critical' ? 'bg-ios-red/15 text-ios-red' :
+                          'bg-ios-yellow/25 text-[#B25000]'
+                        }`}>
+                          {lowStockLabels[r.status] || r.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
       </div>
     </div>

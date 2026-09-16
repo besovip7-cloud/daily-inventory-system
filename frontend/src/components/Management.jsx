@@ -337,8 +337,8 @@ function UsersTab({ showMsg, headers }) {
               {users.map(user => (
                 <tr key={user.id} className="align-top">
                   <td className="font-semibold text-ios-text whitespace-nowrap">{user.name}</td>
-                  <td className="text-ios-label" style={{ direction: 'ltr', textAlign: 'right' }}>{user.email}</td>
-                  <td className="text-ios-label whitespace-nowrap" style={{ direction: 'ltr', textAlign: 'right' }}>{user.phone || '—'}</td>
+                  <td className="td-num text-ios-label">{user.email}</td>
+                  <td className="td-num text-ios-label">{user.phone || '—'}</td>
                   <td className="whitespace-nowrap">
                     <span className={`badge-ios ${
                       user.custom_role_name ? 'bg-ios-purple/15 text-ios-purple' :
@@ -356,7 +356,7 @@ function UsersTab({ showMsg, headers }) {
                       ? <span className="text-ios-green font-bold">✅ نشط</span>
                       : <span className="text-ios-red font-bold">⛔ معطل</span>}
                   </td>
-                  <td>
+                  <td className="text-center whitespace-nowrap">
                     <div className="flex gap-2 items-center whitespace-nowrap">
                       <button onClick={() => toggleActive(user)}
                         className={`px-2 py-1 rounded-lg font-bold text-xs active:opacity-70 ${
@@ -742,7 +742,8 @@ function ItemsTab({ showMsg, headers, user }) {
       )}
 
       <div className="card-ios overflow-hidden">
-        <table className="table-ios">
+        <div className="overflow-x-auto">
+        <table className="table-ios min-w-[800px]">
           <thead>
             <tr>
               {isAdmin && (
@@ -771,9 +772,9 @@ function ItemsTab({ showMsg, headers, user }) {
                 <td className="font-semibold text-ios-text">{item.name}</td>
                 <td className="text-center text-ios-label">{itemCategories.find(c => c.value === item.category)?.label || item.category}</td>
                 <td className="text-center text-ios-label">{item.unit || '—'}</td>
-                <td className="text-center text-ios-label">{item.min_quantity}</td>
-                <td className="text-center font-bold">{item.current_quantity}</td>
-                <td className="text-center">
+                <td className="td-num text-ios-label">{item.min_quantity}</td>
+                <td className="td-num font-bold">{item.current_quantity}</td>
+                <td className="text-center whitespace-nowrap">
                   <div className="flex gap-1 justify-center">
                     <button onClick={() => startEdit(item)}
                       className="text-ios-blue font-bold text-xs px-2 active:opacity-70">✏️ تعديل</button>
@@ -788,6 +789,7 @@ function ItemsTab({ showMsg, headers, user }) {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )
@@ -928,7 +930,8 @@ function MenuTab({ showMsg, headers, user }) {
       )}
 
       <div className="card-ios overflow-hidden">
-        <table className="table-ios">
+        <div className="overflow-x-auto">
+        <table className="table-ios min-w-[800px]">
           <thead>
             <tr>
               {isAdmin && (
@@ -955,8 +958,8 @@ function MenuTab({ showMsg, headers, user }) {
                 )}
                 <td className="font-semibold text-ios-text">{item.name}</td>
                 <td className="text-ios-label">{menuCategories.find(c => c.value === item.category)?.label || item.category}</td>
-                <td className="text-center font-bold text-ios-blue">{item.price}</td>
-                <td className="text-center text-ios-label">{item.cost || '—'}</td>
+                <td className="td-num font-bold text-ios-blue">{item.price}</td>
+                <td className="td-num text-ios-label">{item.cost || '—'}</td>
                 <td className="text-center whitespace-nowrap">
                   <button onClick={() => startEdit(item)}
                     className="text-ios-blue font-bold text-xs px-2 active:opacity-70">✏️ تعديل</button>
@@ -972,6 +975,7 @@ function MenuTab({ showMsg, headers, user }) {
             )}
           </tbody>
         </table>
+        </div>
       </div>
       {menuItems.length === 0 && !menuSearch && (
         <p className="text-center text-ios-label py-10">لا توجد أصناف مبيعات</p>
@@ -1298,7 +1302,8 @@ function RecipesTab({ showMsg, headers }) {
       </div>
 
       <div className="card-ios overflow-hidden">
-        <table className="table-ios">
+        <div className="overflow-x-auto">
+        <table className="table-ios min-w-[480px]">
           <thead>
             <tr>
               <th>مادة الجرد</th>
@@ -1310,7 +1315,7 @@ function RecipesTab({ showMsg, headers }) {
             {recipes.map(r => (
               <tr key={r.id}>
                 <td className="font-semibold text-ios-text">{r.inventory_name} <span className="text-ios-label text-xs">({r.unit || 'بدون وحدة'})</span></td>
-                <td className="text-center font-bold text-ios-blue">
+                <td className="td-num font-bold text-ios-blue">
                   {editingRecipe?.id === r.id ? (
                     <span className="flex items-center justify-center gap-1">
                       <input type="number" min="0.001" step="0.001" value={editingRecipe.quantity}
@@ -1350,6 +1355,7 @@ function RecipesTab({ showMsg, headers }) {
             )}
           </tbody>
         </table>
+        </div>
       </div>
       </>
       )}
@@ -1605,7 +1611,7 @@ function RolesTab({ showMsg, headers }) {
                         })}
                       </div>
                     </td>
-                    <td>
+                    <td className="text-center whitespace-nowrap">
                       <div className="flex gap-2 whitespace-nowrap">
                         <button onClick={() => startEdit(role)}
                           className="px-3 py-1.5 rounded-xl bg-ios-blue/10 text-ios-blue text-xs font-bold active:opacity-70">

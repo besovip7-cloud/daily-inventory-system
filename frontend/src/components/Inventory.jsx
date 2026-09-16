@@ -422,7 +422,8 @@ export default function Inventory({ user }) {
             <p className="text-ios-label text-center py-4">لا توجد مواد — أضف أول مادة من النموذج أعلاه</p>
           ) : (
             <div className="bg-white rounded-2xl overflow-hidden">
-              <table className="table-ios">
+              <div className="overflow-x-auto">
+              <table className="table-ios min-w-[800px]">
                 <thead>
                   <tr>
                     <th>المادة</th>
@@ -441,11 +442,11 @@ export default function Inventory({ user }) {
                         <td className="font-semibold text-ios-text">{item.name}</td>
                         <td className="text-center text-ios-label">{categories.find(c => c.value === item.category)?.label || item.category}</td>
                         <td className="text-center text-ios-label">{item.unit || '—'}</td>
-                        <td className="text-center text-ios-label">{item.min_quantity}</td>
+                        <td className="td-num text-ios-label">{item.min_quantity}</td>
                         <td className="text-center">
                           <span className={`badge-ios ${status.class}`}>{item.current_quantity}</span>
                         </td>
-                        <td className="text-center">
+                        <td className="text-center whitespace-nowrap">
                           <div className="flex gap-1 justify-center">
                             <button onClick={() => startItemEdit(item)}
                               className="btn-ios-ghost text-xs px-2">✏️ تعديل</button>
@@ -458,6 +459,7 @@ export default function Inventory({ user }) {
                   })}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </div>
@@ -480,7 +482,8 @@ export default function Inventory({ user }) {
           </div>
 
           <div className="section-title"><h3 className="mb-4">📋 ملخص الجرد المرسل</h3></div>
-          <table className="table-ios">
+          <div className="overflow-x-auto">
+          <table className="table-ios min-w-[560px]">
             <thead>
               <tr>
                 <th>المادة</th>
@@ -494,14 +497,15 @@ export default function Inventory({ user }) {
               {todayRecords.map((rec, idx) => (
                 <tr key={idx}>
                   <td className="font-semibold text-ios-text">{rec.item_name || items.find(i => i.id === rec.item_id)?.name || '—'}</td>
-                  <td className="text-center">{rec.opening_qty}</td>
-                  <td className="text-center text-ios-green">+{rec.received_qty}</td>
-                  <td className="text-center text-ios-red">-{rec.consumed_qty}</td>
-                  <td className="text-center font-bold">{rec.closing_qty}</td>
+                  <td className="td-num">{rec.opening_qty}</td>
+                  <td className="td-num text-ios-green">+{rec.received_qty}</td>
+                  <td className="td-num text-ios-red">-{rec.consumed_qty}</td>
+                  <td className="td-num font-bold">{rec.closing_qty}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
 
           <div className="mt-6 p-4 bg-ios-yellow/20 rounded-2xl text-center">
             <p className="text-[#B25000] font-bold">⏳ في انتظار إدخال المبيعات من الإدارة</p>
@@ -556,7 +560,8 @@ export default function Inventory({ user }) {
             <>
               {/* جدول سطح المكتب */}
               <div className="hidden md:block card-ios overflow-hidden mb-4">
-                <table className="table-ios">
+                <div className="overflow-x-auto">
+                <table className="table-ios min-w-[900px]">
                   <thead>
                     <tr>
                       <th>المادة</th>
@@ -608,6 +613,7 @@ export default function Inventory({ user }) {
                     })}
                   </tbody>
                 </table>
+                </div>
               </div>
 
               {/* كروت الموبايل */}
