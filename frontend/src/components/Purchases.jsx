@@ -361,11 +361,18 @@ export default function Purchases({ user }) {
                     </td>
                     <td className="text-ios-label whitespace-nowrap">{req.branch_name}</td>
                     <td>
-                      <div className="space-y-1">
+                      <div className="min-w-[230px]">
+                        {/* ترويسة الجدول الفرعي */}
+                        <div className="grid grid-cols-[minmax(80px,1fr)_70px_52px] gap-2 pb-1 mb-1 border-b border-ios-sep text-[10px] font-bold text-ios-label">
+                          <span>المادة</span>
+                          <span className="text-center">الكمية</span>
+                          <span className="text-center">الوحدة</span>
+                        </div>
                         {req.items.map(it => (
-                          <div key={it.id} className="flex items-center justify-between gap-2 bg-ios-fill rounded-lg px-2 py-1 text-xs whitespace-nowrap">
+                          <div key={it.id} className="grid grid-cols-[minmax(80px,1fr)_70px_52px] gap-2 py-1 border-b border-ios-sep/60 last:border-0 text-xs items-center">
                             <span className="font-semibold text-ios-text">{it.item_name}</span>
-                            <span className="text-ios-blue font-bold">{fmtQty(it.quantity)} {it.unit || ''}</span>
+                            <span className="td-num text-ios-blue font-bold">{fmtQty(it.quantity)}</span>
+                            <span className="text-center text-ios-label">{it.unit || '—'}</span>
                           </div>
                         ))}
                       </div>
@@ -426,14 +433,22 @@ export default function Purchases({ user }) {
                 <span className="label-ios">الفرع</span>
                 {req.branch_name}
               </div>
-              <div className="space-y-1">
+              <div>
                 <span className="label-ios">المواد المطلوبة</span>
-                {req.items.map(it => (
-                  <div key={it.id} className="flex items-center justify-between gap-2 bg-ios-fill rounded-lg px-2 py-1 text-xs">
-                    <span className="font-semibold text-ios-text">{it.item_name}</span>
-                    <span className="text-ios-blue font-bold">{fmtQty(it.quantity)} {it.unit || ''}</span>
+                <div className="mt-1">
+                  <div className="grid grid-cols-[minmax(80px,1fr)_70px_52px] gap-2 pb-1 mb-1 border-b border-ios-sep text-[10px] font-bold text-ios-label">
+                    <span>المادة</span>
+                    <span className="text-center">الكمية</span>
+                    <span className="text-center">الوحدة</span>
                   </div>
-                ))}
+                  {req.items.map(it => (
+                    <div key={it.id} className="grid grid-cols-[minmax(80px,1fr)_70px_52px] gap-2 py-1 border-b border-ios-sep/60 last:border-0 text-xs items-center">
+                      <span className="font-semibold text-ios-text">{it.item_name}</span>
+                      <span className="td-num text-ios-blue font-bold">{fmtQty(it.quantity)}</span>
+                      <span className="text-center text-ios-label">{it.unit || '—'}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="text-xs text-ios-label">
                 <span className="label-ios">ملاحظات</span>

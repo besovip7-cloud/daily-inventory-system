@@ -886,10 +886,21 @@ export default function Reports({ user }) {
                   {purchases.map((p, i) => (
                     <tr key={i}>
                       <td className="text-ios-label whitespace-nowrap">{fmtDate(new Date(p.created_at))}</td>
-                      <td className="font-semibold text-ios-text">
-                        {(p.items || []).map((it, j) => (
-                          <div key={j} className="text-sm">{it.item_name} <span className="text-ios-blue font-bold">({it.quantity} {it.unit || ''})</span></div>
-                        ))}
+                      <td>
+                        <div className="min-w-[230px]">
+                          <div className="grid grid-cols-[minmax(80px,1fr)_70px_52px] gap-2 pb-1 mb-1 border-b border-ios-sep text-[10px] font-bold text-ios-label">
+                            <span>المادة</span>
+                            <span className="text-center">الكمية</span>
+                            <span className="text-center">الوحدة</span>
+                          </div>
+                          {(p.items || []).map((it, j) => (
+                            <div key={j} className="grid grid-cols-[minmax(80px,1fr)_70px_52px] gap-2 py-1 border-b border-ios-sep/60 last:border-0 text-xs items-center">
+                              <span className="font-semibold text-ios-text">{it.item_name}</span>
+                              <span className="td-num text-ios-blue font-bold">{it.quantity}</span>
+                              <span className="text-center text-ios-label">{it.unit || '—'}</span>
+                            </div>
+                          ))}
+                        </div>
                       </td>
                       <td>
                         <span className={`badge-ios ${
