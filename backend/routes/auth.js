@@ -49,6 +49,23 @@ router.delete('/quick-pin', auth, authController.removeQuickPin);
 
 router.get('/me', auth, authController.me);
 
+// استعادة كلمة المرور — كود يُرسل بالإيميل الرسمي
+router.post('/forgot-password',
+  loginLimiter,
+  body('identifier').notEmpty().withMessage('أدخل الإيميل أو رقم الواتساب المسجل'),
+  handleValidation,
+  authController.forgotPassword
+);
+
+router.post('/reset-password',
+  loginLimiter,
+  body('identifier').notEmpty().withMessage('أدخل الإيميل أو رقم الواتساب المسجل'),
+  body('code').isLength({ min: 4, max: 10 }).withMessage('أدخل كود الاستعادة'),
+  body('new_password').isLength({ min: 6 }).withMessage('كلمة المرور الجديدة 6 أحرف على الأقل'),
+  handleValidation,
+  authController.resetPasswordWithCode
+);
+
 // البروفايل الشخصي — أي مستخدم مسجل
 router.put('/profile',
   auth,

@@ -227,6 +227,18 @@ const createTables = async () => {
     // الرقم السري للدخول السريع (PIN)
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS quick_pin_hash VARCHAR(100)`);
 
+    // أكواد استعادة كلمة المرور (تُرسل بالإيميل)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS password_resets (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        code VARCHAR(10) NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        used BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Insert default branches فقط إذا الجدول فاضي (قاعدة جديدة) — حتى لا تتكرر بالقواعد الحية
     const branchCount = await pool.query('SELECT COUNT(*) FROM branches');
     if (parseInt(branchCount.rows[0].count) === 0) {

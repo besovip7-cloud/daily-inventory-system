@@ -1,7 +1,9 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const pool = require('../config/database');
 const { getEffectivePermissions } = require('../utils/permissions');
+const { sendMail, isConfigured: mailConfigured } = require('../utils/mailer');
 
 // قفل المحاولات الفاشلة بالذاكرة: 5 محاولات = إيقاف 5 دقائق
 const loginAttempts = new Map();
@@ -351,6 +353,98 @@ exports.deleteUser = async (req, res) => {
     }
 
     res.json({ message: 'User deleted', user: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// طلب كود استعادة كلمة المرور — يُرسل بالإيميل الرسمي
+exports.forgotPassword = async (req, res) => {
+  try {
+    if (!mailConfigured()) {
+      return res.status(503).json({ message: 'خدمة الإيميل غير مفعّلة حالياً — تواصل مع مدير النظام لإعادة تعيين كلمة المرور' });
+    }
+
+    const user = await findUserByIdentifier(req.body.identifier);
+    // نفس الرسالة سواءً الحساب موجود أو لا حتى ما ينكشف تسجيل الحسابات
+    const okMsg = 'إذا الحساب مسجل، راح يوصلك كود الاستعادة على الإيميل خلال دقائق';
+
+    if (!user || !user.email || !user.is_active) {
+      return res.json({ message: okMsg });
+    }
+
+    // منع طلبات متكررة: آخر كود أقل من دقيقتين
+    const recent = await pool.query(
+      `SELECT created_at FROM password_resets
+       WHERE user_id = $1 AND created_at > NOW() - INTERVAL '2 minutes'
+       ORDER BY created_at DESC LIMIT 1`,
+      [user.id]
+    );
+    if (recent.rows.length) {
+      return res.status(429).json({ message: 'طلبت كود قبل شوية — انتظر دقيقتين وحاول مرة أخرى' });
+    }
+
+    const code = crypto.randomInt(100000, 999999).toString();
+    const expires = new Date(Date.now() + 10 * 60 * 1000); // صالح 10 دقائق
+
+    await pool.query(
+      `UPDATE password_resets SET used = TRUE WHERE user_id = $1 AND used = FALSE`,
+      [user.id]
+    );
+    await pool.query(
+      `INSERT INTO password_resets (user_id, code, expires_at) VALUES ($1, $2, $3)`,
+      [user.id, code, expires]
+    );
+
+    const sent = await sendMail(
+      user.email,
+      'كود استعادة كلمة المرور — نظام الجرد اليومي',
+      `مرحباً ${user.name},\n\nكود الاستعادة: ${code}\nالكود صالح لمدة 10 دقائق.\n\nإذا ما طلبت الاستعادة، تجاهل هذا الإيميل.`,
+      `<div dir="rtl" style="font-family:Arial,sans-serif;padding:20px;background:#faf7f2;border-radius:12px">
+        <h2 style="color:#8b5e34">نظام الجرد اليومي</h2>
+        <p>مرحباً <b>${user.name}</b>,</p>
+        <p>استخدم الكود التالي لاستعادة كلمة المرور:</p>
+        <div style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#8b5e34;padding:16px;background:#fff;border-radius:8px;text-align:center">${code}</div>
+        <p style="color:#888">الكود صالح لمدة 10 دقائق فقط.</p>
+        <p style="color:#888">إذا ما طلبت الاستعادة، تجاهل هذا الإيميل.</p>
+      </div>`
+    );
+
+    if (!sent) {
+      return res.status(500).json({ message: 'تعذر إرسال الإيميل — جرب بعد قليل أو تواصل مع الإدارة' });
+    }
+    res.json({ message: okMsg, email_hint: user.email.replace(/^(.{2}).*(@.*)$/, '$1***$2') });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// إعادة تعيين كلمة المرور بالكود المُرسل
+exports.resetPasswordWithCode = async (req, res) => {
+  try {
+    const user = await findUserByIdentifier(req.body.identifier);
+    if (!user) {
+      return res.status(400).json({ message: 'الكود غير صحيح أو منتهي' });
+    }
+
+    const result = await pool.query(
+      `SELECT id FROM password_resets
+       WHERE user_id = $1 AND code = $2 AND used = FALSE AND expires_at > NOW()
+       ORDER BY created_at DESC LIMIT 1`,
+      [user.id, String(req.body.code || '').trim()]
+    );
+    if (!result.rows.length) {
+      return res.status(400).json({ message: 'الكود غير صحيح أو منتهي — اطلب كود جديد' });
+    }
+
+    const hashed = await bcrypt.hash(String(req.body.new_password), 10);
+    await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashed, user.id]);
+    await pool.query('UPDATE password_resets SET used = TRUE WHERE user_id = $1', [user.id]);
+    // الأمان: الكود يمسح أي PIN دخول سريع قديم
+    await pool.query('UPDATE users SET quick_pin_hash = NULL WHERE id = $1', [user.id]);
+    loginAttempts.delete(`${(req.body.identifier || '').toLowerCase()}|${req.ip || ''}`);
+
+    res.json({ message: 'تم تغيير كلمة المرور بنجاح — سجل دخول بالكلمة الجديدة' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

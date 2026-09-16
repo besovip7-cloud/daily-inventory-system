@@ -28,6 +28,15 @@ export default function Login({ setUser, apiUrl }) {
   const [pinSetup, setPinSetup] = useState(null) // { token, user }
   const [pinSetupValue, setPinSetupValue] = useState('')
   const [pinSetupBusy, setPinSetupBusy] = useState(false)
+  // استعادة كلمة المرور
+  const [fpOpen, setFpOpen] = useState(false)
+  const [fpStep, setFpStep] = useState(1) // 1: هوية 2: كود + كلمة جديدة
+  const [fpIdentifier, setFpIdentifier] = useState('')
+  const [fpCode, setFpCode] = useState('')
+  const [fpPassword, setFpPassword] = useState('')
+  const [fpMsg, setFpMsg] = useState('')
+  const [fpErr, setFpErr] = useState('')
+  const [fpBusy, setFpBusy] = useState(false)
   const navigate = useNavigate()
   const g = greeting()
 
@@ -126,6 +135,64 @@ export default function Login({ setUser, apiUrl }) {
     localStorage.removeItem(QUICK_USER_KEY)
     setQuickUser(null)
     setPin('')
+  }
+
+  const openForgot = () => {
+    setFpOpen(true)
+    setFpStep(1)
+    setFpIdentifier(identifier.trim())
+    setFpCode('')
+    setFpPassword('')
+    setFpMsg('')
+    setFpErr('')
+  }
+
+  const handleForgotRequest = async (e) => {
+    e.preventDefault()
+    setFpErr('')
+    setFpMsg('')
+    setFpBusy(true)
+    try {
+      const res = await fetch(`${apiUrl}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: fpIdentifier })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setFpMsg(data.email_hint ? `${data.message} (أُرسل إلى ${data.email_hint})` : data.message)
+        setFpStep(2)
+      } else {
+        setFpErr(data.message || 'تعذر إرسال الكود')
+      }
+    } catch {
+      setFpErr('حدث خطأ في الاتصال بالسيرفر')
+    }
+    setFpBusy(false)
+  }
+
+  const handleForgotReset = async (e) => {
+    e.preventDefault()
+    setFpErr('')
+    setFpMsg('')
+    setFpBusy(true)
+    try {
+      const res = await fetch(`${apiUrl}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: fpIdentifier, code: fpCode, new_password: fpPassword })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setFpMsg(data.message)
+        setTimeout(() => { setFpOpen(false); setPassword('') }, 1800)
+      } else {
+        setFpErr(data.message || 'تعذر إعادة التعيين')
+      }
+    } catch {
+      setFpErr('حدث خطأ في الاتصال بالسيرفر')
+    }
+    setFpBusy(false)
   }
 
   const logo = settings.company_logo || '/icon-192.png'
@@ -242,12 +309,17 @@ export default function Login({ setUser, apiUrl }) {
                   </button>
                 </div>
               </div>
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}
-                  className="w-4 h-4 accent-ios-blue" />
-                <span className="text-sm text-ios-text font-semibold">تذكرني على هذا الجهاز</span>
-                <span className="text-[11px] text-ios-label">(إذا طفاته، راح تخرج بإغلاق المتصفح)</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}
+                    className="w-4 h-4 accent-ios-blue" />
+                  <span className="text-sm text-ios-text font-semibold">تذكرني</span>
+                </label>
+                <button type="button" onClick={openForgot}
+                  className="text-sm font-bold text-ios-blue active:opacity-60">
+                  نسيت كلمة المرور؟
+                </button>
+              </div>
               <button type="submit" disabled={busy}
                 className="btn-ios w-full py-4 text-lg shadow-lg shadow-ios-blue/30 disabled:opacity-60">
                 {busy ? 'جاري الدخول...' : 'دخول'}
@@ -258,6 +330,67 @@ export default function Login({ setUser, apiUrl }) {
 
         <p className="text-center text-white/70 text-xs mt-6">نظام إدارة الجرد والمبيعات للفروع</p>
       </div>
+
+      {/* نافذة استعادة كلمة المرور */}
+      {fpOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setFpOpen(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm anim-pop"
+            onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-4">
+              <div className="text-4xl mb-2">🔑</div>
+              <h2 className="text-lg font-extrabold text-ios-text">استعادة كلمة المرور</h2>
+              <p className="text-ios-label text-sm mt-1">
+                {fpStep === 1
+                  ? 'أدخل إيميلك أو رقم الواتساب المسجل — راح نوصلك كود على الإيميل'
+                  : `أدخل الكود المُرسل${fpIdentifier.includes('@') ? ' إلى إيميلك' : ''} وكلمة المرور الجديدة`}
+              </p>
+            </div>
+            {fpErr && <div className="bg-ios-red/10 text-ios-red p-3 rounded-2xl mb-3 text-sm font-semibold anim-pop">{fpErr}</div>}
+            {fpMsg && <div className="bg-ios-green/10 text-ios-green p-3 rounded-2xl mb-3 text-sm font-semibold anim-pop">{fpMsg}</div>}
+
+            {fpStep === 1 ? (
+              <form onSubmit={handleForgotRequest} className="space-y-3">
+                <input type="text" value={fpIdentifier} onChange={e => setFpIdentifier(e.target.value)}
+                  placeholder="example@mail.com أو 96477XXXXXXX"
+                  required
+                  style={{ direction: 'ltr', textAlign: 'right' }}
+                  className="input-ios h-12" />
+                <button type="submit" disabled={fpBusy || !fpIdentifier.trim()}
+                  className="btn-ios w-full py-3 disabled:opacity-60">
+                  {fpBusy ? 'جاري الإرسال...' : 'إرسال الكود 📧'}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleForgotReset} className="space-y-3">
+                <input type="text" inputMode="numeric" maxLength={6} value={fpCode}
+                  onChange={e => setFpCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="كود الاستعادة (6 أرقام)"
+                  required
+                  style={{ direction: 'ltr', textAlign: 'center', letterSpacing: '0.5em' }}
+                  className="input-ios h-12 text-lg font-bold" />
+                <input type="password" value={fpPassword} onChange={e => setFpPassword(e.target.value)}
+                  placeholder="كلمة المرور الجديدة (6 أحرف على الأقل)"
+                  required minLength={6}
+                  style={{ direction: 'ltr', textAlign: 'right' }}
+                  className="input-ios h-12" />
+                <button type="submit" disabled={fpBusy || fpCode.length < 4 || fpPassword.length < 6}
+                  className="btn-ios w-full py-3 disabled:opacity-60">
+                  {fpBusy ? 'جاري الحفظ...' : 'تعيين كلمة المرور الجديدة ✅'}
+                </button>
+                <button type="button" onClick={() => { setFpStep(1); setFpErr(''); setFpMsg('') }}
+                  className="w-full text-center text-sm font-bold text-ios-blue active:opacity-60 py-1">
+                  ← رجوع لإعادة الإرسال
+                </button>
+              </form>
+            )}
+            <button type="button" onClick={() => setFpOpen(false)}
+              className="w-full mt-2 text-center text-sm text-ios-label active:opacity-60 py-1">
+              إلغاء
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
