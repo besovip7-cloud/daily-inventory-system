@@ -147,6 +147,18 @@ exports.confirmRequest = async (req, res) => {
         [request.branch_id, item.inventory_item_id, item.quantity, before, after,
          `استلام طلب شراء #${request.id}`, req.user.id]
       );
+
+      // ✅ إضافة الكمية لعمود الوارد بسجل جرد اليوم تلقائياً
+      // إذا الجرد مُرسل يدوياً لا تلمس النهاية — الفرق يظهر كفروقات حقيقية
+      const today = new Date().toISOString().split('T')[0];
+      await client.query(
+        `INSERT INTO daily_inventory (branch_id, item_id, record_date, opening_qty, received_qty, consumed_qty, closing_qty, created_by)
+         VALUES ($1, $2, $3, $4, $5, 0, $6, $7)
+         ON CONFLICT (branch_id, item_id, record_date)
+         DO UPDATE SET received_qty = daily_inventory.received_qty + $5,
+                       closing_qty = CASE WHEN daily_inventory.is_submitted THEN daily_inventory.closing_qty ELSE $6 END`,
+        [request.branch_id, item.inventory_item_id, today, before, item.quantity, after, req.user.id]
+      );
     }
 
     await client.query(

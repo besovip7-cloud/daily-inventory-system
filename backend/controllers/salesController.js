@@ -2,9 +2,11 @@ const pool = require('../config/database');
 const { checkAndCreateAlerts, checkVarianceAndAlert } = require('../utils/alerts');
 
 // Deducts (or restores, for negative delta) recipe quantities from inventory.
-// Records every change in inventory_movements and returns the applied list.
-const applyRecipeDelta = async (executor, branchId, menuItemId, deltaQty, reference, createdBy) => {
+// Records every change in inventory_movements, updates the consumed column in
+// today's daily inventory record, and returns the applied list.
+const applyRecipeDelta = async (executor, branchId, menuItemId, deltaQty, reference, createdBy, recordDate) => {
   if (!deltaQty) return [];
+  const targetDate = recordDate || new Date().toISOString().split('T')[0];
   const recipes = await executor.query(
     'SELECT inventory_item_id, quantity FROM menu_recipes WHERE branch_id = $1 AND menu_item_id = $2',
     [branchId, menuItemId]
@@ -28,6 +30,17 @@ const applyRecipeDelta = async (executor, branchId, menuItemId, deltaQty, refere
       `INSERT INTO inventory_movements (branch_id, item_id, movement_type, quantity, balance_before, balance_after, reference, created_by)
        VALUES ($1, $2, 'sale', $3, $4, $5, $6, $7)`,
       [branchId, r.inventory_item_id, -used, before, after, reference, createdBy || null]
+    );
+
+    // ✅ إضافة الخصم لعمود المنصرف بسجل الجرد لنفس تاريخ البيع
+    // النهاية تتبع الرصيد الحالي فقط إذا الجرد مو مُرسل يدوياً (حتى ما تنطلق فروقات وهمية)
+    await executor.query(
+      `INSERT INTO daily_inventory (branch_id, item_id, record_date, opening_qty, received_qty, consumed_qty, closing_qty, created_by)
+       VALUES ($1, $2, $3, $4, 0, $5, $6, $7)
+       ON CONFLICT (branch_id, item_id, record_date)
+       DO UPDATE SET consumed_qty = daily_inventory.consumed_qty + $5,
+                     closing_qty = CASE WHEN daily_inventory.is_submitted THEN daily_inventory.closing_qty ELSE $6 END`,
+      [branchId, r.inventory_item_id, targetDate, before, used, after, createdBy || null]
     );
 
     const itemInfo = await executor.query(
@@ -188,7 +201,7 @@ exports.saveDailySales = async (req, res) => {
           const menuInfo = await client.query('SELECT name FROM menu_items WHERE id = $1', [record.item_id]);
           const menuName = menuInfo.rows.length ? menuInfo.rows[0].name : `صنف #${record.item_id}`;
           const reference = `بيع: ${menuName} ×${record.quantity_sold}${prev.rows.length ? ` (تعديل من ${prev.rows[0].quantity_sold})` : ''}`;
-          const applied = await applyRecipeDelta(client, branch_id, record.item_id, delta, reference, created_by);
+          const applied = await applyRecipeDelta(client, branch_id, record.item_id, delta, reference, created_by, today);
           for (const a of applied) {
             await checkVarianceAndAlert(client, branch_id, a.item_id, today);
           }
@@ -241,7 +254,7 @@ exports.updateDailySale = async (req, res) => {
     );
     const menuName = menuInfo.rows.length ? menuInfo.rows[0].name : `صنف #${old.item_id}`;
     const reference = `تعديل بيع: ${menuName} من ${old.quantity_sold} إلى ${quantity_sold}`;
-    const applied = await applyRecipeDelta(pool, old.branch_id, old.item_id, quantity_sold - old.quantity_sold, reference, req.user.id);
+    const applied = await applyRecipeDelta(pool, old.branch_id, old.item_id, quantity_sold - old.quantity_sold, reference, req.user.id, old.record_date);
     for (const a of applied) {
       await checkVarianceAndAlert(pool, old.branch_id, a.item_id, old.record_date);
     }
@@ -263,7 +276,7 @@ const deleteSaleById = async (executor, id) => {
   const menuInfo = await executor.query('SELECT name FROM menu_items WHERE id = $1', [old.rows[0].item_id]);
   const menuName = menuInfo.rows.length ? menuInfo.rows[0].name : `صنف #${old.rows[0].item_id}`;
   const reference = `حذف بيع: ${menuName} ×${old.rows[0].quantity_sold}`;
-  const applied = await applyRecipeDelta(executor, old.rows[0].branch_id, old.rows[0].item_id, -old.rows[0].quantity_sold, reference, null);
+  const applied = await applyRecipeDelta(executor, old.rows[0].branch_id, old.rows[0].item_id, -old.rows[0].quantity_sold, reference, null, old.rows[0].record_date);
   for (const a of applied) {
     await checkVarianceAndAlert(executor, old.rows[0].branch_id, a.item_id, old.rows[0].record_date);
   }

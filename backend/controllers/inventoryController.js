@@ -177,11 +177,11 @@ exports.saveDailyInventory = async (req, res) => {
       for (const record of records) {
         // Upsert daily inventory
         await client.query(
-          `INSERT INTO daily_inventory (branch_id, item_id, record_date, opening_qty, received_qty, consumed_qty, closing_qty, notes, created_by)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          `INSERT INTO daily_inventory (branch_id, item_id, record_date, opening_qty, received_qty, consumed_qty, closing_qty, notes, created_by, is_submitted)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, TRUE)
            ON CONFLICT (branch_id, item_id, record_date)
            DO UPDATE SET opening_qty = $4, received_qty = $5, consumed_qty = $6, 
-                         closing_qty = $7, notes = $8, created_by = $9`,
+                         closing_qty = $7, notes = $8, created_by = $9, is_submitted = TRUE`,
           [branch_id, record.item_id, today, record.opening_qty, record.received_qty, 
            record.consumed_qty, record.closing_qty, record.notes, created_by]
         );
@@ -224,7 +224,7 @@ exports.updateDailyInventory = async (req, res) => {
 
     const result = await pool.query(
       `UPDATE daily_inventory
-       SET opening_qty = $1, received_qty = $2, consumed_qty = $3, closing_qty = $4, notes = $5
+       SET opening_qty = $1, received_qty = $2, consumed_qty = $3, closing_qty = $4, notes = $5, is_submitted = TRUE
        WHERE id = $6
        RETURNING *`,
       [opening_qty, received_qty, consumed_qty, closing_qty, notes || null, id]

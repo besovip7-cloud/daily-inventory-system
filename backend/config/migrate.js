@@ -220,6 +220,10 @@ const createTables = async () => {
     // ربط المستخدم بدور مخصص (اختياري — يتجاوز الدور المدمج)
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_role_id INTEGER REFERENCES custom_roles(id) ON DELETE SET NULL`);
 
+    // هل سجل الجرد مُرسل فعلاً من مسؤول الفرع؟
+    // الصفوف اللي تننشئ تلقائياً (شراء/مبيعات) تبقى FALSE حتى يحفظها المسؤول
+    await pool.query(`ALTER TABLE daily_inventory ADD COLUMN IF NOT EXISTS is_submitted BOOLEAN DEFAULT FALSE`);
+
     // Insert default branches فقط إذا الجدول فاضي (قاعدة جديدة) — حتى لا تتكرر بالقواعد الحية
     const branchCount = await pool.query('SELECT COUNT(*) FROM branches');
     if (parseInt(branchCount.rows[0].count) === 0) {

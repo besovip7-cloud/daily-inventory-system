@@ -22,6 +22,7 @@ export default function Inventory({ user }) {
   const [selectedBranch, setSelectedBranch] = useState('')
   const [items, setItems] = useState([])
   const [todayRecords, setTodayRecords] = useState(null)
+  const [autoRows, setAutoRows] = useState({}) // صفوف تلقائية (شراء/مبيعات) تُدمج بنموذج الإدخال
   const [records, setRecords] = useState({})
   const [closingManual, setClosingManual] = useState({}) // مادة النهاية معدّلة يدوياً
   const [loading, setLoading] = useState(false)
@@ -75,6 +76,7 @@ export default function Inventory({ user }) {
 
     setLoading(true)
     setTodayRecords(null)
+    setAutoRows({})
     setRecords({})
     setClosingManual({})
     setMessage('')
@@ -85,10 +87,15 @@ export default function Inventory({ user }) {
       }))
       .then(r => r.json())
       .then(dailyData => {
-        if (dailyData && dailyData.length > 0) {
-          setTodayRecords(dailyData)
+        const rows = dailyData || []
+        if (rows.length > 0 && rows.every(r => r.is_submitted)) {
+          // ✅ جرد مُرسل فعلاً من المسؤول — اعرض الملخص فقط
+          setTodayRecords(rows)
         } else {
-          setTodayRecords(null)
+          // صفوف تلقائية من المشتريات/المبيعات — ادمج قيمها بنموذج الإدخال
+          const byItem = {}
+          rows.forEach(r => { byItem[r.item_id] = r })
+          setAutoRows(byItem)
         }
         setLoading(false)
       })
@@ -106,13 +113,14 @@ export default function Inventory({ user }) {
       const init = {}
       items.forEach(item => {
         const prevRec = prev[item.id]
+        const auto = autoRows[item.id]
         init[item.id] = prevRec || {
           item_id: item.id,
-          opening_qty: item.current_quantity || 0,
-          received_qty: 0,
-          consumed_qty: 0,
-          closing_qty: item.current_quantity || 0,
-          notes: ''
+          opening_qty: auto ? parseFloat(auto.opening_qty) || 0 : (item.current_quantity || 0),
+          received_qty: auto ? parseFloat(auto.received_qty) || 0 : 0,
+          consumed_qty: auto ? parseFloat(auto.consumed_qty) || 0 : 0,
+          closing_qty: auto ? parseFloat(auto.closing_qty) || 0 : (item.current_quantity || 0),
+          notes: auto?.notes || ''
         }
       })
       return init
@@ -533,6 +541,7 @@ export default function Inventory({ user }) {
             <div className="text-sm">
               <p className="text-ios-blue font-bold">النهاية تُحسب تلقائياً: بداية + وارد − منصرف</p>
               <p className="text-ios-blue/80">عدّل خانة "نهاية" يدوياً فقط إذا الفعلي مختلف — وبعدها يثبت رقمك</p>
+              <p className="text-ios-blue/70 text-xs mt-1">📦 الوارد يتعبّى تلقائياً من طلبات الشراء المؤكدة • 🛒 المنصرف من المبيعات المرفوعة — تكدر تضيف عليها يدوياً</p>
             </div>
           </div>
 
