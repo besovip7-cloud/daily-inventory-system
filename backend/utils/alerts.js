@@ -9,6 +9,7 @@ const checkAndCreateAlerts = async (branchId, itemId, currentQty, minQty, itemNa
       [branchId, itemId]
     );
     const hadCritical = existing.rows.some(r => r.alert_type === 'critical');
+    const hadWarning = existing.rows.some(r => r.alert_type === 'warning');
 
     // Delete existing unresolved stock alerts for this item (keep variance alerts)
     await pool.query(
@@ -49,6 +50,12 @@ const checkAndCreateAlerts = async (branchId, itemId, currentQty, minQty, itemNa
         [branchId, itemId, `⚠️ ${itemName} قريب من النفاد`, 
          `الكمية: ${currentQty} | الحد الأدنى: ${minQty}`]
       );
+      if (!hadWarning) {
+        const b = await pool.query('SELECT name FROM branches WHERE id = $1', [branchId]);
+        await notifyBranch(branchId,
+          `⚠️ *تنبيه مخزون — ${b.rows[0]?.name || ''}*\n\n📦 ${itemName}\nالحالة: *قريب من النفاد*\nالكمية: ${currentQty} | الحد الأدنى: ${minQty}\n\nفكّر بطلب شراء قبل لا ينفذ.`,
+          `stock:${branchId}:${itemId}:warning`)
+      }
     }
   } catch (err) {
     console.error('Alert creation error:', err);
