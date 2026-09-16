@@ -1,3 +1,4 @@
+import { getToken } from '../utils/token'
 import { useState, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { exportToExcel, printReport } from '../utils/export'
@@ -9,7 +10,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 const fmtDate = (d) => d.toISOString().split('T')[0]
 
 export default function Reports({ user }) {
-  const token = localStorage.getItem('token')
+  const token = getToken()
   const isAdmin = user?.role === 'admin'
   const today = new Date()
   const weekAgo = new Date(); weekAgo.setDate(today.getDate() - 7)

@@ -3,6 +3,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom'
 import AlertBell from './AlertBell'
 import { fetchSettings, getCachedSettings } from '../utils/settings'
 import { hasPerm, isAdmin } from '../utils/permissions'
+import { clearToken } from '../utils/token'
 
 export default function Layout({ user }) {
   const [settings, setSettings] = useState(getCachedSettings())
@@ -11,7 +12,7 @@ export default function Layout({ user }) {
     fetchSettings().then(setSettings)
   }, [])
   const logout = () => {
-    localStorage.removeItem('token')
+    clearToken()
     window.location.reload()
   }
 

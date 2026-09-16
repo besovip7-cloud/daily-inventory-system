@@ -1,3 +1,4 @@
+import { getToken } from '../utils/token'
 import { useState, useEffect, useRef } from 'react'
 import * as XLSX from 'xlsx'
 
@@ -68,7 +69,7 @@ function parsePosFile(rows) {
 }
 
 export default function SalesImport({ user, branches }) {
-  const token = localStorage.getItem('token')
+  const token = getToken()
   const headers = { Authorization: `Bearer ${token}` }
   const fileRef = useRef(null)
 

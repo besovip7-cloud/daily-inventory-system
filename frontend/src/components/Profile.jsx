@@ -1,3 +1,4 @@
+import { getToken } from '../utils/token'
 import { useState, useEffect } from 'react'
 import { fetchSettings, getCachedSettings } from '../utils/settings'
 import PageHeader from './PageHeader'
@@ -7,7 +8,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 const roleLabels = { admin: 'مدير النظام', manager: 'مدير فرع', staff: 'موظف', accountant: 'محاسب' }
 
 export default function Profile({ user, setUser }) {
-  const token = localStorage.getItem('token')
+  const token = getToken()
   const headers = { Authorization: `Bearer ${token}` }
 
   const [profile, setProfile] = useState(user)

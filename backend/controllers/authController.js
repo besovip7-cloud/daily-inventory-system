@@ -3,48 +3,138 @@ const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
 const { getEffectivePermissions } = require('../utils/permissions');
 
+// قفل المحاولات الفاشلة بالذاكرة: 5 محاولات = إيقاف 5 دقائق
+const loginAttempts = new Map();
+const MAX_ATTEMPTS = 5;
+const LOCK_MS = 5 * 60 * 1000;
+
+const issueToken = (user) => jwt.sign(
+  { id: user.id, email: user.email, role: user.role, branch_id: user.branch_id },
+  process.env.JWT_SECRET,
+  { expiresIn: process.env.JWT_EXPIRE }
+);
+
+const buildUserPayload = async (user) => ({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  branch_id: user.branch_id,
+  avatar: user.avatar,
+  phone: user.phone,
+  custom_role_id: user.custom_role_id,
+  has_quick_pin: !!user.quick_pin_hash,
+  permissions: await getEffectivePermissions(user)
+});
+
+// البحث عن المستخدم بالإيميل أو رقم الواتساب
+const findUserByIdentifier = async (raw) => {
+  const id = String(raw || '').trim();
+  if (!id) return null;
+  let result;
+  if (id.includes('@')) {
+    result = await pool.query('SELECT * FROM users WHERE email = $1', [id.toLowerCase()]);
+  } else {
+    const digits = id.replace(/[^\d]/g, '');
+    if (!digits) return null;
+    result = await pool.query('SELECT * FROM users WHERE phone = $1', [digits]);
+  }
+  return result.rows[0] || null;
+};
+
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    if (result.rows.length === 0) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+    const rawId = (req.body.identifier || req.body.email || '').trim();
+    const key = `${rawId.toLowerCase()}|${req.ip || ''}`;
+    const rec = loginAttempts.get(key);
+    if (rec?.lockedUntil && rec.lockedUntil > Date.now()) {
+      const mins = Math.ceil((rec.lockedUntil - Date.now()) / 60000);
+      return res.status(429).json({ message: `محاولات فاشلة كثيرة — تم إيقاف الدخول مؤقتاً. جرب بعد ${mins} دقيقة` });
     }
 
-    const user = result.rows[0];
+    const user = await findUserByIdentifier(rawId);
+    if (!user) {
+      return res.status(401).json({ message: 'هذا الحساب غير مسجل بالنظام — تأكد من الإيميل/الرقم أو تواصل مع الإدارة' });
+    }
     if (!user.is_active) {
-      return res.status(401).json({ message: 'Account is deactivated' });
+      return res.status(401).json({ message: 'هذا الحساب معطل — تواصل مع مدير النظام لتفعيله' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-
+    const isMatch = await bcrypt.compare(String(req.body.password || ''), user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      const r = rec && !rec.lockedUntil ? rec : { count: 0 };
+      r.count += 1;
+      if (r.count >= MAX_ATTEMPTS) {
+        loginAttempts.set(key, { count: 0, lockedUntil: Date.now() + LOCK_MS });
+        return res.status(429).json({ message: '5 محاولات فاشلة — تم إيقاف الدخول لمدة 5 دقائق' });
+      }
+      loginAttempts.set(key, r);
+      return res.status(401).json({ message: `كلمة المرور غير صحيحة — باقي ${MAX_ATTEMPTS - r.count} محاولات` });
     }
 
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role, branch_id: user.branch_id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE }
-    );
+    loginAttempts.delete(key);
+    res.json({ token: issueToken(user), user: await buildUserPayload(user) });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
-    const permissions = await getEffectivePermissions(user);
+// ===== الدخول السريع برقم PIN =====
+exports.setQuickPin = async (req, res) => {
+  try {
+    const pin = String(req.body.pin || '');
+    if (!/^\d{4,6}$/.test(pin)) {
+      return res.status(400).json({ message: 'الرقم السري 4 إلى 6 أرقام' });
+    }
+    const hashed = await bcrypt.hash(pin, 10);
+    await pool.query('UPDATE users SET quick_pin_hash = $1 WHERE id = $2', [hashed, req.user.id]);
+    res.json({ message: 'تم تفعيل الدخول السريع' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        branch_id: user.branch_id,
-        avatar: user.avatar,
-        phone: user.phone,
-        custom_role_id: user.custom_role_id,
-        permissions
+exports.removeQuickPin = async (req, res) => {
+  try {
+    await pool.query('UPDATE users SET quick_pin_hash = NULL WHERE id = $1', [req.user.id]);
+    res.json({ message: 'تم إيقاف الدخول السريع' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.quickLogin = async (req, res) => {
+  try {
+    const rawId = (req.body.identifier || '').trim();
+    const key = `pin|${rawId.toLowerCase()}|${req.ip || ''}`;
+    const rec = loginAttempts.get(key);
+    if (rec?.lockedUntil && rec.lockedUntil > Date.now()) {
+      const mins = Math.ceil((rec.lockedUntil - Date.now()) / 60000);
+      return res.status(429).json({ message: `محاولات فاشلة كثيرة — جرب بعد ${mins} دقيقة` });
+    }
+
+    const user = await findUserByIdentifier(rawId);
+    if (!user || !user.quick_pin_hash) {
+      return res.status(401).json({ message: 'الدخول السريع غير مفعّل لهذا الحساب' });
+    }
+    if (!user.is_active) {
+      return res.status(401).json({ message: 'هذا الحساب معطل — تواصل مع مدير النظام' });
+    }
+
+    const isMatch = await bcrypt.compare(String(req.body.pin || ''), user.quick_pin_hash);
+    if (!isMatch) {
+      const r = rec && !rec.lockedUntil ? rec : { count: 0 };
+      r.count += 1;
+      if (r.count >= MAX_ATTEMPTS) {
+        loginAttempts.set(key, { count: 0, lockedUntil: Date.now() + LOCK_MS });
+        return res.status(429).json({ message: '5 محاولات فاشلة — تم إيقاف الدخول لمدة 5 دقائق' });
       }
-    });
+      loginAttempts.set(key, r);
+      return res.status(401).json({ message: `الرقم السري غير صحيح — باقي ${MAX_ATTEMPTS - r.count} محاولات` });
+    }
+
+    loginAttempts.delete(key);
+    res.json({ token: issueToken(user), user: await buildUserPayload(user) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -145,7 +235,7 @@ exports.setUserActive = async (req, res) => {
 };
 
 exports.me = async (req, res) => {
-  const { id, name, email, role, branch_id, is_active, avatar, created_at, custom_role_id, phone } = req.user;
+  const { id, name, email, role, branch_id, is_active, avatar, created_at, custom_role_id, phone, quick_pin_hash } = req.user;
   const branch = branch_id
     ? await pool.query('SELECT name FROM branches WHERE id = $1', [branch_id])
     : { rows: [] };
@@ -156,6 +246,7 @@ exports.me = async (req, res) => {
   res.json({
     user: {
       id, name, email, role, branch_id, is_active, avatar, created_at, custom_role_id, permissions, phone,
+      has_quick_pin: !!quick_pin_hash,
       branch_name: branch.rows[0]?.name || null,
       custom_role_name: customRole.rows[0]?.name || null
     }

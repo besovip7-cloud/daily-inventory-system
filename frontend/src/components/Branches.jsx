@@ -1,3 +1,4 @@
+import { getToken } from '../utils/token'
 import { useState, useEffect } from 'react'
 import { visibleBranches } from '../utils/branchScope'
 import PageHeader from './PageHeader'
@@ -8,7 +9,7 @@ export default function Branches({ user }) {
   const [branches, setBranches] = useState([])
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
+    const token = getToken()
     fetch(`${API_URL}/branches`, { headers: { Authorization: `Bearer ${token}` }})
       .then(r => r.json())
       .then(data => setBranches(visibleBranches(user, data || [])))

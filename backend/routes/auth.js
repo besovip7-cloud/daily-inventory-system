@@ -24,11 +24,28 @@ const handleValidation = (req, res, next) => {
 
 router.post('/login',
   loginLimiter,
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('password').notEmpty().withMessage('Password is required'),
+  body('password').notEmpty().withMessage('كلمة المرور مطلوبة'),
   handleValidation,
   authController.login
 );
+
+// الدخول السريع برقم PIN
+router.post('/quick-login',
+  loginLimiter,
+  body('identifier').notEmpty().withMessage('أدخل الإيميل أو رقم الواتساب'),
+  body('pin').notEmpty().withMessage('الرقم السري مطلوب'),
+  handleValidation,
+  authController.quickLogin
+);
+
+router.post('/quick-pin',
+  auth,
+  body('pin').matches(/^\d{4,6}$/).withMessage('الرقم السري 4 إلى 6 أرقام'),
+  handleValidation,
+  authController.setQuickPin
+);
+
+router.delete('/quick-pin', auth, authController.removeQuickPin);
 
 router.get('/me', auth, authController.me);
 

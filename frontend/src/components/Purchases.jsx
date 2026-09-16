@@ -1,3 +1,4 @@
+import { getToken } from '../utils/token'
 import { useState, useEffect } from 'react'
 import { visibleBranches, isBranchLocked } from '../utils/branchScope'
 import { printReport } from '../utils/export'
@@ -21,7 +22,7 @@ const fmtQty = (v) => {
 }
 
 export default function Purchases({ user }) {
-  const token = localStorage.getItem('token')
+  const token = getToken()
   const headers = { Authorization: `Bearer ${token}` }
   const branchLocked = isBranchLocked(user)
   const canCreate = ['admin', 'manager', 'staff'].includes(user?.role)

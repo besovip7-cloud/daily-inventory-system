@@ -1,3 +1,4 @@
+import { getToken } from '../utils/token'
 import { useState, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { visibleBranches, isBranchLocked } from '../utils/branchScope'
@@ -65,7 +66,7 @@ export default function Dashboard({ apiUrl, user }) {
   const [error, setError] = useState('')
 
   const branchLocked = isBranchLocked(user)
-  const token = localStorage.getItem('token')
+  const token = getToken()
   const H = { Authorization: `Bearer ${token}` }
 
   const now = new Date()

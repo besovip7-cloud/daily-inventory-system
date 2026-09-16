@@ -1,3 +1,4 @@
+import { getToken } from '../utils/token'
 import { useState, useEffect, useMemo } from 'react'
 import { visibleBranches, isBranchLocked } from '../utils/branchScope'
 import SalesImport from './SalesImport'
@@ -23,7 +24,7 @@ export default function Sales({ user }) {
   const [search, setSearch] = useState('')
   const [soldOnly, setSoldOnly] = useState(false)
 
-  const token = localStorage.getItem('token')
+  const token = getToken()
 
   useEffect(() => {
     fetch(`${API_URL}/branches`, { headers: { Authorization: `Bearer ${token}` }})

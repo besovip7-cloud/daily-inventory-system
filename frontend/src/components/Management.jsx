@@ -1,3 +1,4 @@
+import { getToken } from '../utils/token'
 import { useState, useEffect, useRef } from 'react'
 import { hasPerm } from '../utils/permissions'
 import { exportToExcel, printReport } from '../utils/export'
@@ -42,7 +43,7 @@ const toItemUnit = (qty, fromUnit, itemUnit) => {
 export default function Management({ user }) {
   const [activeTab, setActiveTab] = useState('users')
   const [message, setMessage] = useState('')
-  const token = localStorage.getItem('token')
+  const token = getToken()
   const headers = { Authorization: `Bearer ${token}` }
 
   const canUsers = hasPerm(user, 'users.manage')

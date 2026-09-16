@@ -1,3 +1,4 @@
+import { getToken } from '../utils/token'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { visibleBranches, isBranchLocked } from '../utils/branchScope'
 import PageHeader from './PageHeader'
@@ -41,7 +42,7 @@ export default function Inventory({ user }) {
   const [catFilter, setCatFilter] = useState('all')
   const [modifiedOnly, setModifiedOnly] = useState(false)
 
-  const token = localStorage.getItem('token')
+  const token = getToken()
 
   // ✅ تاريخ محلي (مو UTC) عشان يتوافق مع السيرفر
   const today = new Date().toLocaleDateString('en-CA')

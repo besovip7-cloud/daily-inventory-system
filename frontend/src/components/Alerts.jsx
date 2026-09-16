@@ -1,3 +1,4 @@
+import { getToken } from '../utils/token'
 import { useState, useEffect } from 'react'
 import { visibleBranches, isBranchLocked } from '../utils/branchScope'
 import PageHeader from './PageHeader'
@@ -12,7 +13,7 @@ export default function Alerts({ user }) {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
 
-  const token = localStorage.getItem('token')
+  const token = getToken()
 
   useEffect(() => {
     fetch(`${API_URL}/branches`, { headers: { Authorization: `Bearer ${token}` }})

@@ -1,3 +1,4 @@
+import { getToken, clearToken } from './utils/token'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import Layout from './components/Layout'
@@ -20,7 +21,7 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
+    const token = getToken()
     if (!token) {
       setAuthLoading(false)
       return
@@ -28,7 +29,7 @@ function App() {
     fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` }})
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => { if(data.user) setUser(data.user) })
-      .catch(() => localStorage.removeItem('token'))
+      .catch(() => clearToken())
       .finally(() => setAuthLoading(false))
   }, [])
 

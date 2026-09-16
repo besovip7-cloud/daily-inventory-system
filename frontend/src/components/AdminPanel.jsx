@@ -1,3 +1,4 @@
+import { getToken } from '../utils/token'
 import { useState, useEffect } from 'react'
 import PageHeader from './PageHeader'
 
@@ -13,7 +14,7 @@ export default function AdminPanel() {
   const [message, setMessage] = useState('')
   const [loadingMenu, setLoadingMenu] = useState(false)
 
-  const token = localStorage.getItem('token')
+  const token = getToken()
   const today = new Date().toISOString().split('T')[0]
 
   useEffect(() => {

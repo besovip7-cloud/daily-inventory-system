@@ -1,3 +1,4 @@
+import { getToken } from '../utils/token'
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -11,7 +12,7 @@ const alertIcon = (type) => {
 }
 
 export default function AlertBell() {
-  const token = localStorage.getItem('token')
+  const token = getToken()
   const headers = { Authorization: `Bearer ${token}` }
   const [count, setCount] = useState(0)
   const [open, setOpen] = useState(false)
