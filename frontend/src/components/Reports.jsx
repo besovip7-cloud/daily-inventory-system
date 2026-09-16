@@ -930,18 +930,22 @@ export default function Reports({ user }) {
               <div className="p-4 bg-ios-blue/10 font-bold text-ios-blue">
                 إجمالي تكلفة مواد جميع الأصناف: {costGrandTotal.toFixed(2)} د.ع
               </div>
-              {/* صف واحد لكل صنف: المكونات بأعمدة 1-10 مثل جدول المكونات */}
+              {/* صف واحد لكل صنف: عدد أعمدة المكونات حسب أطول صنف */}
+              {(() => {
+                const maxComp = Math.min(10, Math.max(1, ...costGroups.map(g => g.components.length)))
+                return (
               <div className="overflow-x-auto">
-                <table className="table-ios min-w-[2100px]">
+                <table className="table-ios" style={{ minWidth: 220 + maxComp * 250 }}>
                   <thead>
                     <tr>
                       <th className="min-w-[130px] sticky right-0 bg-[#F9F9FB]">صنف البيع</th>
-                      {Array.from({ length: 10 }, (_, i) => (
-                        <th key={i} className="min-w-[170px] align-bottom">
+                      {Array.from({ length: maxComp }, (_, i) => (
+                        <th key={i} className="min-w-[250px] align-bottom">
                           <div className="text-center font-semibold mb-1">مكون {i + 1}</div>
-                          <div className="grid grid-cols-[minmax(60px,1fr)_58px_62px] gap-1 pt-1 border-t border-ios-sep/60 text-[10px] font-bold text-ios-label">
+                          <div className="grid grid-cols-[minmax(70px,1fr)_56px_46px_68px] gap-1 pt-1 border-t border-ios-sep/60 text-[10px] font-bold text-ios-label">
                             <span>المادة</span>
                             <span className="text-center">الكمية</span>
+                            <span className="text-center">الوحدة</span>
                             <span className="text-center">التكلفة</span>
                           </div>
                         </th>
@@ -957,14 +961,15 @@ export default function Reports({ user }) {
                       return (
                         <tr key={g.menu_item_id} className="align-top">
                           <td className="font-bold text-ios-text sticky right-0 bg-white">{g.menu_name}</td>
-                          {Array.from({ length: 10 }, (_, i) => {
+                          {Array.from({ length: maxComp }, (_, i) => {
                             const c = g.components[i]
                             return (
                               <td key={i} className="p-2">
                                 {c ? (
-                                  <div className="grid grid-cols-[minmax(60px,1fr)_58px_62px] gap-1 items-center text-[11px]">
-                                    <span className="font-semibold text-ios-text">{c.component}</span>
-                                    <span className="td-num text-ios-blue font-bold">{c.qty}<span className="text-ios-label font-normal"> {c.unit}</span></span>
+                                  <div className="grid grid-cols-[minmax(70px,1fr)_56px_46px_68px] gap-1 items-center text-[11px]">
+                                    <span className="font-semibold text-ios-text whitespace-nowrap overflow-hidden text-ellipsis">{c.component}</span>
+                                    <span className="td-num text-ios-blue font-bold">{c.qty}</span>
+                                    <span className="text-center text-ios-label whitespace-nowrap">{c.unit}</span>
                                     <span className="td-num text-ios-label">{c.line_cost}</span>
                                   </div>
                                 ) : (
@@ -982,6 +987,8 @@ export default function Reports({ user }) {
                   </tbody>
                 </table>
               </div>
+                )
+              })()}
             </>
           )
         ) : lowStock.length === 0 ? (
