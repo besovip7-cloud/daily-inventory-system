@@ -122,7 +122,7 @@ export default function Layout({ user }) {
 
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row">
         {/* Sidebar — desktop only: كامل أو شريط أيقونات نحيف */}
-        <aside className={`hidden md:block shrink-0 transition-all ${rail ? 'w-20 p-3' : 'w-80 p-3'}`}>
+        <aside className={`hidden md:block shrink-0 transition-all ${rail ? 'w-20 p-3' : 'w-72 p-3'}`}>
           <button type="button" onClick={toggleRail}
             title={rail ? 'توسيع القائمة' : 'طيّ القائمة'}
             className="w-full mb-3 py-2 rounded-2xl bg-white border border-ios-sep text-ios-label text-sm font-bold active:opacity-60 transition">
