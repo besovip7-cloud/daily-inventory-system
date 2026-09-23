@@ -91,7 +91,7 @@ export default function Layout({ user }) {
   return (
     <div className="min-h-screen bg-ios-bg" dir="rtl">
       <nav className="bg-white/80 backdrop-blur border-b border-ios-sep sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto flex justify-between items-center px-4 py-3">
+        <div className="w-full flex justify-between items-center px-4 py-3">
           <h1 className="text-lg font-semibold text-ios-text flex items-center gap-2">
             {settings.company_logo
               ? <img src={settings.company_logo} alt="logo" className="w-8 h-8 rounded-lg object-contain" />
@@ -120,9 +120,9 @@ export default function Layout({ user }) {
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row">
+      <div className="w-full flex flex-col md:flex-row">
         {/* Sidebar — desktop only: كامل أو شريط أيقونات نحيف */}
-        <aside className={`hidden md:block shrink-0 transition-all ${rail ? 'w-20 p-3' : 'w-72 p-3'}`}>
+        <aside className={`hidden md:block shrink-0 transition-all ${rail ? 'w-20 p-3' : 'w-64 p-3'}`}>
           <button type="button" onClick={toggleRail}
             title={rail ? 'توسيع القائمة' : 'طيّ القائمة'}
             className="w-full mb-3 py-2 rounded-2xl bg-white border border-ios-sep text-ios-label text-sm font-bold active:opacity-60 transition">
