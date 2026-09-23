@@ -114,7 +114,7 @@ export default function Layout({ user }) {
 
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row">
         {/* Sidebar — desktop only, iOS grouped list */}
-        <aside className="hidden md:block w-full md:w-80 shrink-0 p-4">
+        <aside className="hidden md:block w-full md:w-96 shrink-0 p-5">
           {groups.map(g => (
             <div key={g} className="mb-2">
               <button type="button" onClick={() => toggleGroup(g)}
