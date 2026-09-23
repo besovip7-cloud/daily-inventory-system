@@ -66,6 +66,9 @@ export default function Layout({ user }) {
       return !prev
     })
   }
+  // بحث داخل القائمة
+  const [q, setQ] = useState('')
+  const groupIcons = { 'الرئيسية': '🏠', 'العمليات اليومية': '📦', 'المتابعة': '📈', 'الإدارة': '⚙️' }
   const toggleGroup = (g) => {
     setOpenGroups(prev => {
       const next = prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]
@@ -150,32 +153,61 @@ export default function Layout({ user }) {
               })}
             </div>
           ) : (
-            groups.map(g => (
-              <div key={g} className="mb-2">
-                <button type="button" onClick={() => toggleGroup(g)}
-                  className="nav-group-title w-full flex items-center justify-between cursor-pointer active:opacity-60">
-                  <span>{g}</span>
-                  <span className={`text-ios-label text-xs transition-transform duration-200 ${openGroups.includes(g) ? '' : '-rotate-90'}`}>▾</span>
+            /* الوضع الكامل: ☰ + 🏠 + بحث + صفوف قابلة للطيّ */
+            <>
+              <div className="flex gap-2 mb-3">
+                <button type="button" onClick={toggleRail} title="طيّ القائمة"
+                  className="w-11 h-11 rounded-xl bg-white border border-ios-sep flex items-center justify-center text-lg text-ios-text active:opacity-60 transition">
+                  ☰
                 </button>
-                {openGroups.includes(g) && (
-                  <div className="card-ios overflow-hidden anim-pop">
-                    {navItems.filter(i => i.group === g).map(item => {
-                      const active = location.pathname === item.path
-                      return (
-                        <Link
-                          key={item.path}
-                          to={item.path}
-                          className={`nav-item border-b border-ios-sep last:border-b-0 ${active ? 'nav-item-active' : 'hover:bg-ios-bg'}`}
-                        >
-                          <span className="flex items-center gap-1.5">{item.label}</span>
-                          <span className={active ? 'text-ios-blue' : 'text-ios-label'}>‹</span>
-                        </Link>
-                      )
-                    })}
-                  </div>
-                )}
+                <Link to="/" title="لوحة التحكم"
+                  className={`w-11 h-11 rounded-xl border flex items-center justify-center text-lg transition active:opacity-60 ${location.pathname === '/' ? 'bg-ios-blue/15 border-ios-blue/30' : 'bg-white border-ios-sep'}`}>
+                  🏠
+                </Link>
+                <div className="flex-1 relative">
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ios-label">🔍</span>
+                  <input type="text" value={q} onChange={e => setQ(e.target.value)}
+                    placeholder="بحث..."
+                    className="input-ios !h-11 pr-9 text-sm" />
+                </div>
               </div>
-            ))
+
+              <div className="space-y-2">
+                {(q
+                  ? [{ group: 'نتائج البحث', items: navItems.filter(i => i.label.replace(/^\S+\s/, '').includes(q.trim())) }]
+                  : groups.map(g => ({ group: g, items: navItems.filter(i => i.group === g) }))
+                ).map(({ group, items }) => {
+                  const open = q ? true : openGroups.includes(group)
+                  if (!items.length && q) return null
+                  return (
+                    <div key={group} className="card-ios overflow-hidden">
+                      <button type="button" onClick={() => !q && toggleGroup(group)}
+                        className="nav-item w-full !py-3.5 cursor-pointer">
+                        <span className="flex items-center gap-2.5">
+                          <span>{groupIcons[group] || '📁'}</span>
+                          <span>{group}</span>
+                        </span>
+                        {!q && (
+                          <span className={`text-xs transition-transform duration-200 ${open ? 'text-ios-blue' : '-rotate-90 text-ios-label'}`}>▾</span>
+                        )}
+                      </button>
+                      {open && items.map(item => {
+                        const active = location.pathname === item.path
+                        const [icon, ...rest] = item.label.split(' ')
+                        return (
+                          <Link key={item.path} to={item.path}
+                            className={`flex items-center gap-2.5 px-4 py-3 pr-12 text-sm font-semibold border-t border-ios-sep transition active:opacity-60 ${active ? 'bg-ios-blue/10 text-ios-blue' : 'text-ios-text hover:bg-ios-bg'}`}>
+                            <span>{icon}</span>
+                            <span className="flex-1">{rest.join(' ')}</span>
+                            {active && <span className="w-1.5 h-1.5 rounded-full bg-ios-blue" />}
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )
+                })}
+              </div>
+            </>
           )}
         </aside>
 
