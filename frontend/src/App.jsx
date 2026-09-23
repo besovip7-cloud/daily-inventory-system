@@ -13,6 +13,9 @@ import Reports from './components/Reports'
 import Management from './components/Management'
 import Profile from './components/Profile'
 import Purchases from './components/Purchases'
+import Receiving from './components/Receiving'
+import Waste from './components/Waste'
+import ItemEdits from './components/ItemEdits'
 import { hasPerm, isAdmin } from './utils/permissions'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -62,6 +65,9 @@ function App() {
           <Route path="reports" element={hasPerm(user, 'reports.view') ? <Reports user={user} /> : <Navigate to="/" />} />
           <Route path="profile" element={<Profile user={user} setUser={setUser} />} />
           <Route path="purchases" element={hasPerm(user, 'purchases.view') ? <Purchases user={user} /> : <Navigate to="/" />} />
+          <Route path="receiving" element={hasPerm(user, 'receiving.view') ? <Receiving user={user} /> : <Navigate to="/" />} />
+          <Route path="waste" element={hasPerm(user, 'waste.view') ? <Waste user={user} /> : <Navigate to="/" />} />
+          <Route path="item-edits" element={hasPerm(user, 'items.edit') ? <ItemEdits user={user} /> : <Navigate to="/" />} />
         </Route>
       </Routes>
     </HashRouter>

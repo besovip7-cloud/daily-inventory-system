@@ -41,9 +41,12 @@ export default function Layout({ user }) {
     { path: '/', label: '📊 لوحة التحكم', perm: 'dashboard.view', group: 'الرئيسية' },
     { path: '/alerts', label: '🔔 التنبيهات', perm: 'alerts.view', group: 'الرئيسية' },
     { path: '/branches', label: '🏪 إدارة الفروع', perm: 'branches.view', group: 'الرئيسية' },
-    { path: '/inventory', label: '📦 جرد المخزون', perm: 'inventory.view', group: 'العمليات اليومية' },
-    { path: '/sales', label: '💰 المبيعات', perm: 'sales.view', group: 'العمليات اليومية' },
-    { path: '/purchases', label: '🛒 طلبات الشراء', perm: 'purchases.view', group: 'العمليات اليومية' },
+    { path: '/sales', label: '💰 المبيعات', perm: 'sales.view', group: 'مركز العمليات' },
+    { path: '/receiving', label: '🧾 المشتريات', perm: 'receiving.view', group: 'مركز العمليات' },
+    { path: '/purchases', label: '🛒 طلبات الشراء', perm: 'purchases.view', group: 'مركز العمليات' },
+    { path: '/waste', label: '🗑️ الهدر', perm: 'waste.view', group: 'مركز العمليات' },
+    { path: '/item-edits', label: '✏️ التعديلات', perm: 'items.edit', group: 'مركز العمليات' },
+    { path: '/inventory', label: '📦 جرد المخزون', perm: 'inventory.view', group: 'المتابعة' },
     { path: '/reports', label: '📈 التقارير', perm: 'reports.view', group: 'المتابعة' },
     { path: '/admin', label: '👑 الإدارة', adminOnly: true, group: 'الإدارة' },
     { path: '/manage', label: '🛠️ الإدارة العامة', adminOnly: true, group: 'الإدارة' },
@@ -68,7 +71,7 @@ export default function Layout({ user }) {
   }
   // بحث داخل القائمة
   const [q, setQ] = useState('')
-  const groupIcons = { 'الرئيسية': '🏠', 'العمليات اليومية': '📦', 'المتابعة': '📈', 'الإدارة': '⚙️' }
+  const groupIcons = { 'الرئيسية': '🏠', 'مركز العمليات': '🏭', 'المتابعة': '📈', 'الإدارة': '⚙️' }
   const toggleGroup = (g) => {
     setOpenGroups(prev => {
       const next = prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]

@@ -239,6 +239,39 @@ const createTables = async () => {
       )
     `);
 
+    // Allow 'waste' movement type for waste records
+    await pool.query(`ALTER TABLE inventory_movements DROP CONSTRAINT IF EXISTS inventory_movements_movement_type_check`);
+    await pool.query(`ALTER TABLE inventory_movements ADD CONSTRAINT inventory_movements_movement_type_check CHECK (movement_type IN ('sale', 'sale_adjust', 'count', 'purchase', 'waste'))`);
+
+    // Purchase Receipts (استلام شراء مباشر بدون طلب شراء)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS purchase_receipts (
+        id SERIAL PRIMARY KEY,
+        branch_id INTEGER REFERENCES branches(id) ON DELETE CASCADE,
+        inventory_item_id INTEGER REFERENCES inventory_items(id) ON DELETE CASCADE,
+        quantity NUMERIC(12,3) NOT NULL,
+        unit_price NUMERIC(12,2) DEFAULT 0,
+        supplier VARCHAR(150),
+        notes TEXT,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Waste Records (تسجيل الهدر)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS waste_records (
+        id SERIAL PRIMARY KEY,
+        branch_id INTEGER REFERENCES branches(id) ON DELETE CASCADE,
+        inventory_item_id INTEGER REFERENCES inventory_items(id) ON DELETE CASCADE,
+        quantity NUMERIC(12,3) NOT NULL,
+        reason VARCHAR(255),
+        notes TEXT,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Insert default branches فقط إذا الجدول فاضي (قاعدة جديدة) — حتى لا تتكرر بالقواعد الحية
     const branchCount = await pool.query('SELECT COUNT(*) FROM branches');
     if (parseInt(branchCount.rows[0].count) === 0) {
