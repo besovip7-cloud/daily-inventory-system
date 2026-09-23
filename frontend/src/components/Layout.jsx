@@ -39,12 +39,12 @@ export default function Layout({ user }) {
 
   const allNavItems = [
     { path: '/', label: '📊 لوحة التحكم', perm: 'dashboard.view', group: 'الرئيسية' },
+    { path: '/alerts', label: '🔔 التنبيهات', perm: 'alerts.view', group: 'الرئيسية' },
+    { path: '/branches', label: '🏪 إدارة الفروع', perm: 'branches.view', group: 'الرئيسية' },
     { path: '/inventory', label: '📦 جرد المخزون', perm: 'inventory.view', group: 'العمليات اليومية' },
     { path: '/sales', label: '💰 المبيعات', perm: 'sales.view', group: 'العمليات اليومية' },
     { path: '/purchases', label: '🛒 طلبات الشراء', perm: 'purchases.view', group: 'العمليات اليومية' },
-    { path: '/alerts', label: '🔔 التنبيهات', perm: 'alerts.view', group: 'المتابعة' },
     { path: '/reports', label: '📈 التقارير', perm: 'reports.view', group: 'المتابعة' },
-    { path: '/branches', label: '🏪 إدارة الفروع', perm: 'branches.view', group: 'الإدارة' },
     { path: '/admin', label: '👑 الإدارة', adminOnly: true, group: 'الإدارة' },
     { path: '/manage', label: '🛠️ الإدارة العامة', adminOnly: true, group: 'الإدارة' },
   ]
