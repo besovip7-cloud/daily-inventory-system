@@ -46,6 +46,10 @@ export default function Layout({ user }) {
     { path: '/purchases', label: '🛒 طلبات الشراء', perm: 'purchases.view', group: 'مركز العمليات' },
     { path: '/waste', label: '🗑️ الهدر', perm: 'waste.view', group: 'مركز العمليات' },
     { path: '/item-edits', label: '✏️ التعديلات', perm: 'items.edit', group: 'مركز العمليات' },
+    { path: '/catalog/groups', label: '🗂️ المجموعات والأقسام', perm: 'catalog.manage', group: 'المنتجات والخدمات' },
+    { path: '/catalog/units', label: '📏 الوحدات', perm: 'catalog.manage', group: 'المنتجات والخدمات' },
+    { path: '/catalog/recipes', label: '🍳 وصفات المنتجات', perm: 'catalog.manage', group: 'المنتجات والخدمات' },
+    { path: '/catalog/suppliers', label: '🚚 الموردون', perm: 'catalog.manage', group: 'المنتجات والخدمات' },
     { path: '/inventory', label: '📦 جرد المخزون', perm: 'inventory.view', group: 'المتابعة' },
     { path: '/reports', label: '📈 التقارير', perm: 'reports.view', group: 'المتابعة' },
     { path: '/admin', label: '👑 الإدارة', adminOnly: true, group: 'الإدارة' },
@@ -71,7 +75,7 @@ export default function Layout({ user }) {
   }
   // بحث داخل القائمة
   const [q, setQ] = useState('')
-  const groupIcons = { 'الرئيسية': '🏠', 'مركز العمليات': '🏭', 'المتابعة': '📈', 'الإدارة': '⚙️' }
+  const groupIcons = { 'الرئيسية': '🏠', 'مركز العمليات': '🏭', 'المنتجات والخدمات': '🏷️', 'المتابعة': '📈', 'الإدارة': '⚙️' }
   const toggleGroup = (g) => {
     setOpenGroups(prev => {
       const next = prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]

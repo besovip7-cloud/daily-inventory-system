@@ -23,7 +23,7 @@ const menuCategories = [
   { value: 'side', label: 'جانبي' }
 ]
 
-const emptyItemForm = { name: '', category: 'raw', unit: '', min_quantity: '', current_quantity: '', cost_per_unit: '' }
+const emptyItemForm = { name: '', category: 'raw', unit: '', min_quantity: '', current_quantity: '', cost_per_unit: '', department_id: '' }
 const emptyMenuForm = { name: '', category: 'main', price: '', cost: '' }
 
 // تحويل الكمية من وحدة المستخدم إلى وحدة مادة الجرد
@@ -540,7 +540,21 @@ function ItemsTab({ showMsg, headers, user }) {
   const [addToAll, setAddToAll] = useState(false)
   const [selected, setSelected] = useState([])
   const [showImport, setShowImport] = useState(false)
+  const [catalogGroups, setCatalogGroups] = useState([])
+  const [catalogUnits, setCatalogUnits] = useState([])
   const isAdmin = user?.role === 'admin'
+
+  useEffect(() => {
+    fetch(`${API_URL}/catalog/options`, { headers })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d) {
+          setCatalogGroups(d.groups || [])
+          setCatalogUnits(d.units || [])
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     fetch(`${API_URL}/branches`, { headers }).then(r => r.json()).then(d => {
@@ -584,7 +598,7 @@ function ItemsTab({ showMsg, headers, user }) {
     setItemForm({
       name: item.name, category: item.category || 'raw', unit: item.unit || '',
       min_quantity: item.min_quantity ?? '', current_quantity: item.current_quantity ?? '',
-      cost_per_unit: item.cost_per_unit ?? ''
+      cost_per_unit: item.cost_per_unit ?? '', department_id: String(item.department_id ?? '')
     })
     setTimeout(() => itemsFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
   }
@@ -596,7 +610,8 @@ function ItemsTab({ showMsg, headers, user }) {
       name: itemForm.name, category: itemForm.category, unit: itemForm.unit,
       min_quantity: parseFloat(itemForm.min_quantity) || 0,
       current_quantity: parseFloat(itemForm.current_quantity) || 0,
-      cost_per_unit: parseFloat(itemForm.cost_per_unit) || 0
+      cost_per_unit: parseFloat(itemForm.cost_per_unit) || 0,
+      department_id: itemForm.department_id ? parseInt(itemForm.department_id) : null
     })
     try {
       const isEdit = !!editingItem
@@ -678,7 +693,7 @@ function ItemsTab({ showMsg, headers, user }) {
 
       <div ref={itemsFormRef} className={`bg-ios-blue/10 rounded-2xl p-6 mb-6 ${editingItem ? 'ring-2 ring-ios-blue' : ''}`}>
         <div className="section-title"><h3 className="mb-4">{editingItem ? '✏️ تعديل مادة' : '➕ إضافة مادة جديدة'}</h3></div>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-3">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <input type="text" placeholder="اسم المادة *" required value={itemForm.name}
             onChange={e => setItemForm({...itemForm, name: e.target.value})}
             className="input-ios" />
@@ -687,19 +702,24 @@ function ItemsTab({ showMsg, headers, user }) {
             className="input-ios">
             {itemCategories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
-          <select value={itemForm.unit}
-            onChange={e => setItemForm({...itemForm, unit: e.target.value})}
+          <div>
+            <input type="text" list="catalog-units-list" placeholder="الوحدة (اختياري)"
+              value={itemForm.unit}
+              onChange={e => setItemForm({...itemForm, unit: e.target.value})}
+              className="input-ios" />
+            <datalist id="catalog-units-list">
+              {catalogUnits.map(u => <option key={u} value={u} />)}
+            </datalist>
+          </div>
+          <select value={itemForm.department_id}
+            onChange={e => setItemForm({...itemForm, department_id: e.target.value})}
             className="input-ios">
-            <option value="">بدون وحدة (اختياري)</option>
-            {itemForm.unit && !['كغم', 'غرام', 'لتر', 'مليلتر', 'قطعة', 'متر'].includes(itemForm.unit) && (
-              <option value={itemForm.unit}>{itemForm.unit} (حالية)</option>
-            )}
-            <option value="كغم">كغم</option>
-            <option value="غرام">غرام</option>
-            <option value="لتر">لتر</option>
-            <option value="مليلتر">مليلتر</option>
-            <option value="قطعة">قطعة</option>
-            <option value="متر">متر</option>
+            <option value="">بدون قسم</option>
+            {catalogGroups.map(g => (
+              <optgroup key={g.id} label={g.name}>
+                {(g.departments || []).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </optgroup>
+            ))}
           </select>
           <input type="number" placeholder="الحد الأدنى" min="0" step="0.01" value={itemForm.min_quantity}
             onChange={e => setItemForm({...itemForm, min_quantity: e.target.value})}
@@ -707,7 +727,7 @@ function ItemsTab({ showMsg, headers, user }) {
           <input type="number" placeholder="الكمية الحالية" min="0" step="0.01" value={itemForm.current_quantity}
             onChange={e => setItemForm({...itemForm, current_quantity: e.target.value})}
             className="input-ios" />
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 md:col-span-2">
             {!editingItem && (
               <label className="flex items-center gap-2 text-sm font-semibold text-ios-text cursor-pointer select-none">
                 <input type="checkbox" checked={addToAll} onChange={e => setAddToAll(e.target.checked)}

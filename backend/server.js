@@ -15,6 +15,7 @@ const settingsRoutes = require('./routes/settings');
 const purchaseRoutes = require('./routes/purchases');
 const rolesRoutes = require('./routes/roles');
 const operationsRoutes = require('./routes/operations');
+const catalogRoutes = require('./routes/catalog');
 
 const app = express();
 
@@ -50,6 +51,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/purchases', purchaseRoutes);
 app.use('/api/roles', rolesRoutes);
 app.use('/api/operations', operationsRoutes);
+app.use('/api/catalog', catalogRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString(), version: '1.0.0' });

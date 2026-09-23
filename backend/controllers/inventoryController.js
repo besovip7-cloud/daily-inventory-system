@@ -25,7 +25,7 @@ exports.getItems = async (req, res) => {
 
 exports.createItem = async (req, res) => {
   try {
-    let { branch_id, name, category, unit, min_quantity, current_quantity, cost_per_unit, barcode } = req.body;
+    let { branch_id, name, category, unit, min_quantity, current_quantity, cost_per_unit, barcode, department_id } = req.body;
 
     // Managers can only add items to their own branch
     if (req.user.role !== 'admin') {
@@ -47,9 +47,10 @@ exports.createItem = async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO inventory_items (branch_id, name, category, unit, min_quantity, current_quantity, cost_per_unit, barcode)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [branch_id, name, category, unit, min_quantity, current_quantity, cost_per_unit, barcode]
+      `INSERT INTO inventory_items (branch_id, name, category, unit, min_quantity, current_quantity, cost_per_unit, barcode, department_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [branch_id, name, category, unit, min_quantity, current_quantity, cost_per_unit, barcode,
+       department_id ? parseInt(department_id) : null]
     );
 
     // Check alerts
@@ -79,7 +80,7 @@ exports.updateItem = async (req, res) => {
     if (!(await canManageItem(req, res))) return;
 
     const { id } = req.params;
-    const { name, category, unit, min_quantity, current_quantity, cost_per_unit, barcode } = req.body;
+    const { name, category, unit, min_quantity, current_quantity, cost_per_unit, barcode, department_id } = req.body;
 
     // Reject duplicate names (excluding the item being edited)
     const itemBranch = await pool.query('SELECT branch_id FROM inventory_items WHERE id = $1', [id]);
@@ -96,9 +97,10 @@ exports.updateItem = async (req, res) => {
     const result = await pool.query(
       `UPDATE inventory_items 
        SET name = $1, category = $2, unit = $3, min_quantity = $4, 
-           current_quantity = $5, cost_per_unit = $6, barcode = $7
-       WHERE id = $8 RETURNING *`,
-      [name, category, unit, min_quantity, current_quantity, cost_per_unit, barcode, id]
+           current_quantity = $5, cost_per_unit = $6, barcode = $7, department_id = $8
+       WHERE id = $9 RETURNING *`,
+      [name, category, unit, min_quantity, current_quantity, cost_per_unit, barcode,
+       department_id ? parseInt(department_id) : null, id]
     );
 
     if (result.rows.length === 0) {

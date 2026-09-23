@@ -16,6 +16,10 @@ import Purchases from './components/Purchases'
 import Receiving from './components/Receiving'
 import Waste from './components/Waste'
 import ItemEdits from './components/ItemEdits'
+import Groups from './components/Groups'
+import Units from './components/Units'
+import Suppliers from './components/Suppliers'
+import Recipes from './components/Recipes'
 import { hasPerm, isAdmin } from './utils/permissions'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -68,6 +72,10 @@ function App() {
           <Route path="receiving" element={hasPerm(user, 'receiving.view') ? <Receiving user={user} /> : <Navigate to="/" />} />
           <Route path="waste" element={hasPerm(user, 'waste.view') ? <Waste user={user} /> : <Navigate to="/" />} />
           <Route path="item-edits" element={hasPerm(user, 'items.edit') ? <ItemEdits user={user} /> : <Navigate to="/" />} />
+          <Route path="catalog/groups" element={hasPerm(user, 'catalog.manage') ? <Groups /> : <Navigate to="/" />} />
+          <Route path="catalog/units" element={hasPerm(user, 'catalog.manage') ? <Units /> : <Navigate to="/" />} />
+          <Route path="catalog/recipes" element={hasPerm(user, 'catalog.manage') ? <Recipes /> : <Navigate to="/" />} />
+          <Route path="catalog/suppliers" element={hasPerm(user, 'catalog.manage') ? <Suppliers /> : <Navigate to="/" />} />
         </Route>
       </Routes>
     </HashRouter>

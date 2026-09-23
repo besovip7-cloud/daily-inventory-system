@@ -18,13 +18,13 @@ const requireAnyPerm = (...perms) => async (req, res, next) => {
 
 router.use(auth);
 
-router.get('/menu', requirePerm('sales.view'), salesController.getMenuItems);
+router.get('/menu', requireAnyPerm('sales.view', 'catalog.manage'), salesController.getMenuItems);
 router.post('/menu', requirePerm('catalog.manage'), salesController.createMenuItem);
 router.put('/menu/:id', requireAnyPerm('catalog.manage', 'items.edit'), salesController.updateMenuItem);
 router.delete('/menu', adminOnly, salesController.deleteMenuItems);
 router.delete('/menu/:id', requirePerm('catalog.manage'), salesController.deleteMenuItem);
 
-router.get('/recipes', requirePerm('sales.view'), salesController.getRecipes);
+router.get('/recipes', requireAnyPerm('sales.view', 'catalog.manage'), salesController.getRecipes);
 router.post('/recipes', requirePerm('catalog.manage'), salesController.saveRecipe);
 router.delete('/recipes/:id', requirePerm('catalog.manage'), salesController.deleteRecipe);
 

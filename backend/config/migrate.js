@@ -272,6 +272,64 @@ const createTables = async () => {
       )
     `);
 
+    // مجموعات المواد الخام + الأقسام التابعة لها
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS item_groups (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(150) NOT NULL UNIQUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS item_departments (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER REFERENCES item_groups(id) ON DELETE CASCADE,
+        name VARCHAR(150) NOT NULL,
+        UNIQUE(group_id, name),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // وحدات القياس (قائمة اقتراحات لوحدة المادة)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS units (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(50) NOT NULL UNIQUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // الموردون
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS suppliers (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(150) NOT NULL,
+        phone VARCHAR(30),
+        whatsapp VARCHAR(30),
+        email VARCHAR(150),
+        notes TEXT,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // ربط مادة الجرد بقسمها (اختياري)
+    await pool.query(`ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS department_id INTEGER REFERENCES item_departments(id) ON DELETE SET NULL`);
+
+    // بذر الوحدات الافتراضية مرة وحدة (جدول جديد)
+    const unitsCount = await pool.query('SELECT COUNT(*) FROM units');
+    if (parseInt(unitsCount.rows[0].count) === 0) {
+      await pool.query(`
+        INSERT INTO units (name) VALUES
+        ('غرام'), ('كيلوغرام'), ('لتر'), ('مليلتر'), ('قطعة'),
+        ('كيس'), ('علبة'), ('عبوة'), ('صحن'), ('كوب')
+      `);
+      console.log('✅ 10 units seeded');
+    } else {
+      console.log('⏭️  Units already exist — skipping seed');
+    }
+
     // Insert default branches فقط إذا الجدول فاضي (قاعدة جديدة) — حتى لا تتكرر بالقواعد الحية
     const branchCount = await pool.query('SELECT COUNT(*) FROM branches');
     if (parseInt(branchCount.rows[0].count) === 0) {
