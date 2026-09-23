@@ -53,6 +53,29 @@ export default function Layout({ user }) {
     item.adminOnly ? isAdmin(user) : hasPerm(user, item.perm)
   )
   const groups = [...new Set(navItems.map(i => i.group))]
+  // أكورديون: المجموعة تنطوي وتنفتح بالضغط على عنوانها
+  const [openGroups, setOpenGroups] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sidebarGroups')) || groups }
+    catch { return groups }
+  })
+  const toggleGroup = (g) => {
+    setOpenGroups(prev => {
+      const next = prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]
+      localStorage.setItem('sidebarGroups', JSON.stringify(next))
+      return next
+    })
+  }
+  // الصفحة الحالية داخل مجموعة مطوية؟ انفتحها تلقائياً
+  useEffect(() => {
+    const activeItem = navItems.find(i => i.path === location.pathname)
+    if (activeItem && !openGroups.includes(activeItem.group)) {
+      setOpenGroups(prev => {
+        const next = [...prev, activeItem.group]
+        localStorage.setItem('sidebarGroups', JSON.stringify(next))
+        return next
+      })
+    }
+  }, [location.pathname])
   const showBell = isAdmin(user) || user?.role === 'manager'
   const roleLabels = { admin: 'مدير النظام', manager: 'مدير فرع', accountant: 'محاسب', staff: 'موظف' }
   const roleLabel = user?.custom_role_name || roleLabels[user?.role] || ''
@@ -94,22 +117,28 @@ export default function Layout({ user }) {
         <aside className="hidden md:block w-full md:w-72 shrink-0 p-4">
           {groups.map(g => (
             <div key={g} className="mb-2">
-              <p className="nav-group-title">{g}</p>
-              <div className="card-ios overflow-hidden">
-                {navItems.filter(i => i.group === g).map(item => {
-                  const active = location.pathname === item.path
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      className={`nav-item border-b border-ios-sep last:border-b-0 ${active ? 'nav-item-active' : 'hover:bg-ios-bg'}`}
-                    >
-                      <span className="flex items-center gap-1.5">{item.label}</span>
-                      <span className={active ? 'text-ios-blue' : 'text-ios-label'}>‹</span>
-                    </Link>
-                  )
-                })}
-              </div>
+              <button type="button" onClick={() => toggleGroup(g)}
+                className="nav-group-title w-full flex items-center justify-between cursor-pointer active:opacity-60">
+                <span>{g}</span>
+                <span className={`text-ios-label text-xs transition-transform duration-200 ${openGroups.includes(g) ? '' : '-rotate-90'}`}>▾</span>
+              </button>
+              {openGroups.includes(g) && (
+                <div className="card-ios overflow-hidden anim-pop">
+                  {navItems.filter(i => i.group === g).map(item => {
+                    const active = location.pathname === item.path
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        className={`nav-item border-b border-ios-sep last:border-b-0 ${active ? 'nav-item-active' : 'hover:bg-ios-bg'}`}
+                      >
+                        <span className="flex items-center gap-1.5">{item.label}</span>
+                        <span className={active ? 'text-ios-blue' : 'text-ios-label'}>‹</span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           ))}
         </aside>
