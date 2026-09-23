@@ -58,6 +58,14 @@ export default function Layout({ user }) {
     try { return JSON.parse(localStorage.getItem('sidebarGroups')) || groups }
     catch { return groups }
   })
+  // طيّ السايد بار كله — شريط أيقونات نحيف
+  const [rail, setRail] = useState(() => localStorage.getItem('sidebarRail') === '1')
+  const toggleRail = () => {
+    setRail(prev => {
+      localStorage.setItem('sidebarRail', prev ? '0' : '1')
+      return !prev
+    })
+  }
   const toggleGroup = (g) => {
     setOpenGroups(prev => {
       const next = prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]
@@ -113,34 +121,62 @@ export default function Layout({ user }) {
       </nav>
 
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row">
-        {/* Sidebar — desktop only, iOS grouped list */}
-        <aside className="hidden md:block w-full md:w-96 shrink-0 p-5">
-          {groups.map(g => (
-            <div key={g} className="mb-2">
-              <button type="button" onClick={() => toggleGroup(g)}
-                className="nav-group-title w-full flex items-center justify-between cursor-pointer active:opacity-60">
-                <span>{g}</span>
-                <span className={`text-ios-label text-xs transition-transform duration-200 ${openGroups.includes(g) ? '' : '-rotate-90'}`}>▾</span>
-              </button>
-              {openGroups.includes(g) && (
-                <div className="card-ios overflow-hidden anim-pop">
-                  {navItems.filter(i => i.group === g).map(item => {
-                    const active = location.pathname === item.path
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        className={`nav-item border-b border-ios-sep last:border-b-0 ${active ? 'nav-item-active' : 'hover:bg-ios-bg'}`}
-                      >
-                        <span className="flex items-center gap-1.5">{item.label}</span>
-                        <span className={active ? 'text-ios-blue' : 'text-ios-label'}>‹</span>
-                      </Link>
-                    )
-                  })}
-                </div>
-              )}
+        {/* Sidebar — desktop only: كامل أو شريط أيقونات نحيف */}
+        <aside className={`hidden md:block shrink-0 p-4 transition-all ${rail ? 'w-20' : 'w-96'}`}>
+          <button type="button" onClick={toggleRail}
+            title={rail ? 'توسيع القائمة' : 'طيّ القائمة'}
+            className="w-full mb-3 py-2 rounded-2xl bg-white border border-ios-sep text-ios-label text-sm font-bold active:opacity-60 transition">
+            {rail ? '☰' : '⇥ طيّ القائمة'}
+          </button>
+
+          {rail ? (
+            /* الوضع النحيف: أيقونات بس مع تلميح */
+            <div className="flex flex-col items-center gap-1">
+              {navItems.map((item, idx) => {
+                const active = location.pathname === item.path
+                const [icon] = item.label.split(' ')
+                const prev = idx > 0 ? navItems[idx - 1] : null
+                return (
+                  <div key={item.path} className="flex flex-col items-center">
+                    {(!prev || prev.group !== item.group) && idx > 0 && (
+                      <div className="w-8 h-px bg-ios-sep my-1.5" />
+                    )}
+                    <Link to={item.path} title={item.label}
+                      className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl transition active:scale-90 ${active ? 'bg-ios-blue/15' : 'hover:bg-ios-fill'}`}>
+                      {icon}
+                    </Link>
+                  </div>
+                )
+              })}
             </div>
-          ))}
+          ) : (
+            groups.map(g => (
+              <div key={g} className="mb-2">
+                <button type="button" onClick={() => toggleGroup(g)}
+                  className="nav-group-title w-full flex items-center justify-between cursor-pointer active:opacity-60">
+                  <span>{g}</span>
+                  <span className={`text-ios-label text-xs transition-transform duration-200 ${openGroups.includes(g) ? '' : '-rotate-90'}`}>▾</span>
+                </button>
+                {openGroups.includes(g) && (
+                  <div className="card-ios overflow-hidden anim-pop">
+                    {navItems.filter(i => i.group === g).map(item => {
+                      const active = location.pathname === item.path
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          className={`nav-item border-b border-ios-sep last:border-b-0 ${active ? 'nav-item-active' : 'hover:bg-ios-bg'}`}
+                        >
+                          <span className="flex items-center gap-1.5">{item.label}</span>
+                          <span className={active ? 'text-ios-blue' : 'text-ios-label'}>‹</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </aside>
 
         {/* Main Content */}
