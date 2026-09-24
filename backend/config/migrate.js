@@ -356,24 +356,16 @@ const createTables = async () => {
       )
     `);
 
-    // بذر بنود الفحص مرة وحدة (جدول جديد)
+    // بذر بنود سجل التنظيف اليومي (SJ-PRP-F06) — مرة وحدة
     const checklistCount = await pool.query('SELECT COUNT(*) FROM checklist_items');
     if (parseInt(checklistCount.rows[0].count) === 0) {
       const seedItems = [
-        ['تم فتح المحل', 'morning'],
-        ['تنظيف شامل وغسل الأرضية', 'both'],
-        ['تنظيف الثلاجات والفريزر', 'both'],
-        ['تم فتح الصندوق', 'morning'],
-        ['استلام عجينة الشاورما من المورد', 'morning'],
-        ['تم إحضار المشتريات', 'morning'],
-        ['تم رفع الجرد', 'both'],
-        ['تم رفع المبيعات', 'both'],
-        ['إرسال كشف المبيعات اليومي', 'evening'],
-        ['إيصال النفايات لسيارة الزبالة والمكب', 'evening'],
-        ['تقفيل كشف حساب المورد', 'evening'],
-        ['تقفيل الصندوق وإيداع المبلغ لحساب الشركة', 'evening'],
-        ['كشف الحساب الختامي', 'evening'],
-        ['تم غلق المحل', 'evening'],
+        ['الجدران', 'both'],
+        ['الأرضية', 'both'],
+        ['الطاولات', 'both'],
+        ['المكان', 'both'],
+        ['البرادات', 'both'],
+        ['السنك', 'both'],
       ];
       for (let i = 0; i < seedItems.length; i++) {
         await pool.query(
@@ -381,9 +373,25 @@ const createTables = async () => {
           [seedItems[i][0], seedItems[i][1], i + 1]
         );
       }
-      console.log('✅ 14 checklist items seeded');
+      console.log('✅ 6 cleaning checklist items seeded');
     } else {
       console.log('⏭️  Checklist items already exist — skipping seed');
+    }
+
+    // استبدال لمرة وحدة: القوائم القديمة (بنود التشغيل) تستبدل ببنود سجل التنظيف الرسمي
+    const hasCleaning = await pool.query(
+      `SELECT COUNT(*) FROM checklist_items WHERE title = 'الجدران'`
+    );
+    if (parseInt(hasCleaning.rows[0].count) === 0) {
+      await pool.query('UPDATE checklist_items SET is_active = FALSE');
+      const cleaningItems = ['الجدران', 'الأرضية', 'الطاولات', 'المكان', 'البرادات', 'السنك'];
+      for (let i = 0; i < cleaningItems.length; i++) {
+        await pool.query(
+          `INSERT INTO checklist_items (title, period, sort_order) VALUES ($1, 'both', $2)`,
+          [cleaningItems[i], i + 1]
+        );
+      }
+      console.log('✅ Checklist replaced with official cleaning form items (SJ-PRP-F06)');
     }
 
     // Insert default branches فقط إذا الجدول فاضي (قاعدة جديدة) — حتى لا تتكرر بالقواعد الحية

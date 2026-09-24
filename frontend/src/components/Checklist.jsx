@@ -267,7 +267,7 @@ export default function Checklist({ user }) {
 
   return (
     <div dir="rtl">
-      <PageHeader title="📋 قائمة الفحص" subtitle="فحص يومي للفرع — صباحي ومسائي" />
+      <PageHeader title="📋 سجل التنظيف اليومي" subtitle="SJ-PRP-F06 — فحص صباحي ومسائي لأقسام الفرع" />
 
       {message && (
         <div className={`p-4 rounded-2xl mb-4 font-bold anim-pop ${message.includes('✅') ? 'bg-ios-green/15 text-[#1F7A33]' : 'bg-ios-red/10 text-ios-red'}`}>
