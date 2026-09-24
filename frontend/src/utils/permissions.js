@@ -3,10 +3,10 @@ const BUILT_IN = {
   admin: ['*'],
   manager: ['dashboard.view', 'inventory.view', 'inventory.edit', 'branches.view',
     'sales.view', 'sales.create', 'purchases.view', 'purchases.create', 'purchases.confirm',
-    'receiving.view', 'receiving.manage', 'waste.view', 'waste.manage', 'alerts.view'],
+    'receiving.view', 'receiving.manage', 'waste.view', 'waste.manage', 'checklist.view', 'alerts.view'],
   staff: ['dashboard.view', 'inventory.view', 'inventory.edit', 'branches.view',
     'sales.view', 'sales.create', 'purchases.view', 'purchases.create', 'purchases.confirm',
-    'receiving.view', 'receiving.manage', 'waste.view', 'waste.manage', 'alerts.view'],
+    'receiving.view', 'receiving.manage', 'waste.view', 'waste.manage', 'checklist.view', 'alerts.view'],
   accountant: ['sales.view', 'reports.view'],
 }
 

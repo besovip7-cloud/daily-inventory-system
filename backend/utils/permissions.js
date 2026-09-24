@@ -16,6 +16,7 @@ const PERMISSIONS = [
   { key: 'waste.view', label: '🗑️ الهدر — عرض' },
   { key: 'waste.manage', label: '🗑️ الهدر — تسجيل' },
   { key: 'items.edit', label: '✏️ تعديل بيانات الأصناف والمواد' },
+  { key: 'checklist.view', label: '📋 قائمة الفحص — عرض وتعليم' },
   { key: 'alerts.view', label: '🔔 التنبيهات — عرض ومعالجة' },
   { key: 'reports.view', label: '📈 التقارير — عرض وتصدير' },
   { key: 'users.manage', label: '👥 إدارة المستخدمين' },
@@ -28,10 +29,10 @@ const BUILT_IN = {
   admin: ['*'],
   manager: ['dashboard.view', 'inventory.view', 'inventory.edit', 'branches.view',
     'sales.view', 'sales.create', 'purchases.view', 'purchases.create', 'purchases.confirm',
-    'receiving.view', 'receiving.manage', 'waste.view', 'waste.manage', 'alerts.view'],
+    'receiving.view', 'receiving.manage', 'waste.view', 'waste.manage', 'checklist.view', 'alerts.view'],
   staff: ['dashboard.view', 'inventory.view', 'inventory.edit', 'branches.view',
     'sales.view', 'sales.create', 'purchases.view', 'purchases.create', 'purchases.confirm',
-    'receiving.view', 'receiving.manage', 'waste.view', 'waste.manage', 'alerts.view'],
+    'receiving.view', 'receiving.manage', 'waste.view', 'waste.manage', 'checklist.view', 'alerts.view'],
   accountant: ['sales.view', 'reports.view'],
 };
 

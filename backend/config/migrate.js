@@ -330,6 +330,62 @@ const createTables = async () => {
       console.log('⏭️  Units already exist — skipping seed');
     }
 
+    // بنود قائمة الفحص اليومية + تعليمات الفروع
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS checklist_items (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        period VARCHAR(20) NOT NULL DEFAULT 'both' CHECK (period IN ('morning', 'evening', 'both')),
+        sort_order INTEGER DEFAULT 0,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS checklist_checks (
+        id SERIAL PRIMARY KEY,
+        branch_id INTEGER REFERENCES branches(id) ON DELETE CASCADE,
+        item_id INTEGER REFERENCES checklist_items(id) ON DELETE CASCADE,
+        check_date DATE NOT NULL,
+        period VARCHAR(20) NOT NULL CHECK (period IN ('morning', 'evening')),
+        checked_by INTEGER REFERENCES users(id),
+        checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        note TEXT,
+        UNIQUE (branch_id, item_id, check_date, period)
+      )
+    `);
+
+    // بذر بنود الفحص مرة وحدة (جدول جديد)
+    const checklistCount = await pool.query('SELECT COUNT(*) FROM checklist_items');
+    if (parseInt(checklistCount.rows[0].count) === 0) {
+      const seedItems = [
+        ['تم فتح المحل', 'morning'],
+        ['تنظيف شامل وغسل الأرضية', 'both'],
+        ['تنظيف الثلاجات والفريزر', 'both'],
+        ['تم فتح الصندوق', 'morning'],
+        ['استلام عجينة الشاورما من المورد', 'morning'],
+        ['تم إحضار المشتريات', 'morning'],
+        ['تم رفع الجرد', 'both'],
+        ['تم رفع المبيعات', 'both'],
+        ['إرسال كشف المبيعات اليومي', 'evening'],
+        ['إيصال النفايات لسيارة الزبالة والمكب', 'evening'],
+        ['تقفيل كشف حساب المورد', 'evening'],
+        ['تقفيل الصندوق وإيداع المبلغ لحساب الشركة', 'evening'],
+        ['كشف الحساب الختامي', 'evening'],
+        ['تم غلق المحل', 'evening'],
+      ];
+      for (let i = 0; i < seedItems.length; i++) {
+        await pool.query(
+          'INSERT INTO checklist_items (title, period, sort_order) VALUES ($1, $2, $3)',
+          [seedItems[i][0], seedItems[i][1], i + 1]
+        );
+      }
+      console.log('✅ 14 checklist items seeded');
+    } else {
+      console.log('⏭️  Checklist items already exist — skipping seed');
+    }
+
     // Insert default branches فقط إذا الجدول فاضي (قاعدة جديدة) — حتى لا تتكرر بالقواعد الحية
     const branchCount = await pool.query('SELECT COUNT(*) FROM branches');
     if (parseInt(branchCount.rows[0].count) === 0) {

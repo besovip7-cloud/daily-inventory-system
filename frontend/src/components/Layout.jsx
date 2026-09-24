@@ -50,6 +50,7 @@ export default function Layout({ user }) {
     { path: '/catalog/units', label: '📏 الوحدات', perm: 'catalog.manage', group: 'المنتجات والخدمات' },
     { path: '/catalog/recipes', label: '🍳 وصفات المنتجات', perm: 'catalog.manage', group: 'المنتجات والخدمات' },
     { path: '/catalog/suppliers', label: '🚚 الموردون', perm: 'catalog.manage', group: 'المنتجات والخدمات' },
+    { path: '/checklist', label: '📋 قائمة الفحص', perm: 'checklist.view', group: 'المتابعة' },
     { path: '/inventory', label: '📦 جرد المخزون', perm: 'inventory.view', group: 'المتابعة' },
     { path: '/reports', label: '📈 التقارير', perm: 'reports.view', group: 'المتابعة' },
     { path: '/admin', label: '👑 الإدارة', adminOnly: true, group: 'الإدارة' },

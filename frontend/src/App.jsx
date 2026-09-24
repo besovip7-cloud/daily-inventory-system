@@ -20,6 +20,7 @@ import Groups from './components/Groups'
 import Units from './components/Units'
 import Suppliers from './components/Suppliers'
 import Recipes from './components/Recipes'
+import Checklist from './components/Checklist'
 import { hasPerm, isAdmin } from './utils/permissions'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -76,6 +77,7 @@ function App() {
           <Route path="catalog/units" element={hasPerm(user, 'catalog.manage') ? <Units /> : <Navigate to="/" />} />
           <Route path="catalog/recipes" element={hasPerm(user, 'catalog.manage') ? <Recipes /> : <Navigate to="/" />} />
           <Route path="catalog/suppliers" element={hasPerm(user, 'catalog.manage') ? <Suppliers /> : <Navigate to="/" />} />
+          <Route path="checklist" element={hasPerm(user, 'checklist.view') ? <Checklist user={user} /> : <Navigate to="/" />} />
         </Route>
       </Routes>
     </HashRouter>
