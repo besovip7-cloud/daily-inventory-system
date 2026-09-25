@@ -1,6 +1,8 @@
 import { getToken } from '../utils/token'
+import { hasPerm } from '../utils/permissions'
 import { useState, useEffect } from 'react'
 import { visibleBranches } from '../utils/branchScope'
+import { printReport } from '../utils/export'
 import PageHeader from './PageHeader'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
@@ -10,18 +12,48 @@ const ITEM_PERIODS = { morning: 'صباحي', evening: 'مسائي', both: 'كل
 
 const todayStr = () => new Date().toISOString().split('T')[0]
 
+// ضغط الصورة بالمتصفح: أبعاد قصوى 800px وجودة JPEG 0.7
+const compressImage = (file) => new Promise((resolve, reject) => {
+  const img = new Image()
+  const url = URL.createObjectURL(file)
+  img.onload = () => {
+    const max = 800
+    const scale = Math.min(1, max / Math.max(img.width, img.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(img.width * scale)
+    canvas.height = Math.round(img.height * scale)
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+    URL.revokeObjectURL(url)
+    resolve(canvas.toDataURL('image/jpeg', 0.7))
+  }
+  img.onerror = (e) => { URL.revokeObjectURL(url); reject(e) }
+  img.src = url
+})
+
 export default function Checklist({ user }) {
   const token = getToken()
   const headers = { Authorization: `Bearer ${token}` }
   const isAdmin = user?.role === 'admin'
+  const canApprove = hasPerm(user, 'checklist.approve')
 
   const [branches, setBranches] = useState([])
   const [selectedBranch, setSelectedBranch] = useState('')
   const [date, setDate] = useState(todayStr())
+  const [view, setView] = useState('daily') // 'daily' | 'monthly'
+  const [month, setMonth] = useState(todayStr().slice(0, 7))
+  const [monthData, setMonthData] = useState(null)
   const [checks, setChecks] = useState({ morning: null, evening: null }) // كل فترة: {items, progress}
+  const [approval, setApproval] = useState({ approved: false, approved_by_name: null, approved_at: null, approval_note: null })
+  const [approveNote, setApproveNote] = useState('')
   const [pending, setPending] = useState(new Set())
   const [message, setMessage] = useState('')
   const [overview, setOverview] = useState([])
+
+  // الملاحظات والصور
+  const [noteEditor, setNoteEditor] = useState(null) // row المفتوح
+  const [drafts, setDrafts] = useState({}) // {morning: {note, photo}, evening: {...}}
+  const [noteSaving, setNoteSaving] = useState(false)
+  const [lightbox, setLightbox] = useState(null)
 
   // إدارة البنود (أدمن)
   const [showManage, setShowManage] = useState(false)
@@ -42,6 +74,8 @@ export default function Checklist({ user }) {
   }, [])
 
   useEffect(() => { loadChecks() }, [selectedBranch, date])
+
+  useEffect(() => { if (view === 'monthly') loadMonth() }, [view, selectedBranch, month])
 
   useEffect(() => {
     if (isAdmin) loadOverview()
@@ -64,6 +98,26 @@ export default function Checklist({ user }) {
     Promise.all([fetchPeriod('morning'), fetchPeriod('evening')])
       .then(([m, e]) => setChecks({ morning: m, evening: e }))
       .catch(() => setChecks({ morning: { items: [], progress: { done: 0, total: 0 } }, evening: { items: [], progress: { done: 0, total: 0 } } }))
+    // حالة الاعتماد تيجي مع رد الفترة الصباحية
+    const branchParam = isAdmin ? `branch_id=${selectedBranch}&` : ''
+    fetch(`${API_URL}/checklist/checks?${branchParam}date=${date}&period=morning`, { headers })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(d => setApproval({
+        approved: !!d.approved,
+        approved_by_name: d.approved_by_name || null,
+        approved_at: d.approved_at || null,
+        approval_note: d.approval_note || null
+      }))
+      .catch(() => {})
+  }
+
+  const loadMonth = () => {
+    if (!selectedBranch) return
+    const branchParam = isAdmin ? `branch_id=${selectedBranch}&` : ''
+    fetch(`${API_URL}/checklist/month?${branchParam}month=${month}`, { headers })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(d => setMonthData(d))
+      .catch(() => setMonthData(null))
   }
 
   const loadOverview = () => {
@@ -104,7 +158,6 @@ export default function Checklist({ user }) {
   const applicable = (item, period) => item.period === 'both' || item.period === period
 
   const toggle = async (item, period) => {
-    const key = period === 'morning' ? 'm' : 'e'
     const periodData = checks[period]
     const current = periodData?.items.find(i => i.id === item.id)
     const target = !current?.checked
@@ -122,6 +175,14 @@ export default function Checklist({ user }) {
         progress: { ...prev[period].progress, done: prev[period].progress.done + (target ? 1 : -1) }
       }
     }))
+    const revert = () => setChecks(prev => ({
+      ...prev,
+      [period]: {
+        ...prev[period],
+        items: prev[period].items.map(i => i.id === item.id ? (current || { ...i, checked: false }) : i),
+        progress: { ...prev[period].progress, done: prev[period].progress.done + (target ? -1 : 1) }
+      }
+    }))
     try {
       const res = await fetch(`${API_URL}/checklist/checks`, {
         method: 'POST',
@@ -136,25 +197,11 @@ export default function Checklist({ user }) {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setChecks(prev => ({
-          ...prev,
-          [period]: {
-            ...prev[period],
-            items: prev[period].items.map(i => i.id === item.id ? (current || { ...i, checked: false }) : i),
-            progress: { ...prev[period].progress, done: prev[period].progress.done + (target ? -1 : 1) }
-          }
-        }))
+        revert()
         show('❌ ' + (data.message || 'فشل الحفظ'))
       }
     } catch {
-      setChecks(prev => ({
-        ...prev,
-        [period]: {
-          ...prev[period],
-          items: prev[period].items.map(i => i.id === item.id ? (current || { ...i, checked: false }) : i),
-          progress: { ...prev[period].progress, done: prev[period].progress.done + (target ? -1 : 1) }
-        }
-      }))
+      revert()
       show('❌ خطأ في الاتصال')
     }
     setPending(prev => {
@@ -164,23 +211,93 @@ export default function Checklist({ user }) {
     })
   }
 
-  // خلية التعليم (زر أو شرطة إذا البند ما يخص الفترة)
-  const checkCell = (row, period, key) => {
-    if (!applicable(row, period)) {
-      return <span className="text-ios-label text-sm">—</span>
+  // ── الملاحظات والصور ──
+  const openNoteEditor = (row) => {
+    const d = {}
+    Object.keys(PERIODS).forEach(p => {
+      const c = p === 'morning' ? row.m : row.e
+      d[p] = { note: c?.note || '', photo: c?.photo || null }
+    })
+    setDrafts(d)
+    setNoteEditor(row)
+  }
+
+  const pickPhoto = async (e, period) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try {
+      const dataUrl = await compressImage(file)
+      if (dataUrl.length > 700000) return show('❌ الصورة كبيرة جداً — أعد تصويرها')
+      setDrafts(prev => ({ ...prev, [period]: { ...prev[period], photo: dataUrl } }))
+    } catch { show('❌ ما كدرت أقرأ الصورة') }
+  }
+
+  const saveNotes = async () => {
+    setNoteSaving(true)
+    let okCount = 0
+    for (const period of Object.keys(PERIODS)) {
+      if (!applicable(noteEditor, period)) continue
+      const current = checks[period]?.items.find(i => i.id === noteEditor.id)
+      const draft = drafts[period] || { note: '', photo: null }
+      // لا تنشئ سجلاً فارغاً لبند غير معلّم بدون ملاحظة ولا صورة
+      if (!current?.checked && !draft.note.trim() && !draft.photo) continue
+      try {
+        const res = await fetch(`${API_URL}/checklist/checks`, {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            item_id: noteEditor.id,
+            date,
+            period,
+            checked: !!current?.checked,
+            note: draft.note,
+            ...(draft.photo ? { photo: draft.photo } : {}),
+            ...(isAdmin ? { branch_id: parseInt(selectedBranch) } : {})
+          })
+        })
+        const data = await res.json().catch(() => ({}))
+        if (res.ok) okCount++
+        else show('❌ ' + (data.message || 'فشل حفظ الملاحظة'))
+      } catch { show('❌ خطأ في الاتصال') }
     }
-    const c = row[key]
-    const pendKey = `${row.id}:${period}`
-    return (
-      <button type="button" onClick={() => !pending.has(pendKey) && toggle(row, period)}
-        disabled={pending.has(pendKey)}
-        title={PERIODS[period]}
-        className={`w-9 h-9 rounded-full flex items-center justify-center text-lg transition active:scale-90 mx-auto ${
-          c ? 'bg-ios-green text-white' : 'border-2 border-ios-sep text-transparent hover:border-ios-green'
-        } ${pending.has(pendKey) ? 'opacity-60' : ''}`}>
-        ✓
-      </button>
-    )
+    if (okCount > 0) show('✅ تم حفظ الملاحظات')
+    setNoteSaving(false)
+    setNoteEditor(null)
+    loadChecks()
+  }
+
+  // ── الاعتماد ──
+  const approve = async () => {
+    try {
+      const res = await fetch(`${API_URL}/checklist/approve`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, note: approveNote || undefined, ...(isAdmin ? { branch_id: parseInt(selectedBranch) } : {}) })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        show('✅ تم اعتماد سجل اليوم')
+        setApproveNote('')
+        setApproval({ approved: true, approved_by_name: user?.name, approved_at: new Date().toISOString(), approval_note: approveNote || null })
+      } else show('❌ ' + (data.message || 'فشل الاعتماد'))
+    } catch { show('❌ خطأ في الاتصال') }
+  }
+
+  const unapprove = async () => {
+    if (!window.confirm('إلغاء اعتماد هذا اليوم؟')) return
+    try {
+      const res = await fetch(`${API_URL}/checklist/approve`, {
+        method: 'DELETE',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, ...(isAdmin ? { branch_id: parseInt(selectedBranch) } : {}) })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        show('✅ تم إلغاء الاعتماد')
+        setApproval({ approved: false, approved_by_name: null, approved_at: null, approval_note: null })
+      } else show('❌ ' + (data.message || 'فشل إلغاء الاعتماد'))
+    } catch { show('❌ خطأ في الاتصال') }
   }
 
   // ── إدارة البنود (أدمن) ──
@@ -225,7 +342,7 @@ export default function Checklist({ user }) {
         body: JSON.stringify({ title: it.title, period: it.period, is_active: !it.is_active })
       })
       const data = await res.json()
-      if (res.ok) { show(data.is_active ? '✅ تم تفعيل البند' : '✅ تم إيقاف البند'); loadAllItems(); loadChecks() }
+      if (res.ok) { show(data.is_active ? '✅ تم تفعيل البند' : '✅ تم إيقاف البند'); loadAllItems(); loadChecks(); if (view === 'monthly') loadMonth() }
       else show('❌ ' + (data.message || 'فشل التحديث'))
     } catch { show('❌ خطأ في الاتصال') }
   }
@@ -235,7 +352,7 @@ export default function Checklist({ user }) {
     try {
       const res = await fetch(`${API_URL}/checklist/items/${it.id}`, { method: 'DELETE', headers })
       const data = await res.json()
-      if (res.ok) { show('✅ ' + (data.message || 'تم الحذف')); loadAllItems(); loadChecks() }
+      if (res.ok) { show('✅ ' + (data.message || 'تم الحذف')); loadAllItems(); loadChecks(); if (view === 'monthly') loadMonth() }
       else show('❌ ' + (data.message || 'فشل الحذف'))
     } catch { show('❌ خطأ في الاتصال') }
   }
@@ -256,6 +373,101 @@ export default function Checklist({ user }) {
     } catch { show('❌ خطأ في حفظ الترتيب') }
   }
 
+  // خلية التعليم (زر أو شرطة إذا البند ما يخص الفترة)
+  const checkCell = (row, period, key) => {
+    if (!applicable(row, period)) {
+      return <span className="text-ios-label text-sm">—</span>
+    }
+    const c = row[key]
+    const pendKey = `${row.id}:${period}`
+    return (
+      <button type="button" onClick={() => !pending.has(pendKey) && toggle(row, period)}
+        disabled={pending.has(pendKey)}
+        title={PERIODS[period]}
+        className={`w-9 h-9 rounded-full flex items-center justify-center text-lg transition active:scale-90 mx-auto ${
+          c ? 'bg-ios-green text-white' : 'border-2 border-ios-sep text-transparent hover:border-ios-green'
+        } ${pending.has(pendKey) ? 'opacity-60' : ''}`}>
+        ✓
+      </button>
+    )
+  }
+
+  // مؤشر الملاحظة/الصورة بالعنوان
+  const noteBtn = (row) => {
+    const hasContent = ['m', 'e'].some(k => row[k] && (row[k].note || row[k].photo))
+    return (
+      <button type="button" onClick={() => openNoteEditor(row)} title="ملاحظة وصورة"
+        className={`text-sm px-1.5 py-0.5 rounded-lg active:opacity-60 ${hasContent ? 'bg-ios-blue/15' : 'bg-ios-fill/60'}`}>
+        {hasContent ? '📝📷' : '📝'}
+      </button>
+    )
+  }
+
+  const checkLine = (c, label) => c
+    ? `${label} ✓ ${c.checked_by_name || '—'} ${c.checked_at ? new Date(c.checked_at).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }) : ''}`
+    : null
+
+  // ── الشهرية ──
+  const daysInMonth = (() => {
+    const [y, m] = month.split('-').map(Number)
+    return new Date(Date.UTC(y, m, 0)).getUTCDate()
+  })()
+  const dayMap = {}
+  ;(monthData?.days || []).forEach(d => { dayMap[d.day] = d })
+
+  const itemStatus = (item, dayChecks) => {
+    if (!dayChecks) return { done: 0, total: 0 }
+    const c = dayChecks[item.id]
+    const total = item.period === 'both' ? 2 : 1
+    let done = 0
+    if (c) {
+      if (item.period === 'both') done = (c.m ? 1 : 0) + (c.e ? 1 : 0)
+      else done = c[item.period === 'morning' ? 'm' : 'e'] ? 1 : 0
+    }
+    return { done, total }
+  }
+
+  const sectionItems = (monthData?.items || []).slice(0, 6)
+
+  const printMonthly = () => {
+    if (!monthData) return
+    const [y, m] = month.split('-')
+    const branchName = branches.find(b => String(b.id) === String(selectedBranch))?.name || ''
+    const columns = [
+      { key: 'day', label: 'اليوم' },
+      ...sectionItems.map(i => ({ key: `s${i.id}`, label: i.title })),
+      { key: 'status', label: 'الحالة' }
+    ]
+    const rowsPrint = []
+    for (let d = 1; d <= daysInMonth; d++) {
+      const day = dayMap[d]
+      const row = { day: String(d) }
+      sectionItems.forEach(i => {
+        const { done, total } = itemStatus(i, day?.checks)
+        row[`s${i.id}`] = total === 0 ? '' : (done >= total ? '✓' : (done > 0 ? '△' : '—'))
+      })
+      row.status = day
+        ? (day.approved ? '✅ معتمد' : (day.morning.done + day.evening.done > 0 ? `ناقص ${day.missing_titles.length}` : '—'))
+        : '—'
+      rowsPrint.push(row)
+    }
+    const pct = monthData.commitment.total > 0 ? Math.round((monthData.commitment.done / monthData.commitment.total) * 100) : 0
+    const footerHtml = `
+      <div style="display:flex;justify-content:space-between;margin-top:10mm;font-size:11pt;font-weight:700">
+        <span>توقيع مسؤول القسم: ____________________</span>
+        <span>توقيع مسؤول الجودة: ____________________</span>
+      </div>`
+    printReport({
+      title: 'سجل التنظيف اليومي',
+      subtitle: `شركة صاج الريف للمنتجات الغذائية وإدارة المطاعم واستثمارها — SJ-PRP-F06 • الفرع: ${branchName} • الشهر: ${m}/${y}`,
+      columns,
+      rows: rowsPrint,
+      totals: [{ label: 'نسبة الالتزام', value: `${pct}% (${monthData.commitment.done}/${monthData.commitment.total})` }],
+      landscape: true,
+      footerHtml
+    })
+  }
+
   const progressBar = (period) => {
     const p = checks[period]?.progress || { done: 0, total: 0 }
     const pct = p.total > 0 ? Math.round((p.done / p.total) * 100) : 0
@@ -264,10 +476,13 @@ export default function Checklist({ user }) {
   const morning = progressBar('morning')
   const evening = progressBar('evening')
   const isOldDay = date < todayStr()
+  const commitmentPct = monthData?.commitment?.total > 0 ? Math.round((monthData.commitment.done / monthData.commitment.total) * 100) : 0
+  const todayNum = parseInt(todayStr().slice(8, 10))
+  const currentMonth = todayStr().slice(0, 7)
 
   return (
     <div dir="rtl">
-      <PageHeader title="📋 سجل التنظيف اليومي" subtitle="SJ-PRP-F06 — فحص صباحي ومسائي لأقسام الفرع" />
+      <PageHeader title="📋 سجل التنظيف اليومي" subtitle="قائمة الفحص — صباحي ومسائي" />
 
       {message && (
         <div className={`p-4 rounded-2xl mb-4 font-bold anim-pop ${message.includes('✅') ? 'bg-ios-green/15 text-[#1F7A33]' : 'bg-ios-red/10 text-ios-red'}`}>
@@ -275,9 +490,21 @@ export default function Checklist({ user }) {
         </div>
       )}
 
-      {/* صف التحكم: فرع + تاريخ */}
+      {/* تبديل العرض: يومي / شهري */}
+      <div className="segmented mb-4">
+        <button type="button" onClick={() => setView('daily')}
+          className={`segmented-item ${view === 'daily' ? 'segmented-item-active' : ''}`}>
+          📆 يومي
+        </button>
+        <button type="button" onClick={() => setView('monthly')}
+          className={`segmented-item ${view === 'monthly' ? 'segmented-item-active' : ''}`}>
+          🗓️ شهري
+        </button>
+      </div>
+
+      {/* صف التحكم */}
       <div className="card-ios p-4 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
           {isAdmin && (
             <div>
               <label className="label-ios">الفرع</label>
@@ -287,10 +514,26 @@ export default function Checklist({ user }) {
               </select>
             </div>
           )}
+          {view === 'daily' ? (
+            <div>
+              <label className="label-ios">التاريخ</label>
+              <input type="date" value={date} max={todayStr()}
+                onChange={e => setDate(e.target.value)} className="input-ios" />
+            </div>
+          ) : (
+            <div>
+              <label className="label-ios">الشهر</label>
+              <input type="month" value={month} max={currentMonth}
+                onChange={e => setMonth(e.target.value)} className="input-ios" />
+            </div>
+          )}
           <div>
-            <label className="label-ios">التاريخ</label>
-            <input type="date" value={date} max={todayStr()}
-              onChange={e => setDate(e.target.value)} className="input-ios" />
+            {view === 'monthly' && (
+              <button type="button" onClick={printMonthly} disabled={!monthData}
+                className="btn-ios-secondary px-4 py-2.5 text-sm whitespace-nowrap disabled:opacity-40 w-full md:w-auto">
+                🖨️ طباعة التقرير الشهري
+              </button>
+            )}
           </div>
         </div>
         {!isAdmin && (
@@ -298,93 +541,193 @@ export default function Checklist({ user }) {
         )}
       </div>
 
-      {/* شريطا التقدم: صباحي + مسائي */}
-      <div className="card-ios p-4 mb-4 space-y-3">
-        {[
-          { key: 'morning', data: morning, cls: 'bg-ios-blue' },
-          { key: 'evening', data: evening, cls: 'bg-ios-orange' }
-        ].map(({ key, data, cls }) => (
-          <div key={key}>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="font-bold text-ios-text text-sm">{PERIODS[key]}</span>
-              <span className="font-bold text-ios-label text-sm">{data.p.done} / {data.p.total} ({data.pct}%)</span>
-            </div>
-            <div className="h-3 rounded-full bg-ios-fill overflow-hidden">
-              <div className={`h-full rounded-full ${cls} transition-all duration-300`} style={{ width: `${data.pct}%` }} />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* جدول البنود — شكل الكشف الورقي */}
-      {rows.length === 0 ? (
-        <p className="text-center text-ios-label py-10">لا توجد بنود</p>
-      ) : (
+      {view === 'daily' && (
         <>
-          {/* سطح المكتب: جدول */}
-          <div className="hidden md:block card-ios overflow-hidden mb-6">
-            <table className="table-ios">
-              <thead>
-                <tr>
-                  <th className="text-right">البند</th>
-                  <th className="w-24 text-center">🌅 صباحي</th>
-                  <th className="w-24 text-center">🌙 مسائي</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(row => (
-                  <tr key={row.id}>
-                    <td>
-                      <span className={`font-semibold text-sm ${(row.m || row.e) ? 'text-ios-text' : 'text-ios-text'}`}>
-                        {row.title}
-                      </span>
-                      {(row.m || row.e) && (
-                        <span className="block text-[11px] text-ios-green font-semibold mt-0.5">
-                          {[
-                            row.m ? `صباحي ✓ ${row.m.checked_by_name || '—'} ${row.m.checked_at ? new Date(row.m.checked_at).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }) : ''}` : null,
-                            row.e ? `مسائي ✓ ${row.e.checked_by_name || '—'} ${row.e.checked_at ? new Date(row.e.checked_at).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }) : ''}` : null
-                          ].filter(Boolean).join(' · ')}
-                        </span>
-                      )}
-                    </td>
-                    <td className="text-center">{checkCell(row, 'morning', 'm')}</td>
-                    <td className="text-center">{checkCell(row, 'evening', 'e')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* الجوال: كروت بصفّي تعليم معنونين */}
-          <div className="md:hidden space-y-2 mb-6">
-            {rows.map(row => (
-              <div key={row.id} className={`card-ios p-3 ${(row.m || row.e) ? 'bg-white' : 'bg-white'}`}>
-                <div className="font-semibold text-ios-text text-sm mb-2">{row.title}</div>
-                {(row.m || row.e) && (
-                  <div className="text-[11px] text-ios-green font-semibold mb-2">
-                    {[
-                      row.m ? `🌅 صباحي ✓ ${row.m.checked_by_name || '—'} ${row.m.checked_at ? new Date(row.m.checked_at).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }) : ''}` : null,
-                      row.e ? `🌙 مسائي ✓ ${row.e.checked_by_name || '—'} ${row.e.checked_at ? new Date(row.e.checked_at).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }) : ''}` : null
-                    ].filter(Boolean).join(' · ')}
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex items-center justify-between rounded-2xl bg-ios-fill/60 px-3 py-2">
-                    <span className="text-xs font-bold text-ios-label">{PERIODS.morning}</span>
-                    {checkCell(row, 'morning', 'm')}
-                  </div>
-                  <div className="flex items-center justify-between rounded-2xl bg-ios-fill/60 px-3 py-2">
-                    <span className="text-xs font-bold text-ios-label">{PERIODS.evening}</span>
-                    {checkCell(row, 'evening', 'e')}
-                  </div>
+          {/* شريطا التقدم: صباحي + مسائي */}
+          <div className="card-ios p-4 mb-4 space-y-3">
+            {[
+              { key: 'morning', data: morning, cls: 'bg-ios-blue' },
+              { key: 'evening', data: evening, cls: 'bg-ios-orange' }
+            ].map(({ key, data, cls }) => (
+              <div key={key}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-bold text-ios-text text-sm">{PERIODS[key]}</span>
+                  <span className="font-bold text-ios-label text-sm">{data.p.done} / {data.p.total} ({data.pct}%)</span>
+                </div>
+                <div className="h-3 rounded-full bg-ios-fill overflow-hidden">
+                  <div className={`h-full rounded-full ${cls} transition-all duration-300`} style={{ width: `${data.pct}%` }} />
                 </div>
               </div>
             ))}
           </div>
+
+          {/* بطاقة الاعتماد */}
+          <div className={`card-ios p-4 mb-4 ${approval.approved ? 'border-ios-green/40 bg-ios-green/5' : 'border-ios-orange/40 bg-ios-orange/5'}`}>
+            {approval.approved ? (
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-bold text-[#1F7A33] text-sm">
+                  ✅ معتمد — {approval.approved_by_name || '—'}
+                  <span className="block text-[11px] font-normal text-ios-label">
+                    {approval.approved_at ? new Date(approval.approved_at).toLocaleString('ar') : ''}
+                    {approval.approval_note ? ` • ${approval.approval_note}` : ''}
+                  </span>
+                </p>
+                {canApprove && (
+                  <button type="button" onClick={unapprove}
+                    className="px-3 py-1.5 rounded-xl bg-ios-red/10 text-ios-red text-xs font-bold active:opacity-70">
+                    إلغاء الاعتماد
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div>
+                <p className="font-bold text-[#B25000] text-sm mb-2">✍️ بانتظار اعتماد مسؤول الجودة</p>
+                {canApprove && (
+                  <div className="flex flex-wrap gap-2">
+                    <input type="text" value={approveNote} onChange={e => setApproveNote(e.target.value)}
+                      placeholder="ملاحظة الاعتماد (اختياري)" className="input-ios flex-1 min-w-[180px]" />
+                    <button type="button" onClick={approve}
+                      className="btn-ios px-4 py-2 text-sm whitespace-nowrap">✍️ اعتماد اليوم</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* جدول البنود — شكل الكشف الورقي */}
+          {rows.length === 0 ? (
+            <p className="text-center text-ios-label py-10">لا توجد بنود</p>
+          ) : (
+            <>
+              {/* سطح المكتب: جدول */}
+              <div className="hidden md:block card-ios overflow-hidden mb-6">
+                <table className="table-ios">
+                  <thead>
+                    <tr>
+                      <th className="text-right">البند</th>
+                      <th className="w-24 text-center">🌅 صباحي</th>
+                      <th className="w-24 text-center">🌙 مسائي</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(row => (
+                      <tr key={row.id}>
+                        <td>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-sm text-ios-text">{row.title}</span>
+                            {noteBtn(row)}
+                          </div>
+                          {(row.m || row.e) && (
+                            <span className="block text-[11px] text-ios-green font-semibold mt-0.5">
+                              {[checkLine(row.m, 'صباحي'), checkLine(row.e, 'مسائي')].filter(Boolean).join(' · ')}
+                            </span>
+                          )}
+                        </td>
+                        <td className="text-center">{checkCell(row, 'morning', 'm')}</td>
+                        <td className="text-center">{checkCell(row, 'evening', 'e')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* الجوال: كروت بصفّي تعليم معنونين */}
+              <div className="md:hidden space-y-2 mb-6">
+                {rows.map(row => (
+                  <div key={row.id} className="card-ios p-3 bg-white">
+                    <div className="flex items-center justify-between gap-1 mb-2">
+                      <span className="font-semibold text-ios-text text-sm">{row.title}</span>
+                      {noteBtn(row)}
+                    </div>
+                    {(row.m || row.e) && (
+                      <div className="text-[11px] text-ios-green font-semibold mb-2">
+                        {[checkLine(row.m, '🌅 صباحي'), checkLine(row.e, '🌙 مسائي')].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center justify-between rounded-2xl bg-ios-fill/60 px-3 py-2">
+                        <span className="text-xs font-bold text-ios-label">{PERIODS.morning}</span>
+                        {checkCell(row, 'morning', 'm')}
+                      </div>
+                      <div className="flex items-center justify-between rounded-2xl bg-ios-fill/60 px-3 py-2">
+                        <span className="text-xs font-bold text-ios-label">{PERIODS.evening}</span>
+                        {checkCell(row, 'evening', 'e')}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {isOldDay && (
+            <p className="text-center text-ios-orange text-sm font-semibold mb-6">⚠️ تعرض يوماً سابقاً — التعليم متاح للعرض فقط (ما تكدر تلغي تعليم أيام سابقة)</p>
+          )}
         </>
       )}
-      {isOldDay && (
-        <p className="text-center text-ios-orange text-sm font-semibold mb-6">⚠️ تعرض يوماً سابقاً — التعليم متاح للعرض فقط (ما تكدر تلغي تعليم أيام سابقة)</p>
+
+      {view === 'monthly' && (
+        <>
+          {/* شريط إحصائيات الشهر */}
+          <div className="card-ios p-4 mb-4 flex flex-wrap gap-4 items-center">
+            <div className="flex-1 min-w-[140px]">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-bold text-ios-text text-sm">نسبة الالتزام</span>
+                <span className="font-bold text-ios-blue text-sm">{commitmentPct}%</span>
+              </div>
+              <div className="h-3 rounded-full bg-ios-fill overflow-hidden">
+                <div className="h-full rounded-full bg-ios-blue transition-all duration-300" style={{ width: `${commitmentPct}%` }} />
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-extrabold text-ios-text">{monthData?.approved_days ?? 0}</div>
+              <div className="text-[11px] text-ios-label font-bold">أيام معتمدة 📋✅</div>
+            </div>
+          </div>
+
+          {/* شبكة الشهر */}
+          {!monthData ? (
+            <p className="text-center text-ios-label py-10">جاري التحميل...</p>
+          ) : (
+            <div className="card-ios overflow-hidden mb-6">
+              <div className="overflow-x-auto">
+                <table className="table-ios min-w-[640px]">
+                  <thead>
+                    <tr>
+                      <th className="w-16 text-center">اليوم</th>
+                      {sectionItems.map(i => <th key={i.id} className="text-center text-xs">{i.title}</th>)}
+                      <th className="w-24 text-center">الحالة</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from({ length: daysInMonth }, (_, idx) => idx + 1).map(d => {
+                      const day = dayMap[d]
+                      const isFuture = !day && month === currentMonth && d > todayNum
+                      return (
+                        <tr key={d}
+                          onClick={() => { setDate(`${month}-${String(d).padStart(2, '0')}`); setView('daily') }}
+                          className={`cursor-pointer ${isFuture ? 'opacity-40' : 'hover:bg-ios-fill/50'}`}>
+                          <td className="text-center font-bold text-ios-text">{d}</td>
+                          {sectionItems.map(i => {
+                            const { done, total } = itemStatus(i, day?.checks)
+                            const cell = total === 0 ? '' : (done >= total ? '🟢' : (done > 0 ? '🟠' : (day ? '⚪' : '')))
+                            return <td key={i.id} className="text-center">{cell}</td>
+                          })}
+                          <td className="text-center text-xs font-bold whitespace-nowrap">
+                            {day?.approved ? '📋✅' : (day ? (day.morning.done + day.evening.done > 0 ? `⚠️ ${day.missing_titles.length}` : '—') : '—')}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="px-4 py-2.5 border-t border-ios-sep text-[11px] text-ios-label font-semibold flex gap-3 flex-wrap">
+                <span>🟢 مكتمل</span><span>🟠 جزئي</span><span>⚪ غير مكتمل</span><span>📋✅ معتمد</span>
+                <span className="mr-auto">اضغط على يوم للانتقال للعرض اليومي</span>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* نظرة على الفروع (أدمن) */}
@@ -491,6 +834,61 @@ export default function Checklist({ user }) {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* نافذة الملاحظة والصورة */}
+      {noteEditor && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4"
+          onClick={() => setNoteEditor(null)}>
+          <div className="bg-white dark:bg-[#1c1c1e] w-full md:max-w-lg rounded-t-3xl md:rounded-3xl p-4 max-h-[85vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-ios-text">📝 ملاحظات — {noteEditor.title}</h3>
+              <button type="button" onClick={() => setNoteEditor(null)}
+                className="px-2.5 py-1 rounded-xl bg-ios-fill text-ios-text text-sm font-bold active:opacity-60">✕</button>
+            </div>
+            {Object.keys(PERIODS).filter(p => applicable(noteEditor, p)).map(p => {
+              const draft = drafts[p] || { note: '', photo: null }
+              return (
+                <div key={p} className="rounded-2xl border border-ios-sep p-3 mb-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-ios-label">{PERIODS[p]}</span>
+                    <label className="text-xs font-bold text-ios-blue cursor-pointer active:opacity-60">
+                      📷 إرفاق صورة
+                      <input type="file" accept="image/*" capture="environment" className="hidden"
+                        onChange={e => pickPhoto(e, p)} />
+                    </label>
+                  </div>
+                  <textarea value={draft.note} rows={2}
+                    onChange={e => setDrafts(prev => ({ ...prev, [p]: { ...prev[p], note: e.target.value } }))}
+                    placeholder="مثلاً: يحتاج مواد تنظيف" className="input-ios resize-none w-full" />
+                  {draft.photo && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <img src={draft.photo} alt="" onClick={() => setLightbox(draft.photo)}
+                        className="w-16 h-16 rounded-xl object-cover cursor-pointer border border-ios-sep" />
+                      <button type="button" onClick={() => setDrafts(prev => ({ ...prev, [p]: { ...prev[p], photo: null } }))}
+                        className="text-ios-red text-xs font-bold px-2 py-1 rounded-lg bg-ios-red/10 active:opacity-60">🗑️ إزالة الصورة</button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            <div className="flex gap-2">
+              <button type="button" disabled={noteSaving} onClick={saveNotes}
+                className="btn-ios flex-1 disabled:opacity-40">{noteSaving ? 'جاري الحفظ...' : '💾 حفظ'}</button>
+              <button type="button" onClick={() => setNoteEditor(null)}
+                className="btn-ios-secondary">إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* عرض الصورة كاملة */}
+      {lightbox && (
+        <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="" className="max-w-full max-h-full rounded-2xl" />
         </div>
       )}
     </div>

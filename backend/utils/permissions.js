@@ -17,6 +17,7 @@ const PERMISSIONS = [
   { key: 'waste.manage', label: '🗑️ الهدر — تسجيل' },
   { key: 'items.edit', label: '✏️ تعديل بيانات الأصناف والمواد' },
   { key: 'checklist.view', label: '📋 قائمة الفحص — عرض وتعليم' },
+  { key: 'checklist.approve', label: '✍️ اعتماد سجل التنظيف اليومي' },
   { key: 'alerts.view', label: '🔔 التنبيهات — عرض ومعالجة' },
   { key: 'reports.view', label: '📈 التقارير — عرض وتصدير' },
   { key: 'users.manage', label: '👥 إدارة المستخدمين' },

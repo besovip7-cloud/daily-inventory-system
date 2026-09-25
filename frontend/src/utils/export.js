@@ -30,14 +30,19 @@ export function exportToExcel({ filename, sheetName = 'التقرير', columns,
 /**
  * طباعة التقرير (أو حفظه PDF من نافذة الطباعة)
  * columns: [{ key, label }]
+ * footerHtml: HTML إضافي يُعرض بعد الجدول (توقيعات مثلاً)
+ * landscape: طباعة بعرض الصفحة (A4 landscape عبر صفحة مسمّاة)
  */
-export function printReport({ title, subtitle = '', columns, rows, totals = [], company = null }) {
+export function printReport({ title, subtitle = '', columns, rows, totals = [], company = null, footerHtml = '', landscape = false }) {
   const area = document.getElementById('print-area') || (() => {
     const el = document.createElement('div')
     el.id = 'print-area'
     document.body.appendChild(el)
     return el
   })()
+
+  if (landscape) area.setAttribute('data-landscape', '1')
+  else area.removeAttribute('data-landscape')
 
   const esc = v => String(v ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]))
 
@@ -64,6 +69,7 @@ export function printReport({ title, subtitle = '', columns, rows, totals = [], 
         ${totals.map(t => `<tr class="print-total"><td>${esc(t.label)}</td><td colspan="${columns.length - 1}">${esc(t.value)}</td></tr>`).join('')}
       </tfoot>` : ''}
     </table>
+    ${footerHtml}
   `
 
   const cleanup = () => { area.innerHTML = '' }

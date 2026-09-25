@@ -15,6 +15,11 @@ router.post('/items/reorder', requirePerm('checklist.view'), checklistController
 router.get('/checks', requirePerm('checklist.view'), checklistController.getChecks);
 router.post('/checks', requirePerm('checklist.view'), checklistController.saveCheck);
 
+router.get('/month', requirePerm('checklist.view'), checklistController.getMonth);
+
+router.post('/approve', requirePerm('checklist.approve'), checklistController.approveDay);
+router.delete('/approve', requirePerm('checklist.approve'), checklistController.unapproveDay);
+
 router.get('/overview', requirePerm('checklist.view'), checklistController.getOverview);
 
 module.exports = router;

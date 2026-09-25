@@ -125,7 +125,7 @@ exports.getChecks = async (req, res) => {
       [checkPeriod]
     );
     const checks = await pool.query(
-      `SELECT c.item_id, c.checked_by, c.checked_at, c.note, u.name AS checked_by_name
+      `SELECT c.item_id, c.checked_by, c.checked_at, c.note, c.photo, u.name AS checked_by_name
        FROM checklist_checks c
        LEFT JOIN users u ON u.id = c.checked_by
        WHERE c.branch_id = $1 AND c.check_date = $2 AND c.period = $3`,
@@ -133,6 +133,14 @@ exports.getChecks = async (req, res) => {
     );
     const byItem = {};
     checks.rows.forEach(c => { byItem[c.item_id] = c; });
+
+    const approval = await pool.query(
+      `SELECT a.approved_at, a.note, u.name AS approved_by_name
+       FROM checklist_day_approvals a
+       LEFT JOIN users u ON u.id = a.approved_by
+       WHERE a.branch_id = $1 AND a.check_date = $2`,
+      [branchId, checkDate]
+    );
 
     let done = 0;
     const merged = items.rows.map(i => {
@@ -145,11 +153,19 @@ exports.getChecks = async (req, res) => {
         checked: !!c,
         checked_by_name: c?.checked_by_name || null,
         checked_at: c?.checked_at || null,
-        note: c?.note || null
+        note: c?.note || null,
+        photo: c?.photo || null
       };
     });
 
-    res.json({ items: merged, progress: { done, total: items.rows.length } });
+    res.json({
+      items: merged,
+      progress: { done, total: items.rows.length },
+      approved: approval.rows.length > 0,
+      approved_by_name: approval.rows[0]?.approved_by_name || null,
+      approved_at: approval.rows[0]?.approved_at || null,
+      approval_note: approval.rows[0]?.note || null
+    });
 
     // تنبيه نهاية اليوم — بدون ما نعطل الرد
     ensureChecklistAlerts(checkDate).catch(err => console.error('ensureChecklistAlerts error:', err));
@@ -160,7 +176,7 @@ exports.getChecks = async (req, res) => {
 
 exports.saveCheck = async (req, res) => {
   try {
-    const { item_id, date, period, checked, note, branch_id } = req.body;
+    const { item_id, date, period, checked, note, photo, branch_id } = req.body;
     const checkPeriod = ['morning', 'evening'].includes(period) ? period : null;
     if (!checkPeriod) return res.status(400).json({ message: 'الفترة غير صحيحة' });
     if (!isValidDate(date)) return res.status(400).json({ message: 'التاريخ غير صحيح' });
@@ -182,17 +198,194 @@ exports.saveCheck = async (req, res) => {
       return res.status(400).json({ message: 'ما تكدر تلغي تعليم أيام سابقة' });
     }
 
+    // الملاحظة: ما تنعبى بالطلب = حافظ على الموجودة، تعيين صراحةً (حتى الفارغة) = حدّثها
+    const noteProvided = note !== undefined;
+    const noteParam = noteProvided ? (note || null) : null;
+
+    // الصورة: data URL بصيغة image/* وحجم أقصى ~700 ألف محرف
+    let photoParam = null;
+    if (typeof photo === 'string' && photo.length > 0) {
+      if (!photo.startsWith('data:image/')) return res.status(400).json({ message: 'الصورة غير صالحة' });
+      if (photo.length > 700000) return res.status(400).json({ message: 'الصورة كبيرة جداً — أعد تصويرها' });
+      photoParam = photo;
+    }
+
     const result = await pool.query(
-      `INSERT INTO checklist_checks (branch_id, item_id, check_date, period, checked_by, checked_at, note)
-       VALUES ($1, $2, $3, $4, $5, CASE WHEN $5::int IS NULL THEN NULL ELSE CURRENT_TIMESTAMP END, $6)
+      `INSERT INTO checklist_checks (branch_id, item_id, check_date, period, checked_by, checked_at, note, photo)
+       VALUES ($1, $2, $3, $4, $5, CASE WHEN $5::int IS NULL THEN NULL ELSE CURRENT_TIMESTAMP END,
+               CASE WHEN $6 THEN $7 ELSE NULL END, $8)
        ON CONFLICT (branch_id, item_id, check_date, period)
        DO UPDATE SET checked_by = EXCLUDED.checked_by,
                      checked_at = EXCLUDED.checked_at,
-                     note = EXCLUDED.note
+                     note = CASE WHEN $6 THEN EXCLUDED.note ELSE checklist_checks.note END,
+                     photo = CASE
+                       WHEN NOT $9 THEN NULL
+                       WHEN $8::text IS NULL THEN checklist_checks.photo
+                       ELSE EXCLUDED.photo
+                     END
        RETURNING *`,
-      [branchId, item_id, date, checkPeriod, isChecked ? req.user.id : null, note || null]
+      [branchId, item_id, date, checkPeriod, isChecked ? req.user.id : null,
+       noteProvided, noteParam, photoParam, isChecked]
     );
     res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ─── اعتماد مسؤول الجودة ────────────────────────────────────────
+
+exports.approveDay = async (req, res) => {
+  try {
+    const { branch_id, date, note } = req.body;
+    if (!isValidDate(date)) return res.status(400).json({ message: 'التاريخ غير صحيح' });
+
+    let branchId;
+    if (req.user.role === 'admin') {
+      branchId = parseInt(branch_id);
+      if (!branchId) return res.status(400).json({ message: 'حدد الفرع' });
+    } else {
+      branchId = req.user.branch_id;
+      if (!branchId) return res.status(403).json({ message: 'حسابك غير مرتبط بفرع' });
+    }
+
+    const count = await pool.query(
+      'SELECT COUNT(*) FROM checklist_checks WHERE branch_id = $1 AND check_date = $2',
+      [branchId, date]
+    );
+    if (parseInt(count.rows[0].count) === 0) {
+      return res.status(400).json({ message: 'ما تكدر تعتمد يوم بدون أي تعليم' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO checklist_day_approvals (branch_id, check_date, approved_by, note)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (branch_id, check_date)
+       DO UPDATE SET approved_by = EXCLUDED.approved_by,
+                     approved_at = CURRENT_TIMESTAMP,
+                     note = EXCLUDED.note
+       RETURNING *`,
+      [branchId, date, req.user.id, note || null]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.unapproveDay = async (req, res) => {
+  try {
+    const { branch_id, date } = req.body;
+    if (!isValidDate(date)) return res.status(400).json({ message: 'التاريخ غير صحيح' });
+
+    let branchId;
+    if (req.user.role === 'admin') {
+      branchId = parseInt(branch_id);
+      if (!branchId) return res.status(400).json({ message: 'حدد الفرع' });
+    } else {
+      branchId = req.user.branch_id;
+      if (!branchId) return res.status(403).json({ message: 'حسابك غير مرتبط بفرع' });
+    }
+
+    const result = await pool.query(
+      'DELETE FROM checklist_day_approvals WHERE branch_id = $1 AND check_date = $2 RETURNING id',
+      [branchId, date]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ message: 'الاعتماد غير موجود' });
+    res.json({ message: 'تم إلغاء الاعتماد' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ─── الشهرية (شبكة الشهر) ───────────────────────────────────────
+
+exports.getMonth = async (req, res) => {
+  try {
+    let branchId;
+    if (req.user.role === 'admin') {
+      branchId = parseInt(req.query.branch_id);
+      if (!branchId) return res.status(400).json({ message: 'حدد الفرع' });
+    } else {
+      branchId = req.user.branch_id;
+      if (!branchId) return res.status(403).json({ message: 'حسابك غير مرتبط بفرع' });
+      if (req.query.branch_id && parseInt(req.query.branch_id) !== branchId) {
+        return res.status(403).json({ message: 'ما عندك صلاحية لهذا الفرع' });
+      }
+    }
+
+    const month = /^\d{4}-\d{2}$/.test(req.query.month || '') ? req.query.month : iraqToday().slice(0, 7);
+    const [y, m] = month.split('-').map(Number);
+    const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const todayStr = iraqToday();
+    const todayNum = month === todayStr.slice(0, 7) ? parseInt(todayStr.slice(8, 10)) : null;
+
+    const items = await pool.query(
+      'SELECT id, title, period FROM checklist_items WHERE is_active = TRUE ORDER BY sort_order, id'
+    );
+    const morningItems = items.rows.filter(i => i.period === 'both' || i.period === 'morning');
+    const eveningItems = items.rows.filter(i => i.period === 'both' || i.period === 'evening');
+
+    const checks = await pool.query(
+      `SELECT item_id, check_date, period
+       FROM checklist_checks
+       WHERE branch_id = $1 AND check_date >= $2::date AND check_date < ($2::date + INTERVAL '1 month')`,
+      [branchId, `${month}-01`]
+    );
+    const approvals = await pool.query(
+      `SELECT check_date FROM checklist_day_approvals
+       WHERE branch_id = $1 AND check_date >= $2::date AND check_date < ($2::date + INTERVAL '1 month')`,
+      [branchId, `${month}-01`]
+    );
+    const approvedDays = new Set(approvals.rows.map(a => parseInt(String(a.check_date).slice(8, 10))));
+
+    const byDay = {};
+    checks.rows.forEach(c => {
+      const day = parseInt(String(c.check_date).slice(8, 10));
+      (byDay[day] = byDay[day] || { m: new Set(), e: new Set() })[c.period === 'morning' ? 'm' : 'e'].add(c.item_id);
+    });
+
+    let commitmentDone = 0;
+    let commitmentTotal = 0;
+    const days = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const activity = byDay[day];
+      if (!activity && (todayNum === null || day > todayNum)) continue; // أيام المستقبل بدون نشاط
+      const mDone = morningItems.filter(i => activity?.m.has(i.id)).length;
+      const eDone = eveningItems.filter(i => activity?.e.has(i.id)).length;
+      if (activity) {
+        commitmentDone += mDone + eDone;
+        commitmentTotal += morningItems.length + eveningItems.length;
+      }
+      const checksMap = {};
+      if (activity) {
+        items.rows.forEach(i => {
+          const m = activity.m.has(i.id);
+          const e = activity.e.has(i.id);
+          if (m || e) checksMap[i.id] = { m, e };
+        });
+      }
+      const missing = activity ? [
+        ...morningItems.filter(i => !activity.m.has(i.id)).map(i => i.title),
+        ...eveningItems.filter(i => !activity.e.has(i.id)).map(i => i.title)
+      ] : [];
+      days.push({
+        day,
+        morning: { done: mDone, total: morningItems.length },
+        evening: { done: eDone, total: eveningItems.length },
+        missing_titles: missing,
+        approved: approvedDays.has(day),
+        checks: checksMap
+      });
+    }
+
+    res.json({
+      month,
+      items: items.rows,
+      days,
+      commitment: { done: commitmentDone, total: commitmentTotal },
+      approved_days: approvedDays.size
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

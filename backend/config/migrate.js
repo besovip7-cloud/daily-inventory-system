@@ -394,6 +394,22 @@ const createTables = async () => {
       console.log('✅ Checklist replaced with official cleaning form items (SJ-PRP-F06)');
     }
 
+    // صورة إثبات التعليم (base64)
+    await pool.query(`ALTER TABLE checklist_checks ADD COLUMN IF NOT EXISTS photo TEXT`);
+
+    // اعتماد مسؤول الجودة لسجل اليوم
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS checklist_day_approvals (
+        id SERIAL PRIMARY KEY,
+        branch_id INTEGER REFERENCES branches(id) ON DELETE CASCADE,
+        check_date DATE NOT NULL,
+        approved_by INTEGER REFERENCES users(id),
+        approved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        note TEXT,
+        UNIQUE(branch_id, check_date)
+      )
+    `);
+
     // Insert default branches فقط إذا الجدول فاضي (قاعدة جديدة) — حتى لا تتكرر بالقواعد الحية
     const branchCount = await pool.query('SELECT COUNT(*) FROM branches');
     if (parseInt(branchCount.rows[0].count) === 0) {
