@@ -493,6 +493,20 @@ export default function Checklist({ user }) {
     )
   }
 
+  // سطر حالة خلية وحدة بالجدول الأفقي: أخضر (الموقّع والوقت) للنظيف وأحمر للسبب
+  const cellStatusLine = (item, period) => {
+    const c = period === 'morning' ? item.m : item.e
+    if (!c) return null
+    if (c.status === 'fail') {
+      return <span className="block text-[10px] font-semibold text-ios-red mt-0.5">✗{c.note ? ' ' + c.note : ''}</span>
+    }
+    return (
+      <span className="block text-[10px] font-semibold text-ios-green mt-0.5">
+        ✓ {c.checked_by_name || '—'} {c.checked_at ? new Date(c.checked_at).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }) : ''}
+      </span>
+    )
+  }
+
   // ── الشهرية ──
   const daysInMonth = (() => {
     const [y, m] = month.split('-').map(Number)
@@ -721,32 +735,40 @@ export default function Checklist({ user }) {
             <p className="text-center text-ios-label py-10">لا توجد بنود</p>
           ) : (
             <>
-              {/* سطح المكتب: جدول */}
+              {/* سطح المكتب: جدول أفقي — الأقسام أعمدة والفترات (صباحي/مسائي) صفوف */}
               <div className="hidden md:block card-ios overflow-hidden mb-6">
-                <table className="table-ios">
-                  <thead>
-                    <tr>
-                      <th className="text-right">البند</th>
-                      <th className="w-24 text-center">🌅 صباحي</th>
-                      <th className="w-24 text-center">🌙 مسائي</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map(row => (
-                      <tr key={row.id}>
-                        <td>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-semibold text-sm text-ios-text">{row.title}</span>
-                            {noteBtn(row)}
-                          </div>
-                          {statusLinesBlock(row, 'block text-[11px] font-semibold mt-0.5')}
-                        </td>
-                        <td className="text-center">{checkCell(row, 'morning', 'm')}</td>
-                        <td className="text-center">{checkCell(row, 'evening', 'e')}</td>
+                <div className="overflow-x-auto">
+                  <table className="table-ios min-w-[980px]">
+                    <thead>
+                      <tr>
+                        <th className="sticky right-0 z-10 bg-[#F2F2F7] w-24 text-center text-xs">الفترة</th>
+                        {rows.map(row => (
+                          <th key={row.id} className="text-center text-xs min-w-[96px]">
+                            <div className="flex items-center justify-center gap-1">
+                              <span>{PRINT_SHORT_TITLES[row.title] || row.title}</span>
+                              {noteBtn(row)}
+                            </div>
+                          </th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {Object.keys(PERIODS).map(period => (
+                        <tr key={period}>
+                          <td className="sticky right-0 z-10 bg-white text-center font-bold text-sm text-ios-text whitespace-nowrap">{PERIODS[period]}</td>
+                          {rows.map(row => applicable(row, period) ? (
+                            <td key={row.id} className="text-center align-top">
+                              {checkCell(row, period, period === 'morning' ? 'm' : 'e')}
+                              {cellStatusLine(row, period)}
+                            </td>
+                          ) : (
+                            <td key={row.id} className="text-center text-ios-label">—</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* الجوال: كروت بصفّي تعليم معنونين */}
