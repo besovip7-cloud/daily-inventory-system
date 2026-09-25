@@ -74,7 +74,7 @@ export default function SalesImport({ user, branches }) {
   const fileRef = useRef(null)
 
   const [selectedBranch, setSelectedBranch] = useState(branches[0]?.id || '')
-  const [importDate, setImportDate] = useState(new Date().toISOString().split('T')[0])
+  const [importDate, setImportDate] = useState(new Date(Date.now() + 3 * 3600e3).toISOString().split('T')[0]) // بتوقيت العراق (UTC+3)
   const [menuItems, setMenuItems] = useState([])
   const [parsed, setParsed] = useState(null) // {items, fileTotal, dateTo, branch, matched[], unmatched[]}
   const [selected, setSelected] = useState({}) // {index: true} — الأصناف المختارة للاستيراد

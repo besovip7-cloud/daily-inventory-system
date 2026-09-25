@@ -17,7 +17,8 @@ const PRINT_SHORT_TITLES = {
   'عارضة المقبلات': 'المقبلات',
 }
 
-const todayStr = () => new Date().toISOString().split('T')[0]
+// تاريخ اليوم بتوقيت العراق (UTC+3) — نفس حساب الباك إند حتى لا يختلف "اليوم" بين الطرفين بعد منتصف الليل
+const todayStr = () => new Date(Date.now() + 3 * 3600e3).toISOString().split('T')[0]
 
 // ضغط الصورة بالمتصفح: أبعاد قصوى 800px وجودة JPEG 0.7
 const compressImage = (file) => new Promise((resolve, reject) => {

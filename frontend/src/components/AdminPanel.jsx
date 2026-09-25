@@ -15,7 +15,8 @@ export default function AdminPanel() {
   const [loadingMenu, setLoadingMenu] = useState(false)
 
   const token = getToken()
-  const today = new Date().toISOString().split('T')[0]
+  // تاريخ اليوم بتوقيت العراق (UTC+3) — يطابق حساب السيرفر
+  const today = new Date(Date.now() + 3 * 3600e3).toISOString().split('T')[0]
 
   useEffect(() => {
     loadBranches()
