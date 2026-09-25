@@ -60,6 +60,7 @@ export default function Checklist({ user }) {
   const [noteEditor, setNoteEditor] = useState(null) // row المفتوح
   const [reasonPeriod, setReasonPeriod] = useState(null) // فترة وضع السبب (✗ على بند غير مقيّم)
   const [cellAction, setCellAction] = useState(null) // {row, period} لبند مقيّم — خيارات التعديل/المسح
+  const [clearingDay, setClearingDay] = useState(null) // رقم اليوم الجاري مسحه بالشهرية
   const [drafts, setDrafts] = useState({}) // {morning: {note, photo}, evening: {...}}
   const [noteSaving, setNoteSaving] = useState(false)
   const [lightbox, setLightbox] = useState(null)
@@ -247,6 +248,28 @@ export default function Checklist({ user }) {
     })
     bumpProgress(period, -1)
     return postStatus(row, period, null)
+  }
+
+  // مسح كل تعليمات يوم من الشهرية — للأدمن، واليوم الحالي فقط (الباك إند يرفض غيره)
+  const clearDay = async (d) => {
+    const dayDate = `${month}-${String(d).padStart(2, '0')}`
+    if (dayDate < todayStr()) { show('⚠️ ما تكدر تمسح تعليمات أيام سابقة'); return }
+    const day = dayMap[d]
+    const entries = Object.entries(day?.checks || {}).filter(([, c]) => c.m || c.e)
+    if (entries.length === 0) return
+    if (!window.confirm(`مسح كل تعليمات يوم ${d} (${entries.length} قسم)؟`)) return
+    setClearingDay(d)
+    let failed = 0
+    for (const [itemId, c] of entries) {
+      for (const [key, period] of [['m', 'morning'], ['e', 'evening']]) {
+        if (!c[key]) continue
+        const ok = await postStatus({ id: parseInt(itemId) }, period, null)
+        if (!ok) failed++
+      }
+    }
+    setClearingDay(null)
+    show(failed === 0 ? '✅ تم مسح تعليمات اليوم' : `⚠️ مسح جزئي — ${failed} عملية فشلت`)
+    loadMonth()
   }
 
   // ── الملاحظات والصور ──
@@ -450,6 +473,11 @@ export default function Checklist({ user }) {
         <button type="button" onClick={() => setCellAction({ row, period })} disabled={isPending}
           title={`${PERIODS[period]} — تعديل التقييم`}
           className={`${btnBase} ${isFail ? 'bg-ios-red text-white' : 'bg-ios-red/10 text-ios-red'}`}>✗</button>
+        {isAdmin && !isOldDay && (
+          <button type="button" onClick={() => clearCheck(row, period)} disabled={isPending}
+            title={`${PERIODS[period]} — مسح التعليم (أدمن)`}
+            className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] bg-ios-red/10 text-ios-red hover:bg-ios-red/25 active:scale-90 disabled:opacity-40">🗑️</button>
+        )}
       </div>
     )
   }
@@ -743,7 +771,7 @@ export default function Checklist({ user }) {
                       <tr>
                         <th className="sticky right-0 z-10 bg-[#F2F2F7] w-24 text-center text-xs">الفترة</th>
                         {rows.map(row => (
-                          <th key={row.id} className="text-center text-xs min-w-[96px]">
+                          <th key={row.id} className="text-center text-xs min-w-[120px]">
                             <div className="flex items-center justify-center gap-1">
                               <span>{PRINT_SHORT_TITLES[row.title] || row.title}</span>
                               {noteBtn(row)}
@@ -832,10 +860,23 @@ export default function Checklist({ user }) {
                       <th className="sticky right-0 z-10 bg-[#F2F2F7] w-28 text-right text-xs">القسم</th>
                       {Array.from({ length: daysInMonth }, (_, idx) => idx + 1).map(d => {
                         const isTodayCol = month === currentMonth && d === todayNum
+                        const dayChecks = dayMap[d]?.checks || {}
+                        const canClearDay = isAdmin
+                          && Object.values(dayChecks).some(c => c.m || c.e)
+                          && `${month}-${String(d).padStart(2, '0')}` >= todayStr()
                         return (
                           <th key={d} onClick={() => goToDay(d)} title={`اليوم ${d}`}
                             className={`text-center text-[11px] cursor-pointer w-9 ${isTodayCol ? 'bg-ios-blue/20 text-ios-blue' : ''}`}>
                             {d}
+                            {canClearDay && (
+                              <button type="button"
+                                onClick={(e) => { e.stopPropagation(); clearDay(d) }}
+                                disabled={clearingDay === d}
+                                title={`مسح كل تعليمات يوم ${d} (أدمن)`}
+                                className="block mx-auto mt-0.5 text-[9px] opacity-80 hover:opacity-100 active:scale-90 disabled:opacity-30">
+                                {clearingDay === d ? '⏳' : '🗑️'}
+                              </button>
+                            )}
                           </th>
                         )
                       })}
