@@ -569,7 +569,7 @@ export default function Checklist({ user }) {
       columns,
       rows: rowsPrint,
       totals: [{ label: 'نسبة الالتزام', value: `${pct}% (${passed}/${evaluated})` }],
-      compact: true,
+      landscape: true,
       footerHtml
     })
   }
