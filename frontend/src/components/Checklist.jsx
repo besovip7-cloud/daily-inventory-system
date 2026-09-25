@@ -517,6 +517,12 @@ export default function Checklist({ user }) {
 
   const sectionItems = monthData?.items || []
 
+  // الانتقال من الشبكة الشهرية لعرض يوم معين
+  const goToDay = (d) => {
+    setDate(`${month}-${String(d).padStart(2, '0')}`)
+    setView('daily')
+  }
+
   const printMonthly = () => {
     if (!monthData) return
     const [y, m] = month.split('-')
@@ -796,40 +802,57 @@ export default function Checklist({ user }) {
           ) : (
             <div className="card-ios overflow-hidden mb-6">
               <div className="overflow-x-auto">
-                <table className="table-ios min-w-[640px]">
+                <table className="table-ios min-w-[1150px]">
                   <thead>
                     <tr>
-                      <th className="w-16 text-center">اليوم</th>
-                      {sectionItems.map(i => <th key={i.id} className="text-center text-xs">{i.title}</th>)}
-                      <th className="w-24 text-center">الحالة</th>
+                      <th className="sticky right-0 z-10 bg-[#F2F2F7] w-28 text-right text-xs">القسم</th>
+                      {Array.from({ length: daysInMonth }, (_, idx) => idx + 1).map(d => {
+                        const isTodayCol = month === currentMonth && d === todayNum
+                        return (
+                          <th key={d} onClick={() => goToDay(d)} title={`اليوم ${d}`}
+                            className={`text-center text-[11px] cursor-pointer w-9 ${isTodayCol ? 'bg-ios-blue/20 text-ios-blue' : ''}`}>
+                            {d}
+                          </th>
+                        )
+                      })}
                     </tr>
                   </thead>
                   <tbody>
-                    {Array.from({ length: daysInMonth }, (_, idx) => idx + 1).map(d => {
-                      const day = dayMap[d]
-                      const isFuture = !day && month === currentMonth && d > todayNum
-                      return (
-                        <tr key={d}
-                          onClick={() => { setDate(`${month}-${String(d).padStart(2, '0')}`); setView('daily') }}
-                          className={`cursor-pointer ${isFuture ? 'opacity-40' : 'hover:bg-ios-fill/50'}`}>
-                          <td className="text-center font-bold text-ios-text">{d}</td>
-                          {sectionItems.map(i => {
-                            const { done, total, fail } = itemStatus(i, day?.checks)
-                            const cell = total === 0 ? '' : (fail ? '🔴' : done >= total ? '🟢' : (done > 0 ? '🟠' : (day ? '⚪' : '')))
-                            return <td key={i.id} className="text-center">{cell}</td>
-                          })}
-                          <td className="text-center text-xs font-bold whitespace-nowrap">
-                            {day?.approved ? '📋✅' : (day ? (day.morning.done + day.evening.done > 0 ? `⚠️ ${day.missing_titles.length}` : '—') : '—')}
+                    {sectionItems.map(i => (
+                      <tr key={i.id}>
+                        <td className="sticky right-0 z-10 bg-white font-bold text-xs text-ios-text whitespace-nowrap">{i.title}</td>
+                        {Array.from({ length: daysInMonth }, (_, idx) => idx + 1).map(d => {
+                          const day = dayMap[d]
+                          const isFuture = !day && month === currentMonth && d > todayNum
+                          const { done, total, fail } = itemStatus(i, day?.checks)
+                          const cell = total === 0 ? '' : (fail ? '🔴' : done >= total ? '🟢' : (done > 0 ? '🟠' : (day ? '⚪' : '')))
+                          return (
+                            <td key={d} onClick={() => goToDay(d)}
+                              className={`text-center text-sm cursor-pointer ${isFuture ? 'opacity-40' : 'hover:bg-ios-fill/50'}`}>
+                              {cell}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 border-ios-sep">
+                      <td className="sticky right-0 z-10 bg-white font-bold text-xs text-ios-label whitespace-nowrap">حالة اليوم</td>
+                      {Array.from({ length: daysInMonth }, (_, idx) => idx + 1).map(d => {
+                        const day = dayMap[d]
+                        return (
+                          <td key={d} onClick={() => goToDay(d)}
+                            className="text-center text-[11px] font-bold cursor-pointer whitespace-nowrap">
+                            {day?.approved ? '📋✅' : (day ? (day.morning.done + day.evening.done > 0 ? `⚠️${day.missing_titles.length}` : '—') : '—')}
                           </td>
-                        </tr>
-                      )
-                    })}
+                        )
+                      })}
+                    </tr>
                   </tbody>
                 </table>
               </div>
               <div className="px-4 py-2.5 border-t border-ios-sep text-[11px] text-ios-label font-semibold flex gap-3 flex-wrap">
                 <span>🟢 مكتمل</span><span>🟠 جزئي</span><span>⚪ غير مكتمل</span><span>🔴 غير نظيف</span><span>📋✅ معتمد</span>
-                <span className="mr-auto">اضغط على يوم للانتقال للعرض اليومي</span>
+                <span className="mr-auto">اضغط على خلية أو رقم يوم للانتقال للعرض اليومي</span>
               </div>
             </div>
           )}
