@@ -202,8 +202,11 @@ exports.saveCheck = async (req, res) => {
     else if (checked === true) statusParam = 'pass'; // توافق رجعي
     else statusParam = undefined;
 
-    // المسح: حذف السجل مع حماية الأيام السابقة
+    // المسح: حذف السجل — للأدمن فقط، مع حماية الأيام السابقة
     if (statusParam === null) {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'مسح التعليم متاح للأدمن فقط' });
+      }
       if (date < iraqToday()) {
         return res.status(400).json({ message: 'ما تكدر تلغي تعليم أيام سابقة' });
       }

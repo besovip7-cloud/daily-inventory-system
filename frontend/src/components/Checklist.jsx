@@ -1079,13 +1079,15 @@ export default function Checklist({ user }) {
                   className="w-full py-2.5 rounded-2xl bg-ios-blue/10 text-ios-blue font-bold text-sm active:opacity-70 disabled:opacity-40">
                   📝 {isFail ? 'تعديل السبب والصورة' : 'تعديل الملاحظة والصورة'}
                 </button>
-                <button type="button" disabled={busy || isOldDay}
-                  onClick={async () => { if (await clearCheck(row, period)) close() }}
-                  className="w-full py-2.5 rounded-2xl bg-ios-red/10 text-ios-red font-bold text-sm active:opacity-70 disabled:opacity-40">
-                  🗑️ مسح التعليم
-                </button>
+                {isAdmin && (
+                  <button type="button" disabled={busy || isOldDay}
+                    onClick={async () => { if (await clearCheck(row, period)) close() }}
+                    className="w-full py-2.5 rounded-2xl bg-ios-red/10 text-ios-red font-bold text-sm active:opacity-70 disabled:opacity-40">
+                    🗑️ مسح التعليم
+                  </button>
+                )}
               </div>
-              {isOldDay && (
+              {isAdmin && isOldDay && (
                 <p className="text-[11px] text-ios-orange font-semibold mt-3">⚠️ يوم سابق — مسح التعليم معطّل</p>
               )}
             </div>
