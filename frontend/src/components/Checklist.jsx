@@ -10,6 +10,13 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 const PERIODS = { morning: '🌅 صباحي', evening: '🌙 مسائي' }
 const ITEM_PERIODS = { morning: 'صباحي', evening: 'مسائي', both: 'كلاهما' }
 
+// عناوين مختصرة للطباعة فقط — أسماء الأقسام الكاملة تبقى بالواجهة
+const PRINT_SHORT_TITLES = {
+  'المنطقة الأمامية': 'الأمامية',
+  'أجهزة التطبيقات': 'الأجهزة',
+  'عارضة المقبلات': 'المقبلات',
+}
+
 const todayStr = () => new Date().toISOString().split('T')[0]
 
 // ضغط الصورة بالمتصفح: أبعاد قصوى 800px وجودة JPEG 0.7
@@ -51,6 +58,8 @@ export default function Checklist({ user }) {
 
   // الملاحظات والصور
   const [noteEditor, setNoteEditor] = useState(null) // row المفتوح
+  const [reasonPeriod, setReasonPeriod] = useState(null) // فترة وضع السبب (✗ على بند غير مقيّم)
+  const [cellAction, setCellAction] = useState(null) // {row, period} لبند مقيّم — خيارات التعديل/المسح
   const [drafts, setDrafts] = useState({}) // {morning: {note, photo}, evening: {...}}
   const [noteSaving, setNoteSaving] = useState(false)
   const [lightbox, setLightbox] = useState(null)
@@ -157,70 +166,103 @@ export default function Checklist({ user }) {
 
   const applicable = (item, period) => item.period === 'both' || item.period === period
 
-  const toggle = async (item, period) => {
-    const periodData = checks[period]
-    const current = periodData?.items.find(i => i.id === item.id)
-    const target = !current?.checked
-    const pendKey = `${item.id}:${period}`
+  // عدد خلايا "غير نظيف" (fail) بكل الفترات — للعرض والاعتماد
+  const failCount = rows.reduce((n, row) =>
+    n + (applicable(row, 'morning') && row.m?.status === 'fail' ? 1 : 0)
+      + (applicable(row, 'evening') && row.e?.status === 'fail' ? 1 : 0), 0)
 
-    // تحديث متفائل بالواجهة أولاً
+  // تحديث متفائل لعنصر بند بفترة معينة
+  const patchItem = (period, itemId, patch) => setChecks(prev => ({
+    ...prev,
+    [period]: {
+      ...prev[period],
+      items: prev[period].items.map(i => i.id === itemId ? { ...i, ...patch } : i)
+    }
+  }))
+
+  const bumpProgress = (period, delta) => setChecks(prev => ({
+    ...prev,
+    [period]: { ...prev[period], progress: { ...prev[period].progress, done: Math.max(0, prev[period].progress.done + delta) } }
+  }))
+
+  // إرسال الحالة للسيرفر — يرجع true عند النجاح
+  const postStatus = async (row, period, status, extra = {}) => {
+    const pendKey = `${row.id}:${period}`
     setPending(prev => new Set(prev).add(pendKey))
-    setChecks(prev => ({
-      ...prev,
-      [period]: {
-        ...prev[period],
-        items: prev[period].items.map(i => i.id === item.id
-          ? { ...i, checked: target, checked_by_name: target ? (user?.name || 'أنا') : null, checked_at: target ? new Date().toISOString() : null }
-          : i),
-        progress: { ...prev[period].progress, done: prev[period].progress.done + (target ? 1 : -1) }
-      }
-    }))
-    const revert = () => setChecks(prev => ({
-      ...prev,
-      [period]: {
-        ...prev[period],
-        items: prev[period].items.map(i => i.id === item.id ? (current || { ...i, checked: false }) : i),
-        progress: { ...prev[period].progress, done: prev[period].progress.done + (target ? -1 : 1) }
-      }
-    }))
+    let ok = false
     try {
       const res = await fetch(`${API_URL}/checklist/checks`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          item_id: item.id,
+          item_id: row.id,
           date,
           period,
-          checked: target,
+          status,
+          ...extra,
           ...(isAdmin ? { branch_id: parseInt(selectedBranch) } : {})
         })
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        revert()
-        show('❌ ' + (data.message || 'فشل الحفظ'))
-      }
+      if (res.ok) ok = true
+      else { show('❌ ' + (data.message || 'فشل الحفظ')); loadChecks() }
     } catch {
-      revert()
       show('❌ خطأ في الاتصال')
+      loadChecks()
     }
     setPending(prev => {
       const next = new Set(prev)
       next.delete(pendKey)
       return next
     })
+    return ok
+  }
+
+  // ✓ على بند غير مقيّم — تقييم فوري "نظيف"
+  const markPass = async (row, period) => {
+    patchItem(period, row.id, {
+      checked: true, status: 'pass',
+      checked_by_name: user?.name || 'أنا', checked_at: new Date().toISOString(),
+      note: null, photo: null
+    })
+    bumpProgress(period, 1)
+    await postStatus(row, period, 'pass')
+  }
+
+  // تغيير بند مقيّم (خطأ) إلى نظيف
+  const changeToPass = async (row, period) => {
+    patchItem(period, row.id, {
+      status: 'pass',
+      checked_by_name: user?.name || 'أنا', checked_at: new Date().toISOString()
+    })
+    await postStatus(row, period, 'pass')
+  }
+
+  // مسح تعليم بند (ما يشتغل على أيام سابقة — السيرفر يرفض)
+  const clearCheck = async (row, period) => {
+    if (!window.confirm('مسح تعليم هذا البند؟')) return false
+    patchItem(period, row.id, {
+      checked: false, status: null,
+      checked_by_name: null, checked_at: null, note: null, photo: null
+    })
+    bumpProgress(period, -1)
+    return postStatus(row, period, null)
   }
 
   // ── الملاحظات والصور ──
-  const openNoteEditor = (row) => {
+  // reasonPeriod: وضع السبب — يعرض فترة وحدة ويلزم كتابة السبب ويرسل status:'fail'
+  const openNoteEditor = (row, reasonPeriod = null) => {
     const d = {}
     Object.keys(PERIODS).forEach(p => {
       const c = p === 'morning' ? row.m : row.e
       d[p] = { note: c?.note || '', photo: c?.photo || null }
     })
     setDrafts(d)
+    setReasonPeriod(reasonPeriod)
     setNoteEditor(row)
   }
+
+  const closeNoteEditor = () => { setNoteEditor(null); setReasonPeriod(null) }
 
   const pickPhoto = async (e, period) => {
     const file = e.target.files?.[0]
@@ -236,12 +278,16 @@ export default function Checklist({ user }) {
   const saveNotes = async () => {
     setNoteSaving(true)
     let okCount = 0
-    for (const period of Object.keys(PERIODS)) {
+    const periods = reasonPeriod ? [reasonPeriod] : Object.keys(PERIODS)
+    for (const period of periods) {
       if (!applicable(noteEditor, period)) continue
       const current = checks[period]?.items.find(i => i.id === noteEditor.id)
       const draft = drafts[period] || { note: '', photo: null }
-      // لا تنشئ سجلاً فارغاً لبند غير معلّم بدون ملاحظة ولا صورة
-      if (!current?.checked && !draft.note.trim() && !draft.photo) continue
+      const isReason = reasonPeriod === period
+      // وضع السبب: السبب المطلوب مضمون (زر الحفظ معطّل بدونه)
+      if (isReason && !draft.note.trim()) continue
+      // الوضع العادي: لا تنشئ سجلاً فارغاً لبند غير معلّم بدون ملاحظة ولا صورة
+      if (!isReason && !current?.checked && !draft.note.trim() && !draft.photo) continue
       try {
         const res = await fetch(`${API_URL}/checklist/checks`, {
           method: 'POST',
@@ -250,7 +296,7 @@ export default function Checklist({ user }) {
             item_id: noteEditor.id,
             date,
             period,
-            checked: !!current?.checked,
+            status: isReason ? 'fail' : (current?.status || 'pass'),
             note: draft.note,
             ...(draft.photo ? { photo: draft.photo } : {}),
             ...(isAdmin ? { branch_id: parseInt(selectedBranch) } : {})
@@ -261,9 +307,10 @@ export default function Checklist({ user }) {
         else show('❌ ' + (data.message || 'فشل حفظ الملاحظة'))
       } catch { show('❌ خطأ في الاتصال') }
     }
-    if (okCount > 0) show('✅ تم حفظ الملاحظات')
+    if (okCount > 0) show(reasonPeriod ? '✅ تم حفظ السبب' : '✅ تم حفظ الملاحظات')
     setNoteSaving(false)
     setNoteEditor(null)
+    setReasonPeriod(null)
     loadChecks()
   }
 
@@ -373,22 +420,37 @@ export default function Checklist({ user }) {
     } catch { show('❌ خطأ في حفظ الترتيب') }
   }
 
-  // خلية التعليم (زر أو شرطة إذا البند ما يخص الفترة)
+  // خلية التقييم: بند غير مقيّم = زرا ✓/✗ مباشرين؛ بند مقيّم = الضغط يفتح خيارات التعديل والمسح
   const checkCell = (row, period, key) => {
     if (!applicable(row, period)) {
       return <span className="text-ios-label text-sm">—</span>
     }
     const c = row[key]
     const pendKey = `${row.id}:${period}`
+    const isPending = pending.has(pendKey)
+    const btnBase = 'w-8 h-8 rounded-full flex items-center justify-center text-base font-bold transition active:scale-90 disabled:opacity-50'
+    if (!c) {
+      return (
+        <div className="flex items-center justify-center gap-1.5">
+          <button type="button" onClick={() => markPass(row, period)} disabled={isPending}
+            title={`${PERIODS[period]} — نظيف`}
+            className={`${btnBase} bg-ios-green text-white`}>✓</button>
+          <button type="button" onClick={() => openNoteEditor(row, period)} disabled={isPending}
+            title={`${PERIODS[period]} — خطأ (يلزم كتابة السبب)`}
+            className={`${btnBase} border-2 border-ios-red text-ios-red hover:bg-ios-red/10`}>✗</button>
+        </div>
+      )
+    }
+    const isFail = c.status === 'fail'
     return (
-      <button type="button" onClick={() => !pending.has(pendKey) && toggle(row, period)}
-        disabled={pending.has(pendKey)}
-        title={PERIODS[period]}
-        className={`w-9 h-9 rounded-full flex items-center justify-center text-lg transition active:scale-90 mx-auto ${
-          c ? 'bg-ios-green text-white' : 'border-2 border-ios-sep text-transparent hover:border-ios-green'
-        } ${pending.has(pendKey) ? 'opacity-60' : ''}`}>
-        ✓
-      </button>
+      <div className="flex items-center justify-center gap-1.5">
+        <button type="button" onClick={() => setCellAction({ row, period })} disabled={isPending}
+          title={`${PERIODS[period]} — تعديل التقييم`}
+          className={`${btnBase} ${isFail ? 'bg-ios-green/15 text-ios-green' : 'bg-ios-green text-white'}`}>✓</button>
+        <button type="button" onClick={() => setCellAction({ row, period })} disabled={isPending}
+          title={`${PERIODS[period]} — تعديل التقييم`}
+          className={`${btnBase} ${isFail ? 'bg-ios-red text-white' : 'bg-ios-red/10 text-ios-red'}`}>✗</button>
+      </div>
     )
   }
 
@@ -407,6 +469,30 @@ export default function Checklist({ user }) {
     ? `${label} ✓ ${c.checked_by_name || '—'} ${c.checked_at ? new Date(c.checked_at).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }) : ''}`
     : null
 
+  // سطور حالة البند تحت العنوان: أسباب حمراء للخطأ + سطور خضراء للنظيف
+  const rowStatusLines = (row) => {
+    const pass = [
+      row.m && row.m.status !== 'fail' ? checkLine(row.m, '🌅 صباحي') : null,
+      row.e && row.e.status !== 'fail' ? checkLine(row.e, '🌙 مسائي') : null
+    ].filter(Boolean)
+    const fail = [
+      row.m?.status === 'fail' ? `🌅 صباحي ✗${row.m.note ? ' ' + row.m.note : ''}` : null,
+      row.e?.status === 'fail' ? `🌙 مسائي ✗${row.e.note ? ' ' + row.e.note : ''}` : null
+    ].filter(Boolean)
+    return { pass, fail }
+  }
+
+  const statusLinesBlock = (row, cls) => {
+    const { pass, fail } = rowStatusLines(row)
+    if (pass.length === 0 && fail.length === 0) return null
+    return (
+      <span className={cls}>
+        {fail.map((l, i) => <span key={'f' + i} className="block text-ios-red">{l}</span>)}
+        {pass.length > 0 && <span className="block text-ios-green">{pass.join(' · ')}</span>}
+      </span>
+    )
+  }
+
   // ── الشهرية ──
   const daysInMonth = (() => {
     const [y, m] = month.split('-').map(Number)
@@ -416,42 +502,62 @@ export default function Checklist({ user }) {
   ;(monthData?.days || []).forEach(d => { dayMap[d.day] = d })
 
   const itemStatus = (item, dayChecks) => {
-    if (!dayChecks) return { done: 0, total: 0 }
-    const c = dayChecks[item.id]
+    // dayChecks: خريطة البند → {m, e, mn, en} — m/e حالة التقييم 'pass'|'fail' أو null
     const total = item.period === 'both' ? 2 : 1
-    let done = 0
+    const c = dayChecks?.[item.id]
+    let done = 0, passCount = 0, fail = false
     if (c) {
-      if (item.period === 'both') done = (c.m ? 1 : 0) + (c.e ? 1 : 0)
-      else done = c[item.period === 'morning' ? 'm' : 'e'] ? 1 : 0
+      const keys = item.period === 'both' ? ['m', 'e'] : [item.period === 'morning' ? 'm' : 'e']
+      keys.forEach(k => {
+        if (c[k]) { done++; if (c[k] === 'pass') passCount++; else fail = true }
+      })
     }
-    return { done, total }
+    return { done, total, fail, passCount }
   }
 
-  const sectionItems = (monthData?.items || []).slice(0, 6)
+  const sectionItems = monthData?.items || []
 
   const printMonthly = () => {
     if (!monthData) return
     const [y, m] = month.split('-')
     const branchName = branches.find(b => String(b.id) === String(selectedBranch))?.name || ''
+    const shortTitle = t => PRINT_SHORT_TITLES[t] || t
+    // عمود ملاحظات آخر عمود (أقصى اليسار بالاتجاه RTL) لأسباب الخطأ
     const columns = [
       { key: 'day', label: 'اليوم' },
-      ...sectionItems.map(i => ({ key: `s${i.id}`, label: i.title })),
-      { key: 'status', label: 'الحالة' }
+      ...sectionItems.map(i => ({ key: `s${i.id}`, label: shortTitle(i.title) })),
+      { key: 'status', label: 'الحالة' },
+      { key: 'notes', label: 'ملاحظات' }
     ]
+    const clip = s => (s.length > 40 ? s.slice(0, 40) + '…' : s)
     const rowsPrint = []
     for (let d = 1; d <= daysInMonth; d++) {
       const day = dayMap[d]
       const row = { day: String(d) }
+      const dayNotes = []
       sectionItems.forEach(i => {
-        const { done, total } = itemStatus(i, day?.checks)
-        row[`s${i.id}`] = total === 0 ? '' : (done >= total ? '✓' : (done > 0 ? '△' : '—'))
+        const { done, total, fail } = itemStatus(i, day?.checks)
+        row[`s${i.id}`] = total === 0 ? '' : (fail ? '✗' : (done >= total ? '✓' : '—'))
+        const c = day?.checks?.[i.id]
+        if (c?.mn) dayNotes.push(`${shortTitle(i.title)}: ${clip(c.mn)}`)
+        if (c?.en) dayNotes.push(`${shortTitle(i.title)}: ${clip(c.en)}`)
       })
       row.status = day
         ? (day.approved ? '✅ معتمد' : (day.morning.done + day.evening.done > 0 ? `ناقص ${day.missing_titles.length}` : '—'))
         : '—'
+      row.notes = dayNotes.length > 2 ? dayNotes.slice(0, 2).join('؛ ') + ' ...' : dayNotes.join('؛ ')
       rowsPrint.push(row)
     }
-    const pct = monthData.commitment.total > 0 ? Math.round((monthData.commitment.done / monthData.commitment.total) * 100) : 0
+    // نسبة الالتزام = التقييمات الناجحة / كل التقييمات المسجلة بأيام الشهر
+    let passed = 0, evaluated = 0
+    ;(monthData.days || []).forEach(d => {
+      sectionItems.forEach(i => {
+        const { done, passCount } = itemStatus(i, d.checks)
+        evaluated += done
+        passed += passCount
+      })
+    })
+    const pct = evaluated > 0 ? Math.round((passed / evaluated) * 100) : 0
     const footerHtml = `
       <div style="display:flex;justify-content:space-between;margin-top:10mm;font-size:11pt;font-weight:700">
         <span>توقيع مسؤول القسم: ____________________</span>
@@ -462,8 +568,8 @@ export default function Checklist({ user }) {
       subtitle: `شركة صاج الريف للمنتجات الغذائية وإدارة المطاعم واستثمارها — SJ-PRP-F06 • الفرع: ${branchName} • الشهر: ${m}/${y}`,
       columns,
       rows: rowsPrint,
-      totals: [{ label: 'نسبة الالتزام', value: `${pct}% (${monthData.commitment.done}/${monthData.commitment.total})` }],
-      landscape: true,
+      totals: [{ label: 'نسبة الالتزام', value: `${pct}% (${passed}/${evaluated})` }],
+      compact: true,
       footerHtml
     })
   }
@@ -559,10 +665,18 @@ export default function Checklist({ user }) {
                 </div>
               </div>
             ))}
+            {failCount > 0 && (
+              <p className="text-ios-red text-sm font-bold">🔴 {failCount} {failCount === 1 ? 'قسم غير نظيف' : 'أقسام غير نظيفة'}</p>
+            )}
           </div>
 
           {/* بطاقة الاعتماد */}
           <div className={`card-ios p-4 mb-4 ${approval.approved ? 'border-ios-green/40 bg-ios-green/5' : 'border-ios-orange/40 bg-ios-orange/5'}`}>
+            {failCount > 0 && (
+              <p className="mb-2 px-3 py-2 rounded-xl bg-ios-red/10 text-ios-red text-xs font-bold">
+                ⚠️ يوجد {failCount} {failCount === 1 ? 'قسم غير نظيف' : 'أقسام غير نظيفة'} — راجع الأسباب قبل الاعتماد
+              </p>
+            )}
             {approval.approved ? (
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-bold text-[#1F7A33] text-sm">
@@ -617,11 +731,7 @@ export default function Checklist({ user }) {
                             <span className="font-semibold text-sm text-ios-text">{row.title}</span>
                             {noteBtn(row)}
                           </div>
-                          {(row.m || row.e) && (
-                            <span className="block text-[11px] text-ios-green font-semibold mt-0.5">
-                              {[checkLine(row.m, 'صباحي'), checkLine(row.e, 'مسائي')].filter(Boolean).join(' · ')}
-                            </span>
-                          )}
+                          {statusLinesBlock(row, 'block text-[11px] font-semibold mt-0.5')}
                         </td>
                         <td className="text-center">{checkCell(row, 'morning', 'm')}</td>
                         <td className="text-center">{checkCell(row, 'evening', 'e')}</td>
@@ -639,11 +749,7 @@ export default function Checklist({ user }) {
                       <span className="font-semibold text-ios-text text-sm">{row.title}</span>
                       {noteBtn(row)}
                     </div>
-                    {(row.m || row.e) && (
-                      <div className="text-[11px] text-ios-green font-semibold mb-2">
-                        {[checkLine(row.m, '🌅 صباحي'), checkLine(row.e, '🌙 مسائي')].filter(Boolean).join(' · ')}
-                      </div>
-                    )}
+                    {statusLinesBlock(row, 'block text-[11px] font-semibold mb-2')}
                     <div className="grid grid-cols-2 gap-2">
                       <div className="flex items-center justify-between rounded-2xl bg-ios-fill/60 px-3 py-2">
                         <span className="text-xs font-bold text-ios-label">{PERIODS.morning}</span>
@@ -708,8 +814,8 @@ export default function Checklist({ user }) {
                           className={`cursor-pointer ${isFuture ? 'opacity-40' : 'hover:bg-ios-fill/50'}`}>
                           <td className="text-center font-bold text-ios-text">{d}</td>
                           {sectionItems.map(i => {
-                            const { done, total } = itemStatus(i, day?.checks)
-                            const cell = total === 0 ? '' : (done >= total ? '🟢' : (done > 0 ? '🟠' : (day ? '⚪' : '')))
+                            const { done, total, fail } = itemStatus(i, day?.checks)
+                            const cell = total === 0 ? '' : (fail ? '🔴' : done >= total ? '🟢' : (done > 0 ? '🟠' : (day ? '⚪' : '')))
                             return <td key={i.id} className="text-center">{cell}</td>
                           })}
                           <td className="text-center text-xs font-bold whitespace-nowrap">
@@ -722,7 +828,7 @@ export default function Checklist({ user }) {
                 </table>
               </div>
               <div className="px-4 py-2.5 border-t border-ios-sep text-[11px] text-ios-label font-semibold flex gap-3 flex-wrap">
-                <span>🟢 مكتمل</span><span>🟠 جزئي</span><span>⚪ غير مكتمل</span><span>📋✅ معتمد</span>
+                <span>🟢 مكتمل</span><span>🟠 جزئي</span><span>⚪ غير مكتمل</span><span>🔴 غير نظيف</span><span>📋✅ معتمد</span>
                 <span className="mr-auto">اضغط على يوم للانتقال للعرض اليومي</span>
               </div>
             </div>
@@ -840,20 +946,25 @@ export default function Checklist({ user }) {
       {/* نافذة الملاحظة والصورة */}
       {noteEditor && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4"
-          onClick={() => setNoteEditor(null)}>
+          onClick={closeNoteEditor}>
           <div className="bg-white dark:bg-[#1c1c1e] w-full md:max-w-lg rounded-t-3xl md:rounded-3xl p-4 max-h-[85vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-ios-text">📝 ملاحظات — {noteEditor.title}</h3>
-              <button type="button" onClick={() => setNoteEditor(null)}
+              <h3 className="font-bold text-ios-text">
+                {reasonPeriod ? `⚠️ سبب الخطأ — ${noteEditor.title}` : `📝 ملاحظات — ${noteEditor.title}`}
+              </h3>
+              <button type="button" onClick={closeNoteEditor}
                 className="px-2.5 py-1 rounded-xl bg-ios-fill text-ios-text text-sm font-bold active:opacity-60">✕</button>
             </div>
-            {Object.keys(PERIODS).filter(p => applicable(noteEditor, p)).map(p => {
+            {Object.keys(PERIODS).filter(p => applicable(noteEditor, p) && (!reasonPeriod || p === reasonPeriod)).map(p => {
               const draft = drafts[p] || { note: '', photo: null }
+              const isReason = reasonPeriod === p
               return (
-                <div key={p} className="rounded-2xl border border-ios-sep p-3 mb-3">
+                <div key={p} className={`rounded-2xl border p-3 mb-3 ${isReason ? 'border-ios-red/40' : 'border-ios-sep'}`}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-ios-label">{PERIODS[p]}</span>
+                    <span className={`text-xs font-bold ${isReason ? 'text-ios-red' : 'text-ios-label'}`}>
+                      {isReason ? `${PERIODS[p]} — السبب (مطلوب)` : PERIODS[p]}
+                    </span>
                     <label className="text-xs font-bold text-ios-blue cursor-pointer active:opacity-60">
                       📷 إرفاق صورة
                       <input type="file" accept="image/*" capture="environment" className="hidden"
@@ -862,7 +973,8 @@ export default function Checklist({ user }) {
                   </div>
                   <textarea value={draft.note} rows={2}
                     onChange={e => setDrafts(prev => ({ ...prev, [p]: { ...prev[p], note: e.target.value } }))}
-                    placeholder="مثلاً: يحتاج مواد تنظيف" className="input-ios resize-none w-full" />
+                    placeholder={isReason ? 'مثلاً: يحتاج صابون / تسريب ماء...' : 'مثلاً: يحتاج مواد تنظيف'}
+                    className="input-ios resize-none w-full" />
                   {draft.photo && (
                     <div className="mt-2 flex items-center gap-2">
                       <img src={draft.photo} alt="" onClick={() => setLightbox(draft.photo)}
@@ -875,14 +987,64 @@ export default function Checklist({ user }) {
               )
             })}
             <div className="flex gap-2">
-              <button type="button" disabled={noteSaving} onClick={saveNotes}
-                className="btn-ios flex-1 disabled:opacity-40">{noteSaving ? 'جاري الحفظ...' : '💾 حفظ'}</button>
-              <button type="button" onClick={() => setNoteEditor(null)}
+              <button type="button"
+                disabled={noteSaving || (reasonPeriod && !(drafts[reasonPeriod]?.note || '').trim())}
+                onClick={saveNotes}
+                className="btn-ios flex-1 disabled:opacity-40">{noteSaving ? 'جاري الحفظ...' : (reasonPeriod ? '💾 حفظ الخطأ' : '💾 حفظ')}</button>
+              <button type="button" onClick={closeNoteEditor}
                 className="btn-ios-secondary">إلغاء</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* خيارات البند المقيّم: تغيير / تعديل / مسح */}
+      {cellAction && (() => {
+        const { row, period } = cellAction
+        const c = period === 'morning' ? row.m : row.e
+        const isFail = c?.status === 'fail'
+        const busy = pending.has(`${row.id}:${period}`)
+        const close = () => setCellAction(null)
+        return (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4"
+            onClick={close}>
+            <div className="bg-white dark:bg-[#1c1c1e] w-full md:max-w-sm rounded-t-3xl md:rounded-3xl p-4"
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-ios-text text-sm">{row.title}</h3>
+                <button type="button" onClick={close}
+                  className="px-2.5 py-1 rounded-xl bg-ios-fill text-ios-text text-sm font-bold active:opacity-60">✕</button>
+              </div>
+              <p className={`text-xs font-bold mb-3 ${isFail ? 'text-ios-red' : 'text-[#1F7A33]'}`}>
+                {PERIODS[period]} — الحالية: {isFail ? '✗ غير نظيف' : '✓ نظيف'}
+                {c?.checked_by_name ? ` (${c.checked_by_name})` : ''}
+              </p>
+              <div className="space-y-2">
+                {isFail && (
+                  <button type="button" disabled={busy}
+                    onClick={async () => { close(); await changeToPass(row, period) }}
+                    className="w-full py-2.5 rounded-2xl bg-ios-green text-white font-bold text-sm active:opacity-80 disabled:opacity-40">
+                    ✓ تغيير إلى نظيف
+                  </button>
+                )}
+                <button type="button" disabled={busy}
+                  onClick={() => { close(); openNoteEditor(row, isFail ? period : null) }}
+                  className="w-full py-2.5 rounded-2xl bg-ios-blue/10 text-ios-blue font-bold text-sm active:opacity-70 disabled:opacity-40">
+                  📝 {isFail ? 'تعديل السبب والصورة' : 'تعديل الملاحظة والصورة'}
+                </button>
+                <button type="button" disabled={busy || isOldDay}
+                  onClick={async () => { if (await clearCheck(row, period)) close() }}
+                  className="w-full py-2.5 rounded-2xl bg-ios-red/10 text-ios-red font-bold text-sm active:opacity-70 disabled:opacity-40">
+                  🗑️ مسح التعليم
+                </button>
+              </div>
+              {isOldDay && (
+                <p className="text-[11px] text-ios-orange font-semibold mt-3">⚠️ يوم سابق — مسح التعليم معطّل</p>
+              )}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* عرض الصورة كاملة */}
       {lightbox && (

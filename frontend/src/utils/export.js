@@ -32,8 +32,9 @@ export function exportToExcel({ filename, sheetName = 'التقرير', columns,
  * columns: [{ key, label }]
  * footerHtml: HTML إضافي يُعرض بعد الجدول (توقيعات مثلاً)
  * landscape: طباعة بعرض الصفحة (A4 landscape عبر صفحة مسمّاة)
+ * compact: خط وإطار أصغر للجداول العريضة (9 أعمدة مثلاً)
  */
-export function printReport({ title, subtitle = '', columns, rows, totals = [], company = null, footerHtml = '', landscape = false }) {
+export function printReport({ title, subtitle = '', columns, rows, totals = [], company = null, footerHtml = '', landscape = false, compact = false }) {
   const area = document.getElementById('print-area') || (() => {
     const el = document.createElement('div')
     el.id = 'print-area'
@@ -55,7 +56,7 @@ export function printReport({ title, subtitle = '', columns, rows, totals = [], 
       <h1>${esc(title)}</h1>
       ${subtitle ? `<p>${esc(subtitle)}</p>` : ''}
     </div>
-    <table class="print-table">
+    <table class="print-table${compact ? ' print-compact' : ''}">
       <thead>
         <tr>${columns.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr>
       </thead>

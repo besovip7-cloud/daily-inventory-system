@@ -125,7 +125,7 @@ exports.getChecks = async (req, res) => {
       [checkPeriod]
     );
     const checks = await pool.query(
-      `SELECT c.item_id, c.checked_by, c.checked_at, c.note, c.photo, u.name AS checked_by_name
+      `SELECT c.item_id, c.checked, c.status, c.checked_by, c.checked_at, c.note, c.photo, u.name AS checked_by_name
        FROM checklist_checks c
        LEFT JOIN users u ON u.id = c.checked_by
        WHERE c.branch_id = $1 AND c.check_date = $2 AND c.period = $3`,
@@ -145,12 +145,14 @@ exports.getChecks = async (req, res) => {
     let done = 0;
     const merged = items.rows.map(i => {
       const c = byItem[i.id];
-      if (c) done++;
+      const isDone = c?.checked === true;
+      if (isDone) done++;
       return {
         id: i.id,
         title: i.title,
         period: i.period,
-        checked: !!c,
+        checked: isDone,
+        status: isDone ? (c?.status || 'pass') : null,
         checked_by_name: c?.checked_by_name || null,
         checked_at: c?.checked_at || null,
         note: c?.note || null,
@@ -176,7 +178,7 @@ exports.getChecks = async (req, res) => {
 
 exports.saveCheck = async (req, res) => {
   try {
-    const { item_id, date, period, checked, note, photo, branch_id } = req.body;
+    const { item_id, date, period, status, checked, note, photo, branch_id } = req.body;
     const checkPeriod = ['morning', 'evening'].includes(period) ? period : null;
     if (!checkPeriod) return res.status(400).json({ message: 'الفترة غير صحيحة' });
     if (!isValidDate(date)) return res.status(400).json({ message: 'التاريخ غير صحيح' });
@@ -193,9 +195,41 @@ exports.saveCheck = async (req, res) => {
     const item = await pool.query('SELECT id FROM checklist_items WHERE id = $1 AND is_active = TRUE', [item_id]);
     if (item.rows.length === 0) return res.status(404).json({ message: 'البند غير موجود أو موقوف' });
 
-    const isChecked = checked === true;
-    if (!isChecked && date < iraqToday()) {
-      return res.status(400).json({ message: 'ما تكدر تلغي تعليم أيام سابقة' });
+    // تحديد العملية: تقييم (pass/fail) أو مسح (null) أو تعديل ملاحظة/صورة فقط
+    let statusParam; // 'pass' | 'fail' | null (مسح) | undefined (حافظ)
+    if (status === 'pass' || status === 'fail') statusParam = status;
+    else if (status === null || status === 'none' || checked === false) statusParam = null;
+    else if (checked === true) statusParam = 'pass'; // توافق رجعي
+    else statusParam = undefined;
+
+    // المسح: حذف السجل مع حماية الأيام السابقة
+    if (statusParam === null) {
+      if (date < iraqToday()) {
+        return res.status(400).json({ message: 'ما تكدر تلغي تعليم أيام سابقة' });
+      }
+      await pool.query(
+        `DELETE FROM checklist_checks
+         WHERE branch_id = $1 AND item_id = $2 AND check_date = $3 AND period = $4`,
+        [branchId, item_id, date, checkPeriod]
+      );
+      return res.json({ cleared: true, item_id, date, period: checkPeriod });
+    }
+
+    // تعديل ملاحظة/صورة فقط — لازم يكون فيه تعليم موجود
+    if (statusParam === undefined) {
+      const existing = await pool.query(
+        `SELECT id FROM checklist_checks
+         WHERE branch_id = $1 AND item_id = $2 AND check_date = $3 AND period = $4 AND checked = TRUE`,
+        [branchId, item_id, date, checkPeriod]
+      );
+      if (existing.rows.length === 0) {
+        return res.status(400).json({ message: 'لا يوجد تعليم لتعديله' });
+      }
+    }
+
+    // خطأ بدون سبب مرفوض
+    if (statusParam === 'fail' && (!note || !String(note).trim())) {
+      return res.status(400).json({ message: 'لازم تكتب سبب عند اختيار خطأ' });
     }
 
     // الملاحظة: ما تنعبى بالطلب = حافظ على الموجودة، تعيين صراحةً (حتى الفارغة) = حدّثها
@@ -211,21 +245,22 @@ exports.saveCheck = async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO checklist_checks (branch_id, item_id, check_date, period, checked_by, checked_at, note, photo)
-       VALUES ($1, $2, $3, $4, $5, CASE WHEN $5::int IS NULL THEN NULL ELSE CURRENT_TIMESTAMP END,
-               CASE WHEN $6 THEN $7 ELSE NULL END, $8)
+      `INSERT INTO checklist_checks (branch_id, item_id, check_date, period, checked, status, checked_by, checked_at, note, photo)
+       VALUES ($1, $2, $3, $4, TRUE, $5, $6, CURRENT_TIMESTAMP,
+               CASE WHEN $7 THEN $8 ELSE NULL END, $9)
        ON CONFLICT (branch_id, item_id, check_date, period)
-       DO UPDATE SET checked_by = EXCLUDED.checked_by,
-                     checked_at = EXCLUDED.checked_at,
-                     note = CASE WHEN $6 THEN EXCLUDED.note ELSE checklist_checks.note END,
+       DO UPDATE SET checked = TRUE,
+                     status = CASE WHEN $5::text IS NULL THEN checklist_checks.status ELSE EXCLUDED.status END,
+                     checked_by = CASE WHEN $5::text IS NULL THEN checklist_checks.checked_by ELSE EXCLUDED.checked_by END,
+                     checked_at = CASE WHEN $5::text IS NULL THEN checklist_checks.checked_at ELSE CURRENT_TIMESTAMP END,
+                     note = CASE WHEN $7 THEN EXCLUDED.note ELSE checklist_checks.note END,
                      photo = CASE
-                       WHEN NOT $9 THEN NULL
-                       WHEN $8::text IS NULL THEN checklist_checks.photo
+                       WHEN $9::text IS NULL THEN checklist_checks.photo
                        ELSE EXCLUDED.photo
                      END
        RETURNING *`,
-      [branchId, item_id, date, checkPeriod, isChecked ? req.user.id : null,
-       noteProvided, noteParam, photoParam, isChecked]
+      [branchId, item_id, date, checkPeriod, statusParam || null, req.user.id,
+       noteProvided, noteParam, photoParam]
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -327,7 +362,7 @@ exports.getMonth = async (req, res) => {
     const eveningItems = items.rows.filter(i => i.period === 'both' || i.period === 'evening');
 
     const checks = await pool.query(
-      `SELECT item_id, check_date, period
+      `SELECT item_id, check_date, period, status, note
        FROM checklist_checks
        WHERE branch_id = $1 AND check_date >= $2::date AND check_date < ($2::date + INTERVAL '1 month')`,
       [branchId, `${month}-01`]
@@ -339,10 +374,12 @@ exports.getMonth = async (req, res) => {
     );
     const approvedDays = new Set(approvals.rows.map(a => parseInt(String(a.check_date).slice(8, 10))));
 
+    // خريطة كل يوم: الفترة → (item_id → {status, note})
     const byDay = {};
     checks.rows.forEach(c => {
       const day = parseInt(String(c.check_date).slice(8, 10));
-      (byDay[day] = byDay[day] || { m: new Set(), e: new Set() })[c.period === 'morning' ? 'm' : 'e'].add(c.item_id);
+      const bucket = (byDay[day] = byDay[day] || { m: new Map(), e: new Map() });
+      bucket[c.period === 'morning' ? 'm' : 'e'].set(c.item_id, { status: c.status || 'pass', note: c.note });
     });
 
     let commitmentDone = 0;
@@ -357,12 +394,20 @@ exports.getMonth = async (req, res) => {
         commitmentDone += mDone + eDone;
         commitmentTotal += morningItems.length + eveningItems.length;
       }
+      // خريطة حالة كل بند: m/e = 'pass'|'fail'|null و mn/en = سبب الخطأ إن وجد
       const checksMap = {};
       if (activity) {
         items.rows.forEach(i => {
-          const m = activity.m.has(i.id);
-          const e = activity.e.has(i.id);
-          if (m || e) checksMap[i.id] = { m, e };
+          const m = activity.m.get(i.id);
+          const e = activity.e.get(i.id);
+          if (m || e) {
+            checksMap[i.id] = {
+              m: m ? m.status : null,
+              e: e ? e.status : null,
+              mn: m && m.status === 'fail' && m.note ? m.note : null,
+              en: e && e.status === 'fail' && e.note ? e.note : null
+            };
+          }
         });
       }
       const missing = activity ? [

@@ -366,6 +366,9 @@ const createTables = async () => {
         ['المكان', 'both'],
         ['البرادات', 'both'],
         ['السنك', 'both'],
+        ['المنطقة الأمامية', 'both'],
+        ['أجهزة التطبيقات', 'both'],
+        ['عارضة المقبلات', 'both'],
       ];
       for (let i = 0; i < seedItems.length; i++) {
         await pool.query(
@@ -373,7 +376,7 @@ const createTables = async () => {
           [seedItems[i][0], seedItems[i][1], i + 1]
         );
       }
-      console.log('✅ 6 cleaning checklist items seeded');
+      console.log('✅ 9 cleaning checklist items seeded');
     } else {
       console.log('⏭️  Checklist items already exist — skipping seed');
     }
@@ -393,6 +396,32 @@ const createTables = async () => {
       }
       console.log('✅ Checklist replaced with official cleaning form items (SJ-PRP-F06)');
     }
+
+    // الأقسام الثلاثة الجديدة — إضافة لمرة وحدة بعد الأقسام الستة
+    const hasFrontArea = await pool.query(
+      `SELECT COUNT(*) FROM checklist_items WHERE title = 'المنطقة الأمامية'`
+    );
+    if (parseInt(hasFrontArea.rows[0].count) === 0) {
+      const newSections = ['المنطقة الأمامية', 'أجهزة التطبيقات', 'عارضة المقبلات'];
+      const max = await pool.query('SELECT COALESCE(MAX(sort_order), 0) AS m FROM checklist_items');
+      let order = parseInt(max.rows[0].m);
+      for (const title of newSections) {
+        order++;
+        await pool.query(
+          `INSERT INTO checklist_items (title, period, sort_order) VALUES ($1, 'both', $2)`,
+          [title, order]
+        );
+      }
+      console.log('✅ 3 new checklist sections added');
+    }
+
+    // حالة التقييم لكل تعليم: pass صح / fail خطأ (NULL = ما مقيّم)
+    await pool.query(`ALTER TABLE checklist_checks ADD COLUMN IF NOT EXISTS status VARCHAR(10)`);
+    // عمود checked المنطقي — يُستدعى بالباك فيل من checked_by
+    await pool.query(`ALTER TABLE checklist_checks ADD COLUMN IF NOT EXISTS checked BOOLEAN DEFAULT FALSE`);
+    await pool.query(`UPDATE checklist_checks SET checked = TRUE WHERE checked_by IS NOT NULL AND checked = FALSE`);
+    // تعبئة أولية مرة وحدة للتعليمات الموجودة (idempotent بفعل شرط WHERE)
+    await pool.query(`UPDATE checklist_checks SET status = 'pass' WHERE checked = TRUE AND status IS NULL`);
 
     // صورة إثبات التعليم (base64)
     await pool.query(`ALTER TABLE checklist_checks ADD COLUMN IF NOT EXISTS photo TEXT`);
