@@ -655,24 +655,26 @@ export default function Checklist({ user }) {
 
       {view === 'daily' && (
         <>
-          {/* شريطا التقدم: صباحي + مسائي */}
-          <div className="card-ios p-4 mb-4 space-y-3">
-            {[
-              { key: 'morning', data: morning, cls: 'bg-ios-blue' },
-              { key: 'evening', data: evening, cls: 'bg-ios-orange' }
-            ].map(({ key, data, cls }) => (
-              <div key={key}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-bold text-ios-text text-sm">{PERIODS[key]}</span>
-                  <span className="font-bold text-ios-label text-sm">{data.p.done} / {data.p.total} ({data.pct}%)</span>
+          {/* شريطا التقدم: صباحي + مسائي جنب بعض */}
+          <div className="card-ios p-4 mb-4">
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { key: 'morning', data: morning, cls: 'bg-ios-blue' },
+                { key: 'evening', data: evening, cls: 'bg-ios-orange' }
+              ].map(({ key, data, cls }) => (
+                <div key={key}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="font-bold text-ios-text text-sm">{PERIODS[key]}</span>
+                    <span className="font-bold text-ios-label text-sm">{data.p.done} / {data.p.total} ({data.pct}%)</span>
+                  </div>
+                  <div className="h-3 rounded-full bg-ios-fill overflow-hidden">
+                    <div className={`h-full rounded-full ${cls} transition-all duration-300`} style={{ width: `${data.pct}%` }} />
+                  </div>
                 </div>
-                <div className="h-3 rounded-full bg-ios-fill overflow-hidden">
-                  <div className={`h-full rounded-full ${cls} transition-all duration-300`} style={{ width: `${data.pct}%` }} />
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
             {failCount > 0 && (
-              <p className="text-ios-red text-sm font-bold">🔴 {failCount} {failCount === 1 ? 'قسم غير نظيف' : 'أقسام غير نظيفة'}</p>
+              <p className="text-ios-red text-sm font-bold mt-3">🔴 {failCount} {failCount === 1 ? 'قسم غير نظيف' : 'أقسام غير نظيفة'}</p>
             )}
           </div>
 
