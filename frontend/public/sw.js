@@ -1,5 +1,5 @@
 /* Service Worker — تطبيق يشتغل حتى بدون نت (البيانات دايم من السيرفر) */
-const CACHE = 'inventory-v1'
+const CACHE = 'inventory-v2'
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png']
 
 self.addEventListener('install', e => {
@@ -18,19 +18,30 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url)
   // طلبات الـ API دايم من الشبكة (البيانات لحظية)
   if (url.pathname.includes('/api/')) return
-  // الملفات الثابتة (js/css/صور): كاش أولاً مع تحديث بالخلفية
-  if (e.request.method === 'GET' && (url.origin === self.location.origin)) {
+  if (e.request.method !== 'GET' || url.origin !== self.location.origin) return
+
+  // ملفات الحزمة (اسمها يتغير بتغير محتواها) — كاش أولاً: سريعة وآمنة
+  if (url.pathname.startsWith('/assets/')) {
     e.respondWith(
-      caches.match(e.request).then(cached => {
-        const fetched = fetch(e.request).then(res => {
-          if (res.ok) {
-            const clone = res.clone()
-            caches.open(CACHE).then(c => c.put(e.request, clone))
-          }
-          return res
-        }).catch(() => cached)
-        return cached || fetched
-      })
+      caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
+        if (res.ok) {
+          const clone = res.clone()
+          caches.open(CACHE).then(c => c.put(e.request, clone))
+        }
+        return res
+      }))
     )
+    return
   }
+
+  // الصفحات والملفات العامة — الشبكة أولاً حتى يوصل أي تحديث فوراً، والكاش بديل عند انقطاع النت
+  e.respondWith(
+    fetch(e.request).then(res => {
+      if (res.ok) {
+        const clone = res.clone()
+        caches.open(CACHE).then(c => c.put(e.request, clone))
+      }
+      return res
+    }).catch(() => caches.match(e.request))
+  )
 })
