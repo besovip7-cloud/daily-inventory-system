@@ -32,6 +32,8 @@ export default function Reports({ user }) {
   const [costRows, setCostRows] = useState([])
   const [costGroups, setCostGroups] = useState([])
   const [costGrandTotal, setCostGrandTotal] = useState(0)
+  const [cleaning, setCleaning] = useState([]) // صفوف تقرير سجل التنظيف
+  const [cleaningInfo, setCleaningInfo] = useState({ commitment: 0, approvedDays: 0 })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [settings, setSettings] = useState(getCachedSettings())
@@ -64,6 +66,10 @@ export default function Reports({ user }) {
   useEffect(() => {
     if (selectedBranch && activeTab === 'variance') loadVariance()
   }, [selectedBranch, varianceDate])
+
+  useEffect(() => {
+    if (selectedBranch && activeTab === 'cleaning') loadCleaning()
+  }, [selectedBranch, from, to, activeTab])
 
   const loadComparison = async () => {
     try {
@@ -180,6 +186,67 @@ export default function Reports({ user }) {
       setVariance(await res.json() || [])
     } catch (e) {
       setError('فشل تحميل الفروقات')
+    }
+    setLoading(false)
+  }
+
+  // سجل التنظيف: يجمع بيانات كل شهر بالنطاق من endpoint الشهرية ويبني صفاً لكل يوم
+  const loadCleaning = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const months = []
+      let [y, m] = from.slice(0, 7).split('-').map(Number)
+      const endMonth = to.slice(0, 7)
+      while (`${y}-${String(m).padStart(2, '0')}` <= endMonth && months.length < 12) {
+        months.push(`${y}-${String(m).padStart(2, '0')}`)
+        m++; if (m > 12) { m = 1; y++ }
+      }
+      const responses = await Promise.all(months.map(month =>
+        fetch(`${API_URL}/checklist/month?branch_id=${selectedBranch}&month=${month}`, { headers: authHeaders })
+          .then(r => r.ok ? r.json() : null)
+      ))
+      const itemsById = {}
+      const dayByDate = {}
+      let done = 0, total = 0, approvedDays = 0
+      responses.filter(Boolean).forEach(md => {
+        ;(md.items || []).forEach(i => { itemsById[i.id] = i.title })
+        ;(md.days || []).forEach(d => {
+          const ds = `${md.month}-${String(d.day).padStart(2, '0')}`
+          dayByDate[ds] = d
+          done += d.morning.done + d.evening.done
+          total += d.morning.total + d.evening.total
+          if (d.approved) approvedDays++
+        })
+      })
+      const rows = []
+      const cur = new Date(from + 'T00:00:00')
+      const endD = new Date(to + 'T00:00:00')
+      while (cur <= endD) {
+        const ds = fmtDate(cur)
+        const d = dayByDate[ds]
+        let fails = 0
+        const notes = []
+        if (d) {
+          Object.entries(d.checks || {}).forEach(([id, c]) => {
+            if (c.m === 'fail') { fails++; if (c.mn) notes.push(`${itemsById[id] || ''} (ص): ${c.mn}`) }
+            if (c.e === 'fail') { fails++; if (c.en) notes.push(`${itemsById[id] || ''} (م): ${c.en}`) }
+          })
+        }
+        rows.push({
+          record_date: ds,
+          morning: d ? `${d.morning.done}/${d.morning.total}` : '—',
+          evening: d ? `${d.evening.done}/${d.evening.total}` : '—',
+          fails: d ? fails : '—',
+          status: !d ? '—' : d.approved ? '📋✅ معتمد' : (d.morning.done + d.evening.done > 0 ? `ناقص ${d.missing_titles.length}` : 'غير مكتمل'),
+          notes: notes.join('؛ ') || '—',
+        })
+        cur.setDate(cur.getDate() + 1)
+      }
+      setCleaning(rows)
+      setCleaningInfo({ commitment: total ? Math.round((done / total) * 100) : 0, approvedDays })
+    } catch (e) {
+      setError('فشل تحميل سجل التنظيف')
     }
     setLoading(false)
   }
@@ -323,6 +390,23 @@ export default function Reports({ user }) {
         created_by_name: p.created_by_name || '—',
       })),
       totals: [{ label: 'عدد الطلبات', value: purchases.length }],
+    },
+    cleaning: {
+      title: 'تقرير سجل التنظيف اليومي',
+      filename: `سجل-التنظيف_${branchName}_${from}_${to}`,
+      columns: [
+        { key: 'record_date', label: 'التاريخ' },
+        { key: 'morning', label: '🌅 صباحي (مكتمل/الكل)' },
+        { key: 'evening', label: '🌙 مسائي (مكتمل/الكل)' },
+        { key: 'fails', label: 'أقسام غير نظيفة' },
+        { key: 'status', label: 'الحالة' },
+        { key: 'notes', label: 'ملاحظات وأسباب الخطأ' },
+      ],
+      rows: cleaning,
+      totals: [
+        { label: 'نسبة الالتزام', value: `${cleaningInfo.commitment}%` },
+        { label: 'أيام معتمدة', value: `${cleaningInfo.approvedDays} 📋✅` },
+      ],
     },
     costs: (() => {
       // صف واحد لكل صنف، المكونات بأعمدة (مثل جدول المكونات)
@@ -564,6 +648,10 @@ export default function Reports({ user }) {
         <button onClick={() => setActiveTab('purchases')}
           className={`segmented-item ${activeTab === 'purchases' ? 'segmented-item-active' : ''}`}>
           🛒 طلبات الشراء
+        </button>
+        <button onClick={() => setActiveTab('cleaning')}
+          className={`segmented-item ${activeTab === 'cleaning' ? 'segmented-item-active' : ''}`}>
+          🧹 سجل التنظيف
         </button>
         <button onClick={() => setActiveTab('costs')}
           className={`segmented-item ${activeTab === 'costs' ? 'segmented-item-active' : ''}`}>
@@ -922,6 +1010,43 @@ export default function Reports({ user }) {
                 </tbody>
               </table>
             </div>
+          )
+        ) : activeTab === 'cleaning' ? (
+          cleaning.length === 0 ? (
+            <p className="text-ios-label text-center py-10">لا توجد أيام بالنطاق المحدد</p>
+          ) : (
+            <>
+              <div className="p-4 bg-ios-blue/10 font-bold text-ios-blue flex flex-wrap gap-x-6 gap-y-1">
+                <span>نسبة الالتزام: {cleaningInfo.commitment}%</span>
+                <span>أيام معتمدة: {cleaningInfo.approvedDays} 📋✅</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="table-ios min-w-[860px]">
+                  <thead>
+                    <tr>
+                      <th>التاريخ</th>
+                      <th>🌅 صباحي</th>
+                      <th>🌙 مسائي</th>
+                      <th>غير نظيف</th>
+                      <th>الحالة</th>
+                      <th>ملاحظات وأسباب الخطأ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cleaning.map((r, i) => (
+                      <tr key={i}>
+                        <td className="td-num text-ios-label whitespace-nowrap">{r.record_date}</td>
+                        <td className="td-num font-bold">{r.morning}</td>
+                        <td className="td-num font-bold">{r.evening}</td>
+                        <td className={`td-num font-bold ${r.fails !== '—' && r.fails > 0 ? 'text-ios-red' : ''}`}>{r.fails}</td>
+                        <td className="text-sm font-bold whitespace-nowrap">{r.status}</td>
+                        <td className="text-ios-label text-sm max-w-[300px]">{r.notes}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )
         ) : activeTab === 'costs' ? (
           costGroups.length === 0 ? (
