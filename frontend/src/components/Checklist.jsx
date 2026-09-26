@@ -10,13 +10,6 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 const PERIODS = { morning: '🌅 صباحي', evening: '🌙 مسائي' }
 const ITEM_PERIODS = { morning: 'صباحي', evening: 'مسائي', both: 'كلاهما' }
 
-// عناوين مختصرة للطباعة فقط — أسماء الأقسام الكاملة تبقى بالواجهة
-const PRINT_SHORT_TITLES = {
-  'منطقة الأمامية': 'الأمامية',
-  'الأجهزة التطبيقات': 'الأجهزة',
-  'عارضة المقبلات': 'المقبلات',
-}
-
 // تاريخ اليوم بتوقيت العراق (UTC+3) — نفس حساب الباك إند حتى لا يختلف "اليوم" بين الطرفين بعد منتصف الليل
 const todayStr = () => new Date(Date.now() + 3 * 3600e3).toISOString().split('T')[0]
 
@@ -569,11 +562,10 @@ export default function Checklist({ user }) {
     if (!monthData) return
     const [y, m] = month.split('-')
     const branchName = branches.find(b => String(b.id) === String(selectedBranch))?.name || ''
-    const shortTitle = t => PRINT_SHORT_TITLES[t] || t
     // عمود ملاحظات آخر عمود (أقصى اليسار بالاتجاه RTL) لأسباب الخطأ
     const columns = [
       { key: 'day', label: 'اليوم' },
-      ...sectionItems.map(i => ({ key: `s${i.id}`, label: shortTitle(i.title) })),
+      ...sectionItems.map(i => ({ key: `s${i.id}`, label: i.title })),
       { key: 'status', label: 'الحالة' },
       { key: 'notes', label: 'ملاحظات' }
     ]
@@ -587,8 +579,8 @@ export default function Checklist({ user }) {
         const { done, total, fail } = itemStatus(i, day?.checks)
         row[`s${i.id}`] = total === 0 ? '' : (fail ? '✗' : (done >= total ? '✓' : '—'))
         const c = day?.checks?.[i.id]
-        if (c?.mn) dayNotes.push(`${shortTitle(i.title)}: ${clip(c.mn)}`)
-        if (c?.en) dayNotes.push(`${shortTitle(i.title)}: ${clip(c.en)}`)
+        if (c?.mn) dayNotes.push(`${i.title}: ${clip(c.mn)}`)
+        if (c?.en) dayNotes.push(`${i.title}: ${clip(c.en)}`)
       })
       row.status = day
         ? (day.approved ? '✅ معتمد' : (day.morning.done + day.evening.done > 0 ? `ناقص ${day.missing_titles.length}` : '—'))
@@ -773,7 +765,7 @@ export default function Checklist({ user }) {
                       {rows.map(row => (
                         <th key={row.id} className="text-center px-1 py-3">
                           <div className="flex items-center justify-center gap-1">
-                            <span className="text-lg font-extrabold text-ios-text">{PRINT_SHORT_TITLES[row.title] || row.title}</span>
+                            <span className="text-lg font-extrabold text-ios-text">{row.title}</span>
                             {noteBtn(row)}
                           </div>
                         </th>
@@ -884,7 +876,7 @@ export default function Checklist({ user }) {
                 <tbody>
                   {sectionItems.map(i => (
                     <tr key={i.id}>
-                      <td className="sticky right-0 z-10 bg-white font-extrabold text-sm text-ios-text whitespace-nowrap px-2 py-2">{PRINT_SHORT_TITLES[i.title] || i.title}</td>
+                      <td className="sticky right-0 z-10 bg-white font-extrabold text-sm text-ios-text whitespace-nowrap px-2 py-2">{i.title}</td>
                       {Array.from({ length: daysInMonth }, (_, idx) => idx + 1).map(d => {
                         const day = dayMap[d]
                         const isFuture = !day && month === currentMonth && d > todayNum
