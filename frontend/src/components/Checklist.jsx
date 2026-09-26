@@ -464,14 +464,15 @@ export default function Checklist({ user }) {
       )
     }
     const isFail = c.status === 'fail'
+    // المختار ملوّن صافي وغير المختار يبهت رمادياً لتبيان الحالة بلمحة
     return (
       <div className="flex items-center justify-center gap-1.5">
         <button type="button" onClick={() => setCellAction({ row, period })} disabled={isPending}
-          title={`${PERIODS[period]} — تعديل التقييم`}
-          className={`${btnBase} ${isFail ? 'bg-ios-green/15 text-ios-green' : 'bg-ios-green text-white'}`}>✓</button>
+          title={`${PERIODS[period]} — ${isFail ? 'غير نظيف' : 'نظيف'} — اضغط للتعديل`}
+          className={`${btnBase} ${isFail ? 'bg-ios-fill/70 text-ios-label' : 'bg-ios-green text-white shadow-sm'}`}>✓</button>
         <button type="button" onClick={() => setCellAction({ row, period })} disabled={isPending}
-          title={`${PERIODS[period]} — تعديل التقييم`}
-          className={`${btnBase} ${isFail ? 'bg-ios-red text-white' : 'bg-ios-red/10 text-ios-red'}`}>✗</button>
+          title={`${PERIODS[period]} — ${isFail ? 'غير نظيف' : 'نظيف'} — اضغط للتعديل`}
+          className={`${btnBase} ${isFail ? 'bg-ios-red text-white shadow-sm' : 'bg-ios-fill/70 text-ios-label'}`}>✗</button>
         {isAdmin && (
           <button type="button" onClick={() => clearCheck(row, period)} disabled={isPending}
             title={`${PERIODS[period]} — مسح التعليم (أدمن)`}
