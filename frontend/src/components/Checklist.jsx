@@ -635,7 +635,7 @@ export default function Checklist({ user }) {
   const currentMonth = todayStr().slice(0, 7)
 
   return (
-    <div dir="rtl">
+    <div dir="rtl" className="-mx-4 md:-mx-6">
       <PageHeader title="📋 سجل التنظيف اليومي" subtitle="قائمة الفحص — صباحي ومسائي" />
 
       {message && (
