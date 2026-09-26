@@ -456,7 +456,7 @@ export default function Checklist({ user }) {
         <div className="flex items-center justify-center gap-1.5">
           <button type="button" onClick={() => markPass(row, period)} disabled={isPending}
             title={`${PERIODS[period]} — نظيف`}
-            className={`${btnBase} bg-ios-green text-white`}>✓</button>
+            className={`${btnBase} border-2 border-ios-green text-ios-green hover:bg-ios-green/10`}>✓</button>
           <button type="button" onClick={() => openNoteEditor(row, period)} disabled={isPending}
             title={`${PERIODS[period]} — خطأ (يلزم كتابة السبب)`}
             className={`${btnBase} border-2 border-ios-red text-ios-red hover:bg-ios-red/10`}>✗</button>
