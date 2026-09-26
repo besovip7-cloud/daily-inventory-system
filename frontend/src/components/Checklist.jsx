@@ -450,7 +450,7 @@ export default function Checklist({ user }) {
     const c = row[key]
     const pendKey = `${row.id}:${period}`
     const isPending = pending.has(pendKey)
-    const btnBase = 'w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold transition active:scale-90 disabled:opacity-50'
+    const btnBase = 'w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold transition active:scale-90 disabled:opacity-50'
     if (!c) {
       return (
         <div className="flex items-center justify-center gap-1.5">
@@ -476,7 +476,7 @@ export default function Checklist({ user }) {
         {isAdmin && (
           <button type="button" onClick={() => clearCheck(row, period)} disabled={isPending}
             title={`${PERIODS[period]} — مسح التعليم (أدمن)`}
-            className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] bg-ios-red/10 text-ios-red hover:bg-ios-red/25 active:scale-90 disabled:opacity-40">🗑️</button>
+            className="w-7 h-7 rounded-full flex items-center justify-center text-xs bg-ios-red/10 text-ios-red hover:bg-ios-red/25 active:scale-90 disabled:opacity-40">🗑️</button>
         )}
       </div>
     )
@@ -526,10 +526,10 @@ export default function Checklist({ user }) {
     const c = period === 'morning' ? item.m : item.e
     if (!c) return null
     if (c.status === 'fail') {
-      return <span className="block text-[10px] font-semibold text-ios-red mt-0.5">✗{c.note ? ' ' + c.note : ''}</span>
+      return <span className="block text-xs font-semibold text-ios-red mt-1">✗{c.note ? ' ' + c.note : ''}</span>
     }
     return (
-      <span className="block text-[10px] font-semibold text-ios-green mt-0.5">
+      <span className="block text-xs font-semibold text-ios-green mt-1">
         ✓ {c.checked_by_name || '—'} {c.checked_at ? new Date(c.checked_at).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }) : ''}
       </span>
     )
@@ -769,11 +769,11 @@ export default function Checklist({ user }) {
                 <table className="table-ios w-full">
                   <thead>
                     <tr>
-                      <th className="sticky right-0 z-10 bg-[#F2F2F7] w-20 text-center text-xs px-1">الفترة</th>
+                      <th className="sticky right-0 z-10 bg-[#F2F2F7] w-24 text-center text-sm px-1 py-3">الفترة</th>
                       {rows.map(row => (
-                        <th key={row.id} className="text-center px-1">
-                          <div className="flex items-center justify-center gap-0.5">
-                            <span className="text-sm font-extrabold text-ios-text">{PRINT_SHORT_TITLES[row.title] || row.title}</span>
+                        <th key={row.id} className="text-center px-1 py-3">
+                          <div className="flex items-center justify-center gap-1">
+                            <span className="text-lg font-extrabold text-ios-text">{PRINT_SHORT_TITLES[row.title] || row.title}</span>
                             {noteBtn(row)}
                           </div>
                         </th>
@@ -783,14 +783,14 @@ export default function Checklist({ user }) {
                     <tbody>
                       {Object.keys(PERIODS).map(period => (
                         <tr key={period}>
-                          <td className="sticky right-0 z-10 bg-white text-center font-bold text-sm text-ios-text whitespace-nowrap">{PERIODS[period]}</td>
+                          <td className="sticky right-0 z-10 bg-white text-center font-bold text-base text-ios-text whitespace-nowrap py-4">{PERIODS[period]}</td>
                           {rows.map(row => applicable(row, period) ? (
-                            <td key={row.id} className="text-center align-top">
+                            <td key={row.id} className="text-center align-top py-4">
                               {checkCell(row, period, period === 'morning' ? 'm' : 'e')}
                               {cellStatusLine(row, period)}
                             </td>
                           ) : (
-                            <td key={row.id} className="text-center text-ios-label">—</td>
+                            <td key={row.id} className="text-center text-ios-label py-4">—</td>
                           ))}
                         </tr>
                       ))}
@@ -884,7 +884,7 @@ export default function Checklist({ user }) {
                 <tbody>
                   {sectionItems.map(i => (
                     <tr key={i.id}>
-                      <td className="sticky right-0 z-10 bg-white font-extrabold text-xs text-ios-text whitespace-nowrap px-1">{PRINT_SHORT_TITLES[i.title] || i.title}</td>
+                      <td className="sticky right-0 z-10 bg-white font-extrabold text-sm text-ios-text whitespace-nowrap px-2 py-2">{PRINT_SHORT_TITLES[i.title] || i.title}</td>
                       {Array.from({ length: daysInMonth }, (_, idx) => idx + 1).map(d => {
                         const day = dayMap[d]
                         const isFuture = !day && month === currentMonth && d > todayNum
@@ -892,7 +892,7 @@ export default function Checklist({ user }) {
                         const cell = total === 0 ? '' : (fail ? '🔴' : done >= total ? '🟢' : (done > 0 ? '🟠' : (day ? '⚪' : '')))
                         return (
                           <td key={d} onClick={() => goToDay(d)}
-                            className={`text-center text-sm cursor-pointer px-0.5 ${isFuture ? 'opacity-40' : 'hover:bg-ios-fill/50'}`}>
+                            className={`text-center text-base cursor-pointer px-0.5 py-2 ${isFuture ? 'opacity-40' : 'hover:bg-ios-fill/50'}`}>
                             {cell}
                           </td>
                         )
@@ -900,12 +900,12 @@ export default function Checklist({ user }) {
                     </tr>
                   ))}
                   <tr className="border-t-2 border-ios-sep">
-                    <td className="sticky right-0 z-10 bg-white font-bold text-[11px] text-ios-label whitespace-nowrap px-1">حالة اليوم</td>
+                    <td className="sticky right-0 z-10 bg-white font-bold text-xs text-ios-label whitespace-nowrap px-2 py-2">حالة اليوم</td>
                     {Array.from({ length: daysInMonth }, (_, idx) => idx + 1).map(d => {
                       const day = dayMap[d]
                       return (
                         <td key={d} onClick={() => goToDay(d)}
-                          className="text-center text-[10px] font-bold cursor-pointer px-0.5">
+                          className="text-center text-[11px] font-bold cursor-pointer px-0.5 py-2">
                           {day?.approved ? '📋✅' : (day ? (day.morning.done + day.evening.done > 0 ? `⚠️${day.missing_titles.length}` : '—') : '—')}
                         </td>
                       )
