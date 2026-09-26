@@ -450,7 +450,7 @@ export default function Checklist({ user }) {
     const c = row[key]
     const pendKey = `${row.id}:${period}`
     const isPending = pending.has(pendKey)
-    const btnBase = 'w-8 h-8 rounded-full flex items-center justify-center text-base font-bold transition active:scale-90 disabled:opacity-50'
+    const btnBase = 'w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold transition active:scale-90 disabled:opacity-50'
     if (!c) {
       return (
         <div className="flex items-center justify-center gap-1.5">
@@ -476,7 +476,7 @@ export default function Checklist({ user }) {
         {isAdmin && (
           <button type="button" onClick={() => clearCheck(row, period)} disabled={isPending}
             title={`${PERIODS[period]} — مسح التعليم (أدمن)`}
-            className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] bg-ios-red/10 text-ios-red hover:bg-ios-red/25 active:scale-90 disabled:opacity-40">🗑️</button>
+            className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] bg-ios-red/10 text-ios-red hover:bg-ios-red/25 active:scale-90 disabled:opacity-40">🗑️</button>
         )}
       </div>
     )
@@ -766,20 +766,20 @@ export default function Checklist({ user }) {
               {/* سطح المكتب: جدول أفقي — الأقسام أعمدة والفترات (صباحي/مسائي) صفوف */}
               <div className="hidden md:block card-ios overflow-hidden mb-6">
                 <div className="overflow-x-auto">
-                  <table className="table-ios min-w-[980px]">
-                    <thead>
-                      <tr>
-                        <th className="sticky right-0 z-10 bg-[#F2F2F7] w-24 text-center text-xs">الفترة</th>
-                        {rows.map(row => (
-                          <th key={row.id} className="text-center min-w-[130px]">
-                            <div className="flex items-center justify-center gap-1">
-                              <span className="text-base font-extrabold text-ios-text">{PRINT_SHORT_TITLES[row.title] || row.title}</span>
-                              {noteBtn(row)}
-                            </div>
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
+                <table className="table-ios w-full">
+                  <thead>
+                    <tr>
+                      <th className="sticky right-0 z-10 bg-[#F2F2F7] w-20 text-center text-xs px-1">الفترة</th>
+                      {rows.map(row => (
+                        <th key={row.id} className="text-center px-1">
+                          <div className="flex items-center justify-center gap-0.5">
+                            <span className="text-sm font-extrabold text-ios-text">{PRINT_SHORT_TITLES[row.title] || row.title}</span>
+                            {noteBtn(row)}
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
                     <tbody>
                       {Object.keys(PERIODS).map(period => (
                         <tr key={period}>
@@ -795,7 +795,7 @@ export default function Checklist({ user }) {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                </table>
                 </div>
               </div>
 
@@ -854,65 +854,65 @@ export default function Checklist({ user }) {
           ) : (
             <div className="card-ios overflow-hidden mb-6">
               <div className="overflow-x-auto">
-                <table className="table-ios min-w-[1150px]">
-                  <thead>
-                    <tr>
-                      <th className="sticky right-0 z-10 bg-[#F2F2F7] w-28 text-right text-xs">القسم</th>
-                      {Array.from({ length: daysInMonth }, (_, idx) => idx + 1).map(d => {
-                        const isTodayCol = month === currentMonth && d === todayNum
-                        const dayChecks = dayMap[d]?.checks || {}
-                        const canClearDay = isAdmin
-                          && Object.values(dayChecks).some(c => c.m || c.e)
-                        return (
-                          <th key={d} onClick={() => goToDay(d)} title={`اليوم ${d}`}
-                            className={`text-center text-[11px] cursor-pointer w-9 ${isTodayCol ? 'bg-ios-blue/20 text-ios-blue' : ''}`}>
-                            {d}
-                            {canClearDay && (
-                              <button type="button"
-                                onClick={(e) => { e.stopPropagation(); clearDay(d) }}
-                                disabled={clearingDay === d}
-                                title={`مسح كل تعليمات يوم ${d} (أدمن)`}
-                                className="block mx-auto mt-0.5 text-[9px] opacity-80 hover:opacity-100 active:scale-90 disabled:opacity-30">
-                                {clearingDay === d ? '⏳' : '🗑️'}
-                              </button>
-                            )}
-                          </th>
-                        )
-                      })}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sectionItems.map(i => (
-                      <tr key={i.id}>
-                        <td className="sticky right-0 z-10 bg-white font-extrabold text-sm text-ios-text whitespace-nowrap">{i.title}</td>
-                        {Array.from({ length: daysInMonth }, (_, idx) => idx + 1).map(d => {
-                          const day = dayMap[d]
-                          const isFuture = !day && month === currentMonth && d > todayNum
-                          const { done, total, fail } = itemStatus(i, day?.checks)
-                          const cell = total === 0 ? '' : (fail ? '🔴' : done >= total ? '🟢' : (done > 0 ? '🟠' : (day ? '⚪' : '')))
-                          return (
-                            <td key={d} onClick={() => goToDay(d)}
-                              className={`text-center text-sm cursor-pointer ${isFuture ? 'opacity-40' : 'hover:bg-ios-fill/50'}`}>
-                              {cell}
-                            </td>
-                          )
-                        })}
-                      </tr>
-                    ))}
-                    <tr className="border-t-2 border-ios-sep">
-                      <td className="sticky right-0 z-10 bg-white font-bold text-xs text-ios-label whitespace-nowrap">حالة اليوم</td>
+              <table className="table-ios w-full">
+                <thead>
+                  <tr>
+                    <th className="sticky right-0 z-10 bg-[#F2F2F7] w-20 text-right text-xs px-1">القسم</th>
+                    {Array.from({ length: daysInMonth }, (_, idx) => idx + 1).map(d => {
+                      const isTodayCol = month === currentMonth && d === todayNum
+                      const dayChecks = dayMap[d]?.checks || {}
+                      const canClearDay = isAdmin
+                        && Object.values(dayChecks).some(c => c.m || c.e)
+                      return (
+                        <th key={d} onClick={() => goToDay(d)} title={`اليوم ${d}`}
+                          className={`text-center text-[10px] cursor-pointer px-0.5 ${isTodayCol ? 'bg-ios-blue/20 text-ios-blue' : ''}`}>
+                          {d}
+                          {canClearDay && (
+                            <button type="button"
+                              onClick={(e) => { e.stopPropagation(); clearDay(d) }}
+                              disabled={clearingDay === d}
+                              title={`مسح كل تعليمات يوم ${d} (أدمن)`}
+                              className="block mx-auto mt-0.5 text-[9px] opacity-80 hover:opacity-100 active:scale-90 disabled:opacity-30">
+                              {clearingDay === d ? '⏳' : '🗑️'}
+                            </button>
+                          )}
+                        </th>
+                      )
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sectionItems.map(i => (
+                    <tr key={i.id}>
+                      <td className="sticky right-0 z-10 bg-white font-extrabold text-xs text-ios-text whitespace-nowrap px-1">{PRINT_SHORT_TITLES[i.title] || i.title}</td>
                       {Array.from({ length: daysInMonth }, (_, idx) => idx + 1).map(d => {
                         const day = dayMap[d]
+                        const isFuture = !day && month === currentMonth && d > todayNum
+                        const { done, total, fail } = itemStatus(i, day?.checks)
+                        const cell = total === 0 ? '' : (fail ? '🔴' : done >= total ? '🟢' : (done > 0 ? '🟠' : (day ? '⚪' : '')))
                         return (
                           <td key={d} onClick={() => goToDay(d)}
-                            className="text-center text-[11px] font-bold cursor-pointer whitespace-nowrap">
-                            {day?.approved ? '📋✅' : (day ? (day.morning.done + day.evening.done > 0 ? `⚠️${day.missing_titles.length}` : '—') : '—')}
+                            className={`text-center text-sm cursor-pointer px-0.5 ${isFuture ? 'opacity-40' : 'hover:bg-ios-fill/50'}`}>
+                            {cell}
                           </td>
                         )
                       })}
                     </tr>
-                  </tbody>
-                </table>
+                  ))}
+                  <tr className="border-t-2 border-ios-sep">
+                    <td className="sticky right-0 z-10 bg-white font-bold text-[11px] text-ios-label whitespace-nowrap px-1">حالة اليوم</td>
+                    {Array.from({ length: daysInMonth }, (_, idx) => idx + 1).map(d => {
+                      const day = dayMap[d]
+                      return (
+                        <td key={d} onClick={() => goToDay(d)}
+                          className="text-center text-[10px] font-bold cursor-pointer px-0.5">
+                          {day?.approved ? '📋✅' : (day ? (day.morning.done + day.evening.done > 0 ? `⚠️${day.missing_titles.length}` : '—') : '—')}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                </tbody>
+              </table>
               </div>
               <div className="px-4 py-2.5 border-t border-ios-sep text-[11px] text-ios-label font-semibold flex gap-3 flex-wrap">
                 <span>🟢 مكتمل</span><span>🟠 جزئي</span><span>⚪ غير مكتمل</span><span>🔴 غير نظيف</span><span>📋✅ معتمد</span>
