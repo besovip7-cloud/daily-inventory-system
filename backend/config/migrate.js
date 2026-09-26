@@ -363,11 +363,11 @@ const createTables = async () => {
         ['الجدران', 'both'],
         ['الأرضية', 'both'],
         ['الطاولات', 'both'],
-        ['المكان', 'both'],
+        ['المكائن', 'both'],
         ['البرادات', 'both'],
         ['السنك', 'both'],
-        ['المنطقة الأمامية', 'both'],
-        ['أجهزة التطبيقات', 'both'],
+        ['منطقة الأمامية', 'both'],
+        ['الأجهزة التطبيقات', 'both'],
         ['عارضة المقبلات', 'both'],
       ];
       for (let i = 0; i < seedItems.length; i++) {
@@ -387,7 +387,7 @@ const createTables = async () => {
     );
     if (parseInt(hasCleaning.rows[0].count) === 0) {
       await pool.query('UPDATE checklist_items SET is_active = FALSE');
-      const cleaningItems = ['الجدران', 'الأرضية', 'الطاولات', 'المكان', 'البرادات', 'السنك'];
+      const cleaningItems = ['الجدران', 'الأرضية', 'الطاولات', 'المكائن', 'البرادات', 'السنك'];
       for (let i = 0; i < cleaningItems.length; i++) {
         await pool.query(
           `INSERT INTO checklist_items (title, period, sort_order) VALUES ($1, 'both', $2)`,
@@ -399,10 +399,10 @@ const createTables = async () => {
 
     // الأقسام الثلاثة الجديدة — إضافة لمرة وحدة بعد الأقسام الستة
     const hasFrontArea = await pool.query(
-      `SELECT COUNT(*) FROM checklist_items WHERE title = 'المنطقة الأمامية'`
+      `SELECT COUNT(*) FROM checklist_items WHERE title = 'منطقة الأمامية'`
     );
     if (parseInt(hasFrontArea.rows[0].count) === 0) {
-      const newSections = ['المنطقة الأمامية', 'أجهزة التطبيقات', 'عارضة المقبلات'];
+      const newSections = ['منطقة الأمامية', 'الأجهزة التطبيقات', 'عارضة المقبلات'];
       const max = await pool.query('SELECT COALESCE(MAX(sort_order), 0) AS m FROM checklist_items');
       let order = parseInt(max.rows[0].m);
       for (const title of newSections) {
