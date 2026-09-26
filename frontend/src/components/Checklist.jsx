@@ -251,10 +251,8 @@ export default function Checklist({ user }) {
     return postStatus(row, period, null)
   }
 
-  // مسح كل تعليمات يوم من الشهرية — للأدمن، واليوم الحالي فقط (الباك إند يرفض غيره)
+  // مسح كل تعليمات يوم من الشهرية — للأدمن في أي يوم (الباك إند يرفض غير الأدمن)
   const clearDay = async (d) => {
-    const dayDate = `${month}-${String(d).padStart(2, '0')}`
-    if (dayDate < todayStr()) { show('⚠️ ما تكدر تمسح تعليمات أيام سابقة'); return }
     const day = dayMap[d]
     const entries = Object.entries(day?.checks || {}).filter(([, c]) => c.m || c.e)
     if (entries.length === 0) return
@@ -474,7 +472,7 @@ export default function Checklist({ user }) {
         <button type="button" onClick={() => setCellAction({ row, period })} disabled={isPending}
           title={`${PERIODS[period]} — تعديل التقييم`}
           className={`${btnBase} ${isFail ? 'bg-ios-red text-white' : 'bg-ios-red/10 text-ios-red'}`}>✗</button>
-        {isAdmin && !isOldDay && (
+        {isAdmin && (
           <button type="button" onClick={() => clearCheck(row, period)} disabled={isPending}
             title={`${PERIODS[period]} — مسح التعليم (أدمن)`}
             className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] bg-ios-red/10 text-ios-red hover:bg-ios-red/25 active:scale-90 disabled:opacity-40">🗑️</button>
@@ -825,7 +823,7 @@ export default function Checklist({ user }) {
             </>
           )}
           {isOldDay && (
-            <p className="text-center text-ios-orange text-sm font-semibold mb-6">⚠️ تعرض يوماً سابقاً — التعليم متاح للعرض فقط (ما تكدر تلغي تعليم أيام سابقة)</p>
+            <p className="text-center text-ios-orange text-sm font-semibold mb-6">⚠️ تعرض يوماً سابقاً — المسح متاح للأدمن فقط</p>
           )}
         </>
       )}
@@ -864,7 +862,6 @@ export default function Checklist({ user }) {
                         const dayChecks = dayMap[d]?.checks || {}
                         const canClearDay = isAdmin
                           && Object.values(dayChecks).some(c => c.m || c.e)
-                          && `${month}-${String(d).padStart(2, '0')}` >= todayStr()
                         return (
                           <th key={d} onClick={() => goToDay(d)} title={`اليوم ${d}`}
                             className={`text-center text-[11px] cursor-pointer w-9 ${isTodayCol ? 'bg-ios-blue/20 text-ios-blue' : ''}`}>
@@ -1122,16 +1119,13 @@ export default function Checklist({ user }) {
                   📝 {isFail ? 'تعديل السبب والصورة' : 'تعديل الملاحظة والصورة'}
                 </button>
                 {isAdmin && (
-                  <button type="button" disabled={busy || isOldDay}
+                  <button type="button" disabled={busy}
                     onClick={async () => { if (await clearCheck(row, period)) close() }}
                     className="w-full py-2.5 rounded-2xl bg-ios-red/10 text-ios-red font-bold text-sm active:opacity-70 disabled:opacity-40">
                     🗑️ مسح التعليم
                   </button>
                 )}
               </div>
-              {isAdmin && isOldDay && (
-                <p className="text-[11px] text-ios-orange font-semibold mt-3">⚠️ يوم سابق — مسح التعليم معطّل</p>
-              )}
             </div>
           </div>
         )

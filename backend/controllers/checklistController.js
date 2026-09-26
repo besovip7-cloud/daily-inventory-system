@@ -202,13 +202,10 @@ exports.saveCheck = async (req, res) => {
     else if (checked === true) statusParam = 'pass'; // توافق رجعي
     else statusParam = undefined;
 
-    // المسح: حذف السجل — للأدمن فقط، مع حماية الأيام السابقة
+    // المسح: حذف السجل — للأدمن فقط في أي يوم (المدراء والموظفون ممنوعون أصلاً بالفحص أعلاه)
     if (statusParam === null) {
       if (req.user.role !== 'admin') {
         return res.status(403).json({ message: 'مسح التعليم متاح للأدمن فقط' });
-      }
-      if (date < iraqToday()) {
-        return res.status(400).json({ message: 'ما تكدر تلغي تعليم أيام سابقة' });
       }
       await pool.query(
         `DELETE FROM checklist_checks
