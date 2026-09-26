@@ -771,9 +771,9 @@ export default function Checklist({ user }) {
                       <tr>
                         <th className="sticky right-0 z-10 bg-[#F2F2F7] w-24 text-center text-xs">الفترة</th>
                         {rows.map(row => (
-                          <th key={row.id} className="text-center text-xs min-w-[120px]">
+                          <th key={row.id} className="text-center min-w-[130px]">
                             <div className="flex items-center justify-center gap-1">
-                              <span>{PRINT_SHORT_TITLES[row.title] || row.title}</span>
+                              <span className="text-base font-extrabold text-ios-text">{PRINT_SHORT_TITLES[row.title] || row.title}</span>
                               {noteBtn(row)}
                             </div>
                           </th>
@@ -804,7 +804,7 @@ export default function Checklist({ user }) {
                 {rows.map(row => (
                   <div key={row.id} className="card-ios p-3 bg-white">
                     <div className="flex items-center justify-between gap-1 mb-2">
-                      <span className="font-semibold text-ios-text text-sm">{row.title}</span>
+                      <span className="font-extrabold text-ios-text text-base">{row.title}</span>
                       {noteBtn(row)}
                     </div>
                     {statusLinesBlock(row, 'block text-[11px] font-semibold mb-2')}
@@ -884,7 +884,7 @@ export default function Checklist({ user }) {
                   <tbody>
                     {sectionItems.map(i => (
                       <tr key={i.id}>
-                        <td className="sticky right-0 z-10 bg-white font-bold text-xs text-ios-text whitespace-nowrap">{i.title}</td>
+                        <td className="sticky right-0 z-10 bg-white font-extrabold text-sm text-ios-text whitespace-nowrap">{i.title}</td>
                         {Array.from({ length: daysInMonth }, (_, idx) => idx + 1).map(d => {
                           const day = dayMap[d]
                           const isFuture = !day && month === currentMonth && d > todayNum
